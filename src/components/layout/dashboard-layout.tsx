@@ -98,16 +98,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           })}
         </nav>
 
-        <div className="p-4 border-t space-y-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            className={cn("w-full justify-start gap-3", !isSidebarOpen && "px-2")}
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          >
-            {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            {isSidebarOpen && <span>Theme</span>}
-          </Button>
+        <div className="p-4 border-t">
           <Link href="/">
             <Button
               variant="ghost"
@@ -135,6 +126,14 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </Button>
 
           <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            </Button>
             <div className="hidden md:flex flex-col items-end mr-2">
               <span className="text-sm font-medium">Admin User</span>
               <span className="text-xs text-muted-foreground">Super Admin</span>
