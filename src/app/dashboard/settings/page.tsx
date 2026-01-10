@@ -2,14 +2,8 @@
 
 import * as React from "react";
 import { 
-  Settings, 
   Bell, 
-  Shield, 
-  Database, 
-  Lock, 
   Smartphone,
-  CheckCircle2,
-  Save,
   AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,13 +18,6 @@ import {
   TabsTrigger 
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 
 export default function SettingsPage() {
   const handleSave = () => {
@@ -44,63 +31,12 @@ export default function SettingsPage() {
         <p className="text-muted-foreground">Configure system behavior, notifications, and security policies.</p>
       </div>
 
-      <Tabs defaultValue="general" className="space-y-6">
+      <Tabs defaultValue="notifications" className="space-y-6">
         <TabsList className="bg-muted/50 p-1">
-          <TabsTrigger value="general">General</TabsTrigger>
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="recovery">Debt Recovery</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="general">
-          <Card>
-            <CardHeader>
-              <CardTitle>General Configuration</CardTitle>
-              <CardDescription>Basic system-wide settings for the Loan Management System.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="sys_name">System Name</Label>
-                  <Input id="sys_name" defaultValue="Interswitch Loans" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="base_url">API Base URL</Label>
-                  <Input id="base_url" defaultValue="https://api.interswitch-loans.com/v1" />
-                </div>
-              </div>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="currency">Default Currency</Label>
-                  <Select defaultValue="NGN">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NGN">Nigerian Naira (₦)</SelectItem>
-                      <SelectItem value="USD">US Dollar ($)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="timezone">System Timezone</Label>
-                  <Select defaultValue="WAT">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="WAT">West Africa Time (UTC+1)</SelectItem>
-                      <SelectItem value="UTC">Universal Coordinated Time (UTC)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="border-t bg-muted/20 pt-4">
-              <Button onClick={handleSave}>Save Changes</Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
 
         <TabsContent value="notifications">
           <Card>
@@ -198,22 +134,6 @@ export default function SettingsPage() {
                     <p className="text-xs text-muted-foreground">Require 2FA for all admin logins.</p>
                   </div>
                   <Switch />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Session Timeout</Label>
-                    <p className="text-xs text-muted-foreground">Automatically log out inactive users.</p>
-                  </div>
-                  <Select defaultValue="30">
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="15">15 Minutes</SelectItem>
-                      <SelectItem value="30">30 Minutes</SelectItem>
-                      <SelectItem value="60">1 Hour</SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
             </CardContent>
