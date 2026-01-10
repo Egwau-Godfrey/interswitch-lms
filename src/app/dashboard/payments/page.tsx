@@ -237,7 +237,7 @@ export default function PaymentsPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {new Date(p.date).toLocaleString()}
+                    {new Date(p.date).toLocaleString("en-US")}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>

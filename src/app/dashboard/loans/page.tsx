@@ -283,7 +283,7 @@ export default function LoansPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {new Date(loan.due_date).toLocaleDateString()}
+                    {new Date(loan.due_date).toLocaleDateString("en-US")}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
