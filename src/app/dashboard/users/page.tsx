@@ -44,6 +44,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 const initialUsers = [
   { id: "1", username: "admin_jake", email: "jake@interswitch.com", role: "Admin", status: "active", name: "Jake Adams" },
