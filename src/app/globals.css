@@ -119,4 +119,15 @@
   body {
     @apply bg-background text-foreground;
   }
+  a,
+  button,
+  [role="button"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  select,
+  summary,
+  [tabindex]:not([tabindex="-1"]) {
+    @apply cursor-pointer;
+  }
 }
