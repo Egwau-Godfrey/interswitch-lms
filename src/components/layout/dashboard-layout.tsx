@@ -149,9 +149,6 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuItem asChild>
-                  <Link href="/dashboard/settings" className="w-full cursor-pointer">Profile Settings</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
                   <Link href="/" className="w-full text-destructive cursor-pointer">Logout</Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
