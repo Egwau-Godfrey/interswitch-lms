@@ -240,7 +240,7 @@ export default function AgentsPage() {
                   <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
                     <div className="flex items-center">
                       <Calendar className="w-3 h-3 mr-1" />
-                      {new Date(agent.created_at).toLocaleDateString()}
+                      {new Date(agent.created_at).toLocaleDateString("en-US")}
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
