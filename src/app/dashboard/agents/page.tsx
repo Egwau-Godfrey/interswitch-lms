@@ -15,7 +15,8 @@ import {
   Trash2,
   CheckCircle2,
   XCircle,
-  Clock
+  Clock,
+  Banknote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
