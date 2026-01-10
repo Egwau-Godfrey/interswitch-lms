@@ -88,7 +88,7 @@ export default function DashboardPage() {
             <Banknote className="h-4 w-4 text-[#004B91]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₦12,450,000</div>
+            <div className="text-2xl font-bold">UGX 12,450,000</div>
             <div className="flex items-center text-xs text-emerald-500 mt-1">
               <TrendingUp className="h-3 w-3 mr-1" />
               +12.5% from last month
