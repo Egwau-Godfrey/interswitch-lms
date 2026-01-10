@@ -1,19 +1,20 @@
 "use client";
 
 import * as React from "react";
-import { 
-  UserPlus, 
-  Search, 
-  MoreVertical, 
-  Shield, 
-  UserCog, 
-  Mail, 
+import {
+  UserPlus,
+  Search,
+  MoreVertical,
+  Shield,
+  UserCog,
+  Mail,
   Phone,
   CheckCircle2,
   XCircle,
   Trash2,
   Edit2
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 

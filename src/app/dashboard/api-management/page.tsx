@@ -1,18 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { 
-  Key, 
-  Plus, 
-  Copy, 
-  RefreshCw, 
-  Trash2, 
+import {
+  Key,
+  Plus,
+  Copy,
+  RefreshCw,
+  Trash2,
   MoreVertical,
   ShieldCheck,
   Globe,
   Clock,
   CheckCircle2
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
