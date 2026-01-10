@@ -108,7 +108,7 @@ export default function PaymentsPage() {
                   <Input id="loan" placeholder="e.g. L001" required />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Payment Amount (₦)</Label>
+                  <Label htmlFor="amount">Payment Amount (UGX)</Label>
                   <Input id="amount" type="number" placeholder="10000" required />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -145,7 +145,7 @@ export default function PaymentsPage() {
         <Card className="bg-emerald-50/50 border-emerald-100">
           <CardContent className="pt-4">
             <p className="text-xs font-semibold text-emerald-600 uppercase">Today's Collections</p>
-            <p className="text-2xl font-bold mt-1 text-emerald-700">₦450,200</p>
+            <p className="text-2xl font-bold mt-1 text-emerald-700">UGX 450,200</p>
             <p className="text-[10px] text-emerald-600/80 mt-1 flex items-center">
               <ArrowDownLeft className="w-3 h-3 mr-1" /> 24 Transactions
             </p>
@@ -154,7 +154,7 @@ export default function PaymentsPage() {
         <Card className="bg-blue-50/50 border-blue-100">
           <CardContent className="pt-4">
             <p className="text-xs font-semibold text-blue-600 uppercase">Auto-Strike Recovery</p>
-            <p className="text-2xl font-bold mt-1 text-blue-700">₦1.2M</p>
+            <p className="text-2xl font-bold mt-1 text-blue-700">UGX 1.2M</p>
             <p className="text-[10px] text-blue-600/80 mt-1 flex items-center">
               <Clock className="w-3 h-3 mr-1" /> 158 Successful strikes
             </p>
@@ -163,7 +163,7 @@ export default function PaymentsPage() {
         <Card className="bg-amber-50/50 border-amber-100">
           <CardContent className="pt-4">
             <p className="text-xs font-semibold text-amber-600 uppercase">Pending Verification</p>
-            <p className="text-2xl font-bold mt-1 text-amber-700">₦85,000</p>
+            <p className="text-2xl font-bold mt-1 text-amber-700">UGX 85,000</p>
             <p className="text-[10px] text-amber-600/80 mt-1 flex items-center">
               <Clock className="w-3 h-3 mr-1" /> 5 Transactions
             </p>
@@ -218,7 +218,7 @@ export default function PaymentsPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-right font-semibold text-emerald-600">
-                    ₦{p.amount.toLocaleString()}
+                    UGX {p.amount.toLocaleString()}
                   </TableCell>
                   <TableCell>
                     <Badge variant="outline" className="font-normal uppercase text-[10px]">

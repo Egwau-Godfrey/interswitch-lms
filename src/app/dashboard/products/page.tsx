@@ -129,7 +129,7 @@ export default function ProductsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="max_amount">Max Amount (₦)</Label>
+                  <Label htmlFor="max_amount">Max Amount (UGX)</Label>
                   <Input id="max_amount" type="number" placeholder="100000" required />
                 </div>
                 <div className="space-y-2">
@@ -202,7 +202,7 @@ export default function ProductsPage() {
               <div className="grid grid-cols-2 gap-4 py-4 border-y border-dashed">
                 <div className="space-y-1">
                   <p className="text-[10px] text-muted-foreground font-bold uppercase">Max Amount</p>
-                  <p className="font-semibold">₦{product.max_amount.toLocaleString()}</p>
+                  <p className="font-semibold">UGX {product.max_amount.toLocaleString()}</p>
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] text-muted-foreground font-bold uppercase">Interest Rate</p>

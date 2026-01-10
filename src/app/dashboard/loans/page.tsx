@@ -145,7 +145,7 @@ export default function LoansPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="amount">Loan Amount (₦)</Label>
+                    <Label htmlFor="amount">Loan Amount (UGX)</Label>
                     <Input id="amount" type="number" placeholder="50000" required />
                   </div>
                 </div>
@@ -154,7 +154,7 @@ export default function LoansPage() {
                   <CardContent className="pt-4 space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Interest (10%):</span>
-                      <span className="font-medium">₦5,000</span>
+                      <span className="font-medium">UGX 5,000</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Tenure:</span>
@@ -162,7 +162,7 @@ export default function LoansPage() {
                     </div>
                     <div className="flex justify-between text-sm pt-2 border-t">
                       <span className="font-semibold">Total Repayable:</span>
-                      <span className="font-semibold text-[#004B91]">₦55,000</span>
+                      <span className="font-semibold text-[#004B91]">UGX 55,000</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -184,7 +184,7 @@ export default function LoansPage() {
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Disbursed</p>
               <ArrowUpRight className="w-4 h-4 text-[#E31C2D]" />
             </div>
-            <p className="text-2xl font-bold mt-1">₦24.8M</p>
+            <p className="text-2xl font-bold mt-1">UGX 24.8M</p>
           </CardContent>
         </Card>
         <Card>
@@ -193,7 +193,7 @@ export default function LoansPage() {
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Outstanding</p>
               <Clock className="w-4 h-4 text-[#004B91]" />
             </div>
-            <p className="text-2xl font-bold mt-1">₦8.4M</p>
+            <p className="text-2xl font-bold mt-1">UGX 8.4M</p>
           </CardContent>
         </Card>
         <Card>
@@ -202,7 +202,7 @@ export default function LoansPage() {
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Overdue</p>
               <AlertTriangle className="w-4 h-4 text-amber-500" />
             </div>
-            <p className="text-2xl font-bold mt-1">₦1.2M</p>
+            <p className="text-2xl font-bold mt-1">UGX 1.2M</p>
           </CardContent>
         </Card>
         <Card>
@@ -266,10 +266,10 @@ export default function LoansPage() {
                   <TableCell>
                     <Badge variant="outline" className="font-normal">{loan.product}</Badge>
                   </TableCell>
-                  <TableCell className="text-right">₦{loan.principal.toLocaleString()}</TableCell>
+                  <TableCell className="text-right">UGX {loan.principal.toLocaleString()}</TableCell>
                   <TableCell className="text-right font-semibold">
                     <span className={loan.balance > 0 ? "text-[#E31C2D]" : "text-emerald-600"}>
-                      ₦{loan.balance.toLocaleString()}
+                      UGX {loan.balance.toLocaleString()}
                     </span>
                   </TableCell>
                   <TableCell>

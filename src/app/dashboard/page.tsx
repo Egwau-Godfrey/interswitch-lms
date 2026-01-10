@@ -65,11 +65,11 @@ const overdueAging = [
 ];
 
 const recentActivity = [
-  { id: 1, type: "loan", agent: "John Doe", amount: "₦50,000", status: "Approved", time: "10 mins ago" },
-  { id: 2, type: "payment", agent: "Sarah Smith", amount: "₦25,000", status: "Received", time: "25 mins ago" },
-  { id: 3, type: "loan", agent: "Michael Obi", amount: "₦100,000", status: "Disbursed", time: "1 hour ago" },
-  { id: 4, type: "payment", agent: "Grace Ademola", amount: "₦15,000", status: "Received", time: "2 hours ago" },
-  { id: 5, type: "alert", agent: "David Chen", amount: "₦75,000", status: "Overdue", time: "3 hours ago" },
+  { id: 1, type: "loan", agent: "John Doe", amount: "UGX 50,000", status: "Approved", time: "10 mins ago" },
+  { id: 2, type: "payment", agent: "Sarah Smith", amount: "UGX 25,000", status: "Received", time: "25 mins ago" },
+  { id: 3, type: "loan", agent: "Michael Obi", amount: "UGX 100,000", status: "Disbursed", time: "1 hour ago" },
+  { id: 4, type: "payment", agent: "Grace Ademola", amount: "UGX 15,000", status: "Received", time: "2 hours ago" },
+  { id: 5, type: "alert", agent: "David Chen", amount: "UGX 75,000", status: "Overdue", time: "3 hours ago" },
 ];
 
 export default function DashboardPage() {
@@ -82,58 +82,86 @@ export default function DashboardPage() {
 
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-l-4 border-l-[#004B91]">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Active Loans</CardTitle>
-            <Banknote className="h-4 w-4 text-[#004B91]" />
+        <Card className="relative overflow-hidden border border-blue-100 bg-gradient-to-br from-blue-50 to-indigo-50 shadow-sm hover:shadow-md transition-shadow">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-indigo-500/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium text-slate-600">Total Active Loans</CardTitle>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-blue-500/25">
+              <Banknote className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">UGX 12,450,000</div>
-            <div className="flex items-center text-xs text-emerald-500 mt-1">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +12.5% from last month
+          <CardContent className="relative">
+            <div className="text-3xl font-bold tracking-tight text-slate-800">UGX 12.45M</div>
+            <div className="flex items-center text-sm mt-2 font-medium">
+              <div className="flex items-center bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                +12.5%
+              </div>
+              <span className="text-slate-400 ml-2 text-xs">vs last month</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-[#E31C2D]">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Disbursed (Month)</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-[#E31C2D]" />
+        <Card className="relative overflow-hidden border border-rose-100 bg-gradient-to-br from-rose-50 to-pink-50 shadow-sm hover:shadow-md transition-shadow">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-rose-500/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-pink-500/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium text-slate-600">Disbursed (Month)</CardTitle>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center shadow-lg shadow-rose-500/25">
+              <CheckCircle2 className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₦4,280,000</div>
-            <div className="flex items-center text-xs text-emerald-500 mt-1">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +8.2% from last month
+          <CardContent className="relative">
+            <div className="text-3xl font-bold tracking-tight text-slate-800">UGX 4.28M</div>
+            <div className="flex items-center text-sm mt-2 font-medium">
+              <div className="flex items-center bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                +8.2%
+              </div>
+              <span className="text-slate-400 ml-2 text-xs">vs last month</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Collections (Month)</CardTitle>
-            <ArrowUpRight className="h-4 w-4 text-emerald-500" />
+        <Card className="relative overflow-hidden border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50 shadow-sm hover:shadow-md transition-shadow">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-teal-500/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium text-slate-600">Collections (Month)</CardTitle>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/25">
+              <ArrowUpRight className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₦3,150,000</div>
-            <div className="flex items-center text-xs text-emerald-500 mt-1">
-              <TrendingUp className="h-3 w-3 mr-1" />
-              +15.3% from last month
+          <CardContent className="relative">
+            <div className="text-3xl font-bold tracking-tight text-slate-800">UGX 3.15M</div>
+            <div className="flex items-center text-sm mt-2 font-medium">
+              <div className="flex items-center bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5">
+                <TrendingUp className="h-3 w-3 mr-1" />
+                +15.3%
+              </div>
+              <span className="text-slate-400 ml-2 text-xs">vs last month</span>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-amber-500">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Overdue Loans</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-amber-500" />
+        <Card className="relative overflow-hidden border border-amber-100 bg-gradient-to-br from-amber-50 to-orange-50 shadow-sm hover:shadow-md transition-shadow">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-24 h-24 bg-orange-500/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium text-slate-600">Overdue Loans</CardTitle>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
+              <AlertTriangle className="h-5 w-5 text-white" />
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₦845,000</div>
-            <div className="flex items-center text-xs text-rose-500 mt-1">
-              <ArrowDownRight className="h-3 w-3 mr-1" />
-              -2.1% from last month
+          <CardContent className="relative">
+            <div className="text-3xl font-bold tracking-tight text-slate-800">UGX 845K</div>
+            <div className="flex items-center text-sm mt-2 font-medium">
+              <div className="flex items-center bg-emerald-100 text-emerald-700 rounded-full px-2 py-0.5">
+                <ArrowDownRight className="h-3 w-3 mr-1" />
+                -2.1%
+              </div>
+              <span className="text-slate-400 ml-2 text-xs">vs last month</span>
             </div>
           </CardContent>
         </Card>
@@ -151,9 +179,9 @@ export default function DashboardPage() {
               <BarChart data={collectionsData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₦${value/1000}k`} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `UGX ${value/1000}k`} />
                 <Tooltip 
-                  formatter={(value) => [`₦${Number(value).toLocaleString()}`, ""]}
+                  formatter={(value) => [`UGX ${Number(value).toLocaleString()}`, ""]}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 />
                 <Legend iconType="circle" />
@@ -207,7 +235,7 @@ export default function DashboardPage() {
                 <XAxis type="number" hide />
                 <YAxis dataKey="range" type="category" axisLine={false} tickLine={false} />
                 <Tooltip 
-                   formatter={(value) => [`₦${Number(value).toLocaleString()}`, "Value"]}
+                   formatter={(value) => [`UGX ${Number(value).toLocaleString()}`, "Value"]}
                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 />
                 <Bar dataKey="value" fill="#F59E0B" radius={[0, 4, 4, 0]} />

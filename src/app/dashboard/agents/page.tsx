@@ -149,7 +149,7 @@ export default function AgentsPage() {
                     <Input id="national_id" placeholder="12345678901" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="income">Monthly Income (₦)</Label>
+                    <Label htmlFor="income">Monthly Income (UGX)</Label>
                     <Input id="income" type="number" placeholder="50000" required />
                   </div>
                 </div>
