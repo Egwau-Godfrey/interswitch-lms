@@ -65,11 +65,11 @@ const overdueAging = [
 ];
 
 const recentActivity = [
-  { id: 1, type: "loan", agent: "John Doe", amount: "UGX 50,000", status: "Approved", time: "10 mins ago" },
-  { id: 2, type: "payment", agent: "Sarah Smith", amount: "UGX 25,000", status: "Received", time: "25 mins ago" },
-  { id: 3, type: "loan", agent: "Michael Obi", amount: "UGX 100,000", status: "Disbursed", time: "1 hour ago" },
-  { id: 4, type: "payment", agent: "Grace Ademola", amount: "UGX 15,000", status: "Received", time: "2 hours ago" },
-  { id: 5, type: "alert", agent: "David Chen", amount: "UGX 75,000", status: "Overdue", time: "3 hours ago" },
+  { id: 1, type: "loan", agent: "John Doe", amount: "₦50,000", status: "Approved", time: "10 mins ago" },
+  { id: 2, type: "payment", agent: "Sarah Smith", amount: "₦25,000", status: "Received", time: "25 mins ago" },
+  { id: 3, type: "loan", agent: "Michael Obi", amount: "₦100,000", status: "Disbursed", time: "1 hour ago" },
+  { id: 4, type: "payment", agent: "Grace Ademola", amount: "₦15,000", status: "Received", time: "2 hours ago" },
+  { id: 5, type: "alert", agent: "David Chen", amount: "₦75,000", status: "Overdue", time: "3 hours ago" },
 ];
 
 export default function DashboardPage() {
@@ -88,7 +88,7 @@ export default function DashboardPage() {
             <Banknote className="h-4 w-4 text-[#004B91]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">UGX 12,450,000</div>
+            <div className="text-2xl font-bold">₦12,450,000</div>
             <div className="flex items-center text-xs text-emerald-500 mt-1">
               <TrendingUp className="h-3 w-3 mr-1" />
               +12.5% from last month
@@ -102,7 +102,7 @@ export default function DashboardPage() {
             <CheckCircle2 className="h-4 w-4 text-[#E31C2D]" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">UGX 4,280,000</div>
+            <div className="text-2xl font-bold">₦4,280,000</div>
             <div className="flex items-center text-xs text-emerald-500 mt-1">
               <TrendingUp className="h-3 w-3 mr-1" />
               +8.2% from last month
@@ -116,7 +116,7 @@ export default function DashboardPage() {
             <ArrowUpRight className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">UGX 3,150,000</div>
+            <div className="text-2xl font-bold">₦3,150,000</div>
             <div className="flex items-center text-xs text-emerald-500 mt-1">
               <TrendingUp className="h-3 w-3 mr-1" />
               +15.3% from last month
@@ -130,7 +130,7 @@ export default function DashboardPage() {
             <AlertTriangle className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">UGX 845,000</div>
+            <div className="text-2xl font-bold">₦845,000</div>
             <div className="flex items-center text-xs text-rose-500 mt-1">
               <ArrowDownRight className="h-3 w-3 mr-1" />
               -2.1% from last month
@@ -151,9 +151,9 @@ export default function DashboardPage() {
               <BarChart data={collectionsData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `UGX ${value/1000}k`} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₦${value/1000}k`} />
                 <Tooltip 
-                  formatter={(value) => [`UGX ${Number(value).toLocaleString()}`, ""]}
+                  formatter={(value) => [`₦${Number(value).toLocaleString()}`, ""]}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 />
                 <Legend iconType="circle" />
@@ -207,7 +207,7 @@ export default function DashboardPage() {
                 <XAxis type="number" hide />
                 <YAxis dataKey="range" type="category" axisLine={false} tickLine={false} />
                 <Tooltip 
-                   formatter={(value) => [`UGX ${Number(value).toLocaleString()}`, "Value"]}
+                   formatter={(value) => [`₦${Number(value).toLocaleString()}`, "Value"]}
                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
                 />
                 <Bar dataKey="value" fill="#F59E0B" radius={[0, 4, 4, 0]} />

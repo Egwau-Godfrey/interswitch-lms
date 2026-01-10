@@ -78,8 +78,8 @@ export default function ReportsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Avg. Loan Size</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">UGX 84,500</div>
-            <p className="text-xs text-muted-foreground mt-1">+UGX 2,100 from last month</p>
+            <div className="text-2xl font-bold">₦84,500</div>
+            <p className="text-xs text-muted-foreground mt-1">+₦2,100 from last month</p>
           </CardContent>
         </Card>
         <Card>
@@ -96,7 +96,7 @@ export default function ReportsPage() {
             <CardTitle className="text-sm font-medium text-muted-foreground">Total Interest Earned</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-[#004B91]">UGX 2.45M</div>
+            <div className="text-2xl font-bold text-[#004B91]">₦2.45M</div>
             <p className="text-xs text-muted-foreground mt-1">+15% from last month</p>
           </CardContent>
         </Card>
@@ -134,7 +134,7 @@ export default function ReportsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Monthly Growth Trends</CardTitle>
-            <CardDescription>Disbursements vs Collections (Millions UGX )</CardDescription>
+            <CardDescription>Disbursements vs Collections (Millions ₦)</CardDescription>
           </CardHeader>
           <CardContent className="h-[300px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -161,7 +161,7 @@ export default function ReportsPage() {
               <BarChart data={agingData}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="range" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `UGX ${value/1000}k`} />
+                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `₦${value/1000}k`} />
                 <Tooltip />
                 <Bar dataKey="value" fill="#F59E0B" radius={[4, 4, 0, 0]} />
               </BarChart>
