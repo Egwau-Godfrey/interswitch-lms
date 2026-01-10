@@ -72,13 +72,12 @@ export default function SettingsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="currency">Default Currency</Label>
-                  <Select defaultValue="NGN">
+                  <Select defaultValue="UGX">
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="NGN">Nigerian Naira (₦)</SelectItem>
-                      <SelectItem value="USD">US Dollar ($)</SelectItem>
+                      <SelectItem value="UGX">Ugandan Shilling (UGX)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

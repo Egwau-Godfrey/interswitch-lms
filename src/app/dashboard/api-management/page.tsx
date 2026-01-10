@@ -26,9 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
