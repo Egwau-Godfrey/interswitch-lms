@@ -59,13 +59,14 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useApi, useMutation } from "@/hooks/use-api";
-import { agentsApi } from "@/lib/api";
+import { agentsApi, apiClient } from "@/lib/api";
 import type { Agent } from "@/lib/types";
 import { AgentStatusBadge } from "@/components/shared/status-badges";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { LoadingState, ErrorState } from "@/components/shared/loading-states";
 import { ExportButton } from "@/components/shared/export-button";
 import { formatDate } from "@/components/shared/stat-card";
+import { useSession } from "next-auth/react";
 
 // Mock data for fallback
 const mockAgents: Agent[] = [
@@ -77,42 +78,55 @@ const mockAgents: Agent[] = [
 ];
 
 export default function AgentsPage() {
+  const { data: session } = useSession();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [isRegisterOpen, setIsRegisterOpen] = React.useState(false);
   const [page, setPage] = React.useState(1);
   const [pageSize] = React.useState(10);
+  const [sortBy] = React.useState("created_at");
+  const [sortOrder] = React.useState<"asc" | "desc">("desc");
 
-  // Fetch agents from API with fallback to mock data
+  // Set access token when session is available
+  React.useEffect(() => {
+    if (session?.user?.accessToken) {
+      apiClient.setAccessToken(session.user.accessToken);
+    } else {
+      apiClient.clearAccessToken();
+    }
+  }, [session]);
+
+  // Fetch agents from API with authentication
   const { data: agentsData, isLoading, error, refetch } = useApi(
-    () => agentsApi.list({ 
-      page, 
-      page_size: pageSize,
-      status: statusFilter !== "all" ? statusFilter as Agent["status"] : undefined,
-      search: searchQuery || undefined
-    }).catch((err) => {
-      console.error("Agents API error:", err);
-      return { 
-        data: mockAgents.filter(a => 
-          (statusFilter === "all" || a.status === statusFilter) &&
-          (!searchQuery || 
-            a.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            a.agent_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            a.email?.toLowerCase().includes(searchQuery.toLowerCase()))
-        ), 
-        total: mockAgents.length, 
-        page: 1, 
-        page_size: 10,
-        total_pages: 1
-      };
-    }),
-    [page, pageSize, statusFilter, searchQuery],
-    { cacheKey: `agents-${page}-${statusFilter}-${searchQuery}` }
+    () => {
+      if (!session?.user?.accessToken) {
+        throw new Error("No access token available");
+      }
+      return agentsApi.list({
+        page,
+        page_size: pageSize,
+        sort_by: sortBy,
+        sort_order: sortOrder,
+        status: statusFilter !== "all" ? statusFilter as Agent["status"] : undefined,
+        search: searchQuery || undefined
+      });
+    },
+    [page, pageSize, statusFilter, searchQuery, sortBy, sortOrder, session?.user?.accessToken],
+    { cacheKey: `agents-${page}-${statusFilter}-${searchQuery}-${sortBy}-${sortOrder}` }
   );
 
-  const agents = agentsData?.data || mockAgents;
-  const totalItems = agentsData?.total || mockAgents.length;
-  const totalPages = agentsData?.total_pages || Math.ceil(totalItems / pageSize);
+  // Show error toast if API fails
+  React.useEffect(() => {
+    if (error) {
+      toast.error("Failed to load agents", {
+        description: error.message || "Please try refreshing the page",
+      });
+    }
+  }, [error]);
+
+  const agents = agentsData?.data || [];
+  const totalItems = agentsData?.total || 0;
+  const totalPages = agentsData?.total_pages || 0;
 
   // Create agent mutation
   const createAgent = useMutation(
