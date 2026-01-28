@@ -114,14 +114,17 @@ export default function DashboardPage() {
     { cacheKey: `dashboard-stats-${months}` }
   );
 
-  // Show error toast if API fails
+  // Show error toast if API fails (but not for session loading)
   React.useEffect(() => {
-    if (error) {
-      toast.error("Failed to load dashboard data", {
-        description: error.message || "Please try refreshing the page",
-      });
+    if (error && session?.user?.accessToken) {
+      // Only show error if we have a session but API failed
+      if (error.message !== "No access token available") {
+        toast.error("Failed to load dashboard data", {
+          description: error.message || "Please try refreshing the page",
+        });
+      }
     }
-  }, [error]);
+  }, [error, session]);
 
   const displayStats = stats || mockStats;
 

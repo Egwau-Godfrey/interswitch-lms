@@ -115,14 +115,17 @@ export default function AgentsPage() {
     { cacheKey: `agents-${page}-${statusFilter}-${searchQuery}-${sortBy}-${sortOrder}` }
   );
 
-  // Show error toast if API fails
+  // Show error toast if API fails (but not for session loading)
   React.useEffect(() => {
-    if (error) {
-      toast.error("Failed to load agents", {
-        description: error.message || "Please try refreshing the page",
-      });
+    if (error && session?.user?.accessToken) {
+      // Only show error if we have a session but API failed
+      if (error.message !== "No access token available") {
+        toast.error("Failed to load agents", {
+          description: error.message || "Please try refreshing the page",
+        });
+      }
     }
-  }, [error]);
+  }, [error, session]);
 
   const agents = agentsData?.data || [];
   const totalItems = agentsData?.total || 0;

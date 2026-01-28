@@ -41,9 +41,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useApi, useMutation } from "@/hooks/use-api";
-import { productsApi } from "@/lib/api";
+import { productsApi, apiClient } from "@/lib/api";
 import type { LoanProduct } from "@/lib/types";
 import { formatCurrency } from "@/components/shared/stat-card";
+import { useSession } from "next-auth/react";
 
 // Mock data for fallback
 const mockProducts: LoanProduct[] = [
@@ -53,20 +54,45 @@ const mockProducts: LoanProduct[] = [
 ];
 
 export default function ProductsPage() {
+  const { data: session } = useSession();
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [editingProduct, setEditingProduct] = React.useState<LoanProduct | null>(null);
+  const [page] = React.useState(1);
+  const [pageSize] = React.useState(10);
 
-  // Fetch products from API
+  // Set access token when session is available
+  React.useEffect(() => {
+    if (session?.user?.accessToken) {
+      apiClient.setAccessToken(session.user.accessToken);
+    } else {
+      apiClient.clearAccessToken();
+    }
+  }, [session]);
+
+  // Fetch products from API with authentication
   const { data: productsData, isLoading, error, refetch } = useApi(
-    () => productsApi.list().catch((err) => {
-      console.error("Products API error:", err);
-      return { data: mockProducts, total: mockProducts.length, page: 1, page_size: 10, total_pages: 1 };
-    }),
-    [],
-    { cacheKey: "products" }
+    () => {
+      if (!session?.user?.accessToken) {
+        throw new Error("No access token available");
+      }
+      return productsApi.list({ page, page_size: pageSize });
+    },
+    [page, pageSize, session?.user?.accessToken],
+    { cacheKey: `products-${page}` }
   );
 
-  const products = productsData?.data || mockProducts;
+  // Show error toast if API fails (but not for session loading)
+  React.useEffect(() => {
+    if (error && session?.user?.accessToken) {
+      if (error.message !== "No access token available") {
+        toast.error("Failed to load products", {
+          description: error.message || "Please try refreshing the page",
+        });
+      }
+    }
+  }, [error, session]);
+
+  const products = productsData?.data || [];
 
   // Create product mutation
   const createProduct = useMutation(
