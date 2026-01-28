@@ -3,7 +3,6 @@
 // ============================================
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-const DEFAULT_API_KEY = process.env.NEXT_PUBLIC_API_KEY || '';
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
@@ -11,15 +10,10 @@ interface RequestConfig extends RequestInit {
 
 class ApiClient {
   private baseUrl: string;
-  private apiKey: string | null = null;
   private accessToken: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
-    // Initialize with env API key
-    if (DEFAULT_API_KEY) {
-      this.apiKey = DEFAULT_API_KEY;
-    }
   }
 
   setAccessToken(token: string) {
@@ -30,33 +24,9 @@ class ApiClient {
     this.accessToken = null;
   }
 
-  setApiKey(key: string) {
-    this.apiKey = key;
-    // Store in localStorage for persistence
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('api_key', key);
-    }
-  }
-
-  getApiKey(): string | null {
-    if (this.apiKey) return this.apiKey;
-    if (typeof window !== 'undefined') {
-      const storedKey = localStorage.getItem('api_key');
-      if (storedKey) return storedKey;
-    }
-    return DEFAULT_API_KEY || null;
-  }
-
-  clearApiKey() {
-    this.apiKey = null;
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('api_key');
-    }
-  }
-
   private buildUrl(endpoint: string, params?: Record<string, string | number | boolean | undefined>): string {
     const url = new URL(`${this.baseUrl}${endpoint}`);
-    
+
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null && value !== '') {
@@ -64,7 +34,7 @@ class ApiClient {
         }
       });
     }
-    
+
     return url.toString();
   }
 
@@ -73,14 +43,8 @@ class ApiClient {
       'Content-Type': 'application/json',
     };
 
-    // Prefer Bearer token over API key
     if (this.accessToken) {
       headers['Authorization'] = `Bearer ${this.accessToken}`;
-    } else {
-      const apiKey = this.getApiKey();
-      if (apiKey) {
-        headers['X-API-Key'] = apiKey;
-      }
     }
 
     return headers;

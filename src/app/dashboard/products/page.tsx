@@ -347,7 +347,7 @@ export default function ProductsPage() {
                 <div className="pt-3 border-t">
                   <p className="text-xs text-muted-foreground mb-1">Loan Range</p>
                   <p className="font-semibold">
-                    {formatCurrency(product.min_amount, "UGX")} - {formatCurrency(product.max_amount, "UGX")}
+                    {formatCurrency(Number(product.min_amount || 0), "UGX")} - {formatCurrency(Number(product.max_amount || 0), "UGX")}
                   </p>
                 </div>
               </CardContent>
