@@ -1,0 +1,122 @@
+// ============================================
+// Loans API Service
+// ============================================
+
+import { apiClient } from './client';
+import type {
+  Loan,
+  LoanApplication,
+  LoanDetailResponse,
+  LoanBalanceResponse,
+  LoanStatementResponse,
+  PaginatedResponse,
+  LoanListParams,
+} from '@/lib/types';
+
+export const loansApi = {
+  /**
+   * Create a new loan application (auto-approves and disburses)
+   */
+  create: async (data: LoanApplication): Promise<Loan> => {
+    return apiClient.post<Loan>('/loans/applications', data);
+  },
+
+  /**
+   * Apply for a loan (alias for create)
+   */
+  applyLoan: async (data: LoanApplication): Promise<Loan> => {
+    return apiClient.post<Loan>('/loans/applications', data);
+  },
+
+  /**
+   * List all loans with pagination and filters
+   */
+  list: async (params?: LoanListParams): Promise<PaginatedResponse<Loan>> => {
+    return apiClient.get<PaginatedResponse<Loan>>('/loans', params);
+  },
+
+  /**
+   * Get loan by ID
+   */
+  get: async (loanId: string): Promise<Loan> => {
+    return apiClient.get<Loan>(`/loans/${loanId}`);
+  },
+
+  /**
+   * Get loan details with payments, agent, and product info
+   */
+  getDetail: async (loanId: string): Promise<LoanDetailResponse> => {
+    return apiClient.get<LoanDetailResponse>(`/loans/${loanId}/detail`);
+  },
+
+  /**
+   * Get loan balance summary for an agent
+   */
+  getBalance: async (agentId: string): Promise<LoanBalanceResponse> => {
+    return apiClient.get<LoanBalanceResponse>(`/loans/${agentId}/balance`);
+  },
+
+  /**
+   * Get loan statement history for an agent
+   */
+  getStatement: async (agentId: string): Promise<LoanStatementResponse> => {
+    return apiClient.get<LoanStatementResponse>(`/loans/${agentId}/statement`);
+  },
+
+  /**
+   * Mark loan as cleared
+   */
+  clearLoan: async (loanId: string): Promise<Loan> => {
+    return apiClient.patch<Loan>(`/loans/${loanId}/clear`, {});
+  },
+
+  /**
+   * Write off a defaulted loan
+   */
+  writeOff: async (loanId: string): Promise<Loan> => {
+    return apiClient.patch<Loan>(`/loans/${loanId}/write-off`, {});
+  },
+
+  /**
+   * Export loans to CSV
+   */
+  exportCsv: async (params?: LoanListParams): Promise<Blob> => {
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/loans/export`);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          url.searchParams.append(key, String(value));
+        }
+      });
+    }
+
+    const apiKey = typeof window !== 'undefined' ? localStorage.getItem('api_key') : null;
+    const response = await fetch(url.toString(), {
+      headers: apiKey ? { 'X-API-Key': apiKey } : {},
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to export loans');
+    }
+
+    return response.blob();
+  },
+
+  /**
+   * Download loan statement as PDF
+   */
+  downloadStatement: async (agentId: string): Promise<Blob> => {
+    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/loans/${agentId}/statement/download`;
+    const apiKey = typeof window !== 'undefined' ? localStorage.getItem('api_key') : null;
+    
+    const response = await fetch(url, {
+      headers: apiKey ? { 'X-API-Key': apiKey } : {},
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to download statement');
+    }
+
+    return response.blob();
+  },
+};

@@ -122,7 +122,7 @@ export default function LoginPage() {
         </Card>
 
         <p className="text-center text-xs text-muted-foreground mt-8">
-          &copy; {new Date().getFullYear()} Interswitch Group. All rights reserved.
+          &copy; {new Date().getFullYear()} QrisCorp. All rights reserved.
           <br />
           For internal use only.
         </p>

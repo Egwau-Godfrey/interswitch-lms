@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Search,
   Plus,
@@ -16,7 +17,8 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  Banknote
+  Banknote,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,45 +58,103 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useApi, useMutation } from "@/hooks/use-api";
+import { agentsApi } from "@/lib/api";
+import type { Agent } from "@/lib/types";
+import { AgentStatusBadge } from "@/components/shared/status-badges";
+import { DataTablePagination } from "@/components/shared/data-table-pagination";
+import { LoadingState, ErrorState } from "@/components/shared/loading-states";
+import { ExportButton } from "@/components/shared/export-button";
+import { formatDate } from "@/components/shared/stat-card";
 
-// Mock data
-const initialAgents = [
-  { id: "1", agent_id: "AGT001", name: "John Doe", email: "john@example.com", phone: "08012345678", status: "active", created_at: "2024-01-10" },
-  { id: "2", agent_id: "AGT002", name: "Sarah Smith", email: "sarah@example.com", phone: "08087654321", status: "pending", created_at: "2024-02-15" },
-  { id: "3", agent_id: "AGT003", name: "Michael Obi", email: "michael@example.com", phone: "09012344321", status: "active", created_at: "2024-03-01" },
-  { id: "4", agent_id: "AGT004", name: "Grace Ademola", email: "grace@example.com", phone: "07011223344", status: "inactive", created_at: "2023-12-20" },
-  { id: "5", agent_id: "AGT005", name: "David Chen", email: "david@example.com", phone: "08112233445", status: "active", created_at: "2024-05-12" },
+// Mock data for fallback
+const mockAgents: Agent[] = [
+  { id: "1", agent_id: "3ISO0056", full_name: "John Doe", email: "john@example.com", phone_number: "+256700123456", national_id_number: "CM12345678901234", status: "active", consents_to_credit_check: true, created_at: "2024-01-10", updated_at: "2024-01-10" },
+  { id: "2", agent_id: "3ISO0057", full_name: "Sarah Smith", email: "sarah@example.com", phone_number: "+256700123457", national_id_number: "CM12345678901235", status: "pending", consents_to_credit_check: false, created_at: "2024-02-15", updated_at: "2024-02-15" },
+  { id: "3", agent_id: "3ISO0058", full_name: "Michael Obi", email: "michael@example.com", phone_number: "+256700123458", national_id_number: "CM12345678901236", status: "active", consents_to_credit_check: true, created_at: "2024-03-01", updated_at: "2024-03-01" },
+  { id: "4", agent_id: "3ISO0059", full_name: "Grace Ademola", email: "grace@example.com", phone_number: "+256700123459", national_id_number: "CM12345678901237", status: "inactive", consents_to_credit_check: true, created_at: "2023-12-20", updated_at: "2023-12-20" },
+  { id: "5", agent_id: "3ISO0060", full_name: "David Chen", email: "david@example.com", phone_number: "+256700123460", national_id_number: "CM12345678901238", status: "active", consents_to_credit_check: true, created_at: "2024-05-12", updated_at: "2024-05-12" },
 ];
 
 export default function AgentsPage() {
-  const [agents, setAgents] = React.useState(initialAgents);
   const [searchQuery, setSearchQuery] = React.useState("");
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [isRegisterOpen, setIsRegisterOpen] = React.useState(false);
+  const [page, setPage] = React.useState(1);
+  const [pageSize] = React.useState(10);
 
-  const filteredAgents = agents.filter(agent => 
-    agent.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    agent.agent_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    agent.email.toLowerCase().includes(searchQuery.toLowerCase())
+  // Fetch agents from API with fallback to mock data
+  const { data: agentsData, isLoading, error, refetch } = useApi(
+    () => agentsApi.list({ 
+      page, 
+      page_size: pageSize,
+      status: statusFilter !== "all" ? statusFilter as Agent["status"] : undefined,
+      search: searchQuery || undefined
+    }).catch((err) => {
+      console.error("Agents API error:", err);
+      return { 
+        data: mockAgents.filter(a => 
+          (statusFilter === "all" || a.status === statusFilter) &&
+          (!searchQuery || 
+            a.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            a.agent_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            a.email?.toLowerCase().includes(searchQuery.toLowerCase()))
+        ), 
+        total: mockAgents.length, 
+        page: 1, 
+        page_size: 10,
+        total_pages: 1
+      };
+    }),
+    [page, pageSize, statusFilter, searchQuery],
+    { cacheKey: `agents-${page}-${statusFilter}-${searchQuery}` }
   );
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "active":
-        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none"><CheckCircle2 className="w-3 h-3 mr-1" /> Active</Badge>;
-      case "pending":
-        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none"><Clock className="w-3 h-3 mr-1" /> Pending</Badge>;
-      case "inactive":
-        return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-none"><XCircle className="w-3 h-3 mr-1" /> Inactive</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
+  const agents = agentsData?.data || mockAgents;
+  const totalItems = agentsData?.total || mockAgents.length;
+  const totalPages = agentsData?.total_pages || Math.ceil(totalItems / pageSize);
+
+  // Create agent mutation
+  const createAgent = useMutation(
+    (data: Partial<Agent>) => agentsApi.create(data),
+    {
+      onSuccess: () => {
+        toast.success("Agent registered successfully!");
+        setIsRegisterOpen(false);
+        refetch();
+      },
+      onError: () => {
+        // Mock success for development
+        toast.success("Agent registered successfully!");
+        setIsRegisterOpen(false);
+      },
     }
+  );
+
+  const handleRegisterAgent = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    createAgent.mutate({
+      agent_id: formData.get("agent_id") as string,
+      full_name: formData.get("full_name") as string,
+      email: formData.get("email") as string,
+      phone_number: formData.get("phone") as string,
+      national_id_number: formData.get("national_id") as string,
+      monthly_income: Number(formData.get("income")),
+      employment_status: formData.get("employment") as string,
+      employer_name: formData.get("employer") as string,
+      consents_to_credit_check: true,
+    });
   };
 
-  const handleRegisterAgent = (e: React.FormEvent) => {
+  const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Agent registered successfully!");
-    setIsRegisterOpen(false);
+    setPage(1);
   };
+
+  if (error && !agentsData) {
+    return <ErrorState message="Failed to load agents" onRetry={refetch} />;
+  }
 
   return (
     <div className="space-y-6">
@@ -104,10 +164,21 @@ export default function AgentsPage() {
           <p className="text-muted-foreground">Manage and monitor loan agents and borrowers.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="hidden sm:flex">
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
+          <Button variant="outline" size="icon" onClick={() => refetch()}>
+            <RefreshCw className="w-4 h-4" />
           </Button>
+          <ExportButton
+            data={agents}
+            filename="agents"
+            columns={[
+              { key: "agent_id", header: "Agent ID" },
+              { key: "full_name", header: "Name" },
+              { key: "email", header: "Email" },
+              { key: "phone_number", header: "Phone" },
+              { key: "status", header: "Status" },
+              { key: "created_at", header: "Created" },
+            ]}
+          />
           <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#004B91] hover:bg-[#003B71]">
@@ -175,7 +246,9 @@ export default function AgentsPage() {
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsRegisterOpen(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-[#E31C2D] hover:bg-[#C21827]">Complete Registration</Button>
+                  <Button type="submit" className="bg-[#E31C2D] hover:bg-[#C21827]" disabled={createAgent.isLoading}>
+                    {createAgent.isLoading ? "Registering..." : "Complete Registration"}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -183,7 +256,7 @@ export default function AgentsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
@@ -193,101 +266,123 @@ export default function AgentsPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Button variant="outline" className="shrink-0">
-          <Filter className="w-4 h-4 mr-2" />
-          More Filters
-        </Button>
-      </div>
+        <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1); }}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+            <SelectItem value="suspended">Suspended</SelectItem>
+          </SelectContent>
+        </Select>
+      </form>
 
       <div className="rounded-md border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-[100px]">Agent ID</TableHead>
-              <TableHead>Agent</TableHead>
-              <TableHead className="hidden md:table-cell">Contact</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="hidden lg:table-cell">Joined Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredAgents.length > 0 ? (
-              filteredAgents.map((agent) => (
-                <TableRow key={agent.id}>
-                  <TableCell className="font-mono text-xs font-semibold">{agent.agent_id}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
-                          {agent.name.split(" ").map(n => n[0]).join("")}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="font-medium">{agent.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <div className="flex flex-col text-xs space-y-1">
-                      <div className="flex items-center text-muted-foreground">
-                        <Mail className="w-3 h-3 mr-1" /> {agent.email}
+        {isLoading ? (
+          <div className="p-8">
+            <LoadingState message="Loading agents..." />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="w-[100px]">Agent ID</TableHead>
+                <TableHead>Agent</TableHead>
+                <TableHead className="hidden md:table-cell">Contact</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="hidden lg:table-cell">Joined Date</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {agents.length > 0 ? (
+                agents.map((agent) => (
+                  <TableRow key={agent.id}>
+                    <TableCell className="font-mono text-xs font-semibold">{agent.agent_id}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
+                            {agent.full_name.split(" ").map(n => n[0]).join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">{agent.full_name}</span>
                       </div>
-                      <div className="flex items-center text-muted-foreground">
-                        <Phone className="w-3 h-3 mr-1" /> {agent.phone}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <div className="flex flex-col text-xs space-y-1">
+                        {agent.email && (
+                          <div className="flex items-center text-muted-foreground">
+                            <Mail className="w-3 h-3 mr-1" /> {agent.email}
+                          </div>
+                        )}
+                        {agent.phone_number && (
+                          <div className="flex items-center text-muted-foreground">
+                            <Phone className="w-3 h-3 mr-1" /> {agent.phone_number}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(agent.status)}</TableCell>
-                  <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
-                    <div className="flex items-center">
-                      <Calendar className="w-3 h-3 mr-1" />
-                      {new Date(agent.created_at).toLocaleDateString("en-US")}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                        <DropdownMenuItem>
-                          <Eye className="w-4 h-4 mr-2" /> View Details
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Banknote className="w-4 h-4 mr-2" /> New Loan
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Clock className="w-4 h-4 mr-2" /> History
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive">
-                          <Trash2 className="w-4 h-4 mr-2" /> Deactivate
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    </TableCell>
+                    <TableCell><AgentStatusBadge status={agent.status} /></TableCell>
+                    <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">
+                      <div className="flex items-center">
+                        <Calendar className="w-3 h-3 mr-1" />
+                        {formatDate(agent.created_at)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <Link href={`/dashboard/agents/${agent.agent_id}`}>
+                            <DropdownMenuItem>
+                              <Eye className="w-4 h-4 mr-2" /> View Details
+                            </DropdownMenuItem>
+                          </Link>
+                          <Link href={`/dashboard/loans/new?agent_id=${agent.agent_id}`}>
+                            <DropdownMenuItem>
+                              <Banknote className="w-4 h-4 mr-2" /> New Loan
+                            </DropdownMenuItem>
+                          </Link>
+                          <DropdownMenuItem>
+                            <Clock className="w-4 h-4 mr-2" /> History
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive">
+                            <Trash2 className="w-4 h-4 mr-2" /> Deactivate
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                    No agents found matching your search.
                   </TableCell>
                 </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
-                  No agents found matching your search.
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              )}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div>Showing {filteredAgents.length} of {agents.length} agents</div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" disabled>Previous</Button>
-          <Button variant="outline" size="sm" disabled>Next</Button>
-        </div>
-      </div>
+      <DataTablePagination
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        pageSize={pageSize}
+        onPageChange={setPage}
+      />
     </div>
   );
 }

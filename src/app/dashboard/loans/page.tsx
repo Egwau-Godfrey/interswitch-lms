@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { 
   Search, 
   Plus, 
@@ -15,7 +16,8 @@ import {
   Clock,
   AlertTriangle,
   ArrowUpRight,
-  FileText
+  FileText,
+  RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,16 +37,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { 
   Select, 
   SelectContent, 
@@ -55,49 +47,65 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useApi } from "@/hooks/use-api";
+import { loansApi } from "@/lib/api";
+import type { Loan, LoanStatus } from "@/lib/types";
+import { LoanStatusBadge } from "@/components/shared/status-badges";
+import { DataTablePagination } from "@/components/shared/data-table-pagination";
+import { formatCurrency, formatDate } from "@/components/shared/stat-card";
 
-// Mock data
-const initialLoans = [
-  { id: "L001", agent_id: "AGT001", agent_name: "John Doe", product: "Quick Loan 30", principal: 50000, balance: 55000, status: "disbursed", due_date: "2024-06-15", days_overdue: 0 },
-  { id: "L002", agent_id: "AGT002", agent_name: "Sarah Smith", product: "SME Boost", principal: 250000, balance: 275000, status: "overdue", due_date: "2024-05-10", days_overdue: 25 },
-  { id: "L003", agent_id: "AGT003", agent_name: "Michael Obi", product: "Quick Loan 30", principal: 100000, balance: 0, status: "cleared", due_date: "2024-04-01", days_overdue: 0 },
-  { id: "L004", agent_id: "AGT004", agent_name: "Grace Ademola", product: "Payroll Advance", principal: 75000, balance: 82500, status: "pending", due_date: "2024-07-20", days_overdue: 0 },
-  { id: "L005", agent_id: "AGT005", agent_name: "David Chen", product: "SME Boost", principal: 500000, balance: 550000, status: "defaulted", due_date: "2024-03-12", days_overdue: 85 },
+// Mock data for fallback
+const mockLoans: Loan[] = [
+  { id: "L001", agent_id: "3ISO0056", product_id: "prod-001", principal_amount: 500000, interest_rate: 10, penalty_rate: 1, interest_amount: 50000, penalty_amount: 0, total_paid: 200000, outstanding_balance: 350000, tenure_days: 30, due_date: "2026-02-15T00:00:00Z", disbursed_at: "2026-01-15T10:00:00Z", cleared_at: null, status: "disbursed", is_overdue: false, days_overdue: 0, disbursement_reference: "DSB-001", created_at: "2026-01-15T10:00:00Z", updated_at: "2026-01-15T10:00:00Z" },
+  { id: "L002", agent_id: "3ISO0057", product_id: "prod-001", principal_amount: 750000, interest_rate: 10, penalty_rate: 1, interest_amount: 75000, penalty_amount: 25000, total_paid: 100000, outstanding_balance: 750000, tenure_days: 30, due_date: "2025-12-20T00:00:00Z", disbursed_at: "2025-11-20T10:00:00Z", cleared_at: null, status: "overdue", is_overdue: true, days_overdue: 21, disbursement_reference: "DSB-002", created_at: "2025-11-20T10:00:00Z", updated_at: "2026-01-10T10:00:00Z" },
+  { id: "L003", agent_id: "3ISO0058", product_id: "prod-002", principal_amount: 1000000, interest_rate: 8, penalty_rate: 1, interest_amount: 80000, penalty_amount: 0, total_paid: 1080000, outstanding_balance: 0, tenure_days: 60, due_date: "2025-12-01T00:00:00Z", disbursed_at: "2025-10-01T10:00:00Z", cleared_at: "2025-11-28T10:00:00Z", status: "cleared", is_overdue: false, days_overdue: 0, disbursement_reference: "DSB-003", created_at: "2025-10-01T10:00:00Z", updated_at: "2025-11-28T10:00:00Z" },
 ];
 
 export default function LoansPage() {
-  const [loans, setLoans] = React.useState(initialLoans);
   const [searchQuery, setSearchQuery] = React.useState("");
-  const [isApplyOpen, setIsApplyOpen] = React.useState(false);
+  const [statusFilter, setStatusFilter] = React.useState<string>("all");
+  const [page, setPage] = React.useState(1);
+  const [pageSize] = React.useState(10);
 
-  const filteredLoans = loans.filter(loan => 
-    loan.agent_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    loan.agent_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    loan.id.toLowerCase().includes(searchQuery.toLowerCase())
+  // Fetch loans from API
+  const { data: loansData, isLoading, error, refetch } = useApi(
+    () => loansApi.list({
+      page,
+      page_size: pageSize,
+      status: statusFilter !== "all" ? statusFilter as LoanStatus : undefined,
+    }).catch((err) => {
+      console.error("Loans API error:", err);
+      return {
+        data: mockLoans,
+        total: mockLoans.length,
+        page: 1,
+        page_size: 10,
+        total_pages: 1
+      };
+    }),
+    [page, pageSize, statusFilter],
+    { cacheKey: `loans-${page}-${statusFilter}` }
   );
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "disbursed":
-        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none">Disbursed</Badge>;
-      case "overdue":
-        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none">Overdue</Badge>;
-      case "cleared":
-        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none">Cleared</Badge>;
-      case "pending":
-        return <Badge className="bg-slate-100 text-slate-700 hover:bg-slate-100 border-none">Pending</Badge>;
-      case "defaulted":
-        return <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100 border-none">Defaulted</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
-  };
+  const loans = loansData?.data || mockLoans;
+  const totalItems = loansData?.total || mockLoans.length;
+  const totalPages = loansData?.total_pages || 1;
 
-  const handleApplyLoan = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Loan application submitted and auto-disbursed!");
-    setIsApplyOpen(false);
-  };
+  // Filter by search query locally
+  const filteredLoans = loans.filter(loan =>
+    !searchQuery ||
+    loan.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    loan.agent_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    loan.disbursement_reference?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Calculate summary stats
+  const totalDisbursed = loans.reduce((sum, l) => sum + l.principal_amount, 0);
+  const totalOutstanding = loans.reduce((sum, l) => sum + l.outstanding_balance, 0);
+  const totalOverdue = loans.filter(l => l.is_overdue).reduce((sum, l) => sum + l.outstanding_balance, 0);
+  const clearedCount = loans.filter(l => l.status === "cleared").length;
+  const recoveryRate = loans.length > 0 ? (clearedCount / loans.length) * 100 : 0;
 
   return (
     <div className="space-y-6">
@@ -107,76 +115,20 @@ export default function LoansPage() {
           <p className="text-muted-foreground">Monitor disbursements, repayments, and overdue balances.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" className="hidden sm:flex">
-            <Download className="w-4 h-4 mr-2" />
-            Export Portfolio
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
           </Button>
-          <Dialog open={isApplyOpen} onOpenChange={setIsApplyOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-[#E31C2D] hover:bg-[#C21827]">
-                <Plus className="w-4 h-4 mr-2" />
-                New Loan Application
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Create Loan Application</DialogTitle>
-                <DialogDescription>
-                  Select an agent and loan product to begin. Loans are auto-disbursed upon approval.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleApplyLoan} className="grid gap-6 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="agent">Search Agent (ID or Name)</Label>
-                  <Input id="agent" placeholder="e.g. AGT001" required />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="product">Loan Product</Label>
-                    <Select>
-                      <SelectTrigger id="product">
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="q30">Quick Loan 30</SelectItem>
-                        <SelectItem value="sme">SME Boost</SelectItem>
-                        <SelectItem value="payroll">Payroll Advance</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Loan Amount (UGX)</Label>
-                    <Input id="amount" type="number" placeholder="50000" required />
-                  </div>
-                </div>
-                
-                <Card className="bg-muted/30 border-dashed">
-                  <CardContent className="pt-4 space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Interest (10%):</span>
-                      <span className="font-medium">UGX 5,000</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Tenure:</span>
-                      <span className="font-medium">30 Days</span>
-                    </div>
-                    <div className="flex justify-between text-sm pt-2 border-t">
-                      <span className="font-semibold">Total Repayable:</span>
-                      <span className="font-semibold text-[#004B91]">UGX 55,000</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsApplyOpen(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-[#004B91] hover:bg-[#003B71]">Submit & Disburse</Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Link href="/dashboard/loans/new">
+            <Button className="bg-[#E31C2D] hover:bg-[#C21827]">
+              <Plus className="w-4 h-4 mr-2" />
+              New Loan Application
+            </Button>
+          </Link>
         </div>
       </div>
 
+      {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardContent className="pt-4">
@@ -184,7 +136,9 @@ export default function LoansPage() {
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Disbursed</p>
               <ArrowUpRight className="w-4 h-4 text-[#E31C2D]" />
             </div>
-            <p className="text-2xl font-bold mt-1">UGX 24.8M</p>
+            {isLoading ? <Skeleton className="h-8 w-24 mt-1" /> : (
+              <p className="text-2xl font-bold mt-1">{formatCurrency(totalDisbursed, "UGX", true)}</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -193,7 +147,9 @@ export default function LoansPage() {
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Outstanding</p>
               <Clock className="w-4 h-4 text-[#004B91]" />
             </div>
-            <p className="text-2xl font-bold mt-1">UGX 8.4M</p>
+            {isLoading ? <Skeleton className="h-8 w-24 mt-1" /> : (
+              <p className="text-2xl font-bold mt-1">{formatCurrency(totalOutstanding, "UGX", true)}</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -202,7 +158,9 @@ export default function LoansPage() {
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Overdue</p>
               <AlertTriangle className="w-4 h-4 text-amber-500" />
             </div>
-            <p className="text-2xl font-bold mt-1">UGX 1.2M</p>
+            {isLoading ? <Skeleton className="h-8 w-24 mt-1" /> : (
+              <p className="text-2xl font-bold mt-1">{formatCurrency(totalOverdue, "UGX", true)}</p>
+            )}
           </CardContent>
         </Card>
         <Card>
@@ -211,70 +169,77 @@ export default function LoansPage() {
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Recovery Rate</p>
               <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             </div>
-            <p className="text-2xl font-bold mt-1">94.2%</p>
+            {isLoading ? <Skeleton className="h-8 w-24 mt-1" /> : (
+              <p className="text-2xl font-bold mt-1">{recoveryRate.toFixed(1)}%</p>
+            )}
           </CardContent>
         </Card>
       </div>
 
+      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
-            placeholder="Search loans by ID or agent name..." 
+            placeholder="Search loans by ID, agent, or reference..." 
             className="pl-10 h-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" className="shrink-0">
-            <Filter className="w-4 h-4 mr-2" />
-            Status
-          </Button>
-          <Button variant="outline" className="shrink-0">
-            <Calendar className="w-4 h-4 mr-2" />
-            Date Range
-          </Button>
-        </div>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="pending">Pending</SelectItem>
+            <SelectItem value="approved">Approved</SelectItem>
+            <SelectItem value="disbursed">Disbursed</SelectItem>
+            <SelectItem value="overdue">Overdue</SelectItem>
+            <SelectItem value="defaulted">Defaulted</SelectItem>
+            <SelectItem value="cleared">Cleared</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
+      {/* Table */}
       <div className="rounded-md border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="w-[100px]">Loan ID</TableHead>
-              <TableHead>Agent</TableHead>
-              <TableHead>Product</TableHead>
+              <TableHead>Agent ID</TableHead>
               <TableHead className="text-right">Principal</TableHead>
-              <TableHead className="text-right">Balance</TableHead>
+              <TableHead className="text-right">Outstanding</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredLoans.length > 0 ? (
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  {Array.from({ length: 7 }).map((_, j) => (
+                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : filteredLoans.length > 0 ? (
               filteredLoans.map((loan) => (
                 <TableRow key={loan.id}>
                   <TableCell className="font-mono text-xs font-semibold">{loan.id}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-col">
-                      <span className="font-medium">{loan.agent_name}</span>
-                      <span className="text-[10px] text-muted-foreground">{loan.agent_id}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="font-normal">{loan.product}</Badge>
-                  </TableCell>
-                  <TableCell className="text-right">UGX {loan.principal.toLocaleString()}</TableCell>
+                  <TableCell className="font-mono text-xs">{loan.agent_id}</TableCell>
+                  <TableCell className="text-right">{formatCurrency(loan.principal_amount, "UGX")}</TableCell>
                   <TableCell className="text-right font-semibold">
-                    <span className={loan.balance > 0 ? "text-[#E31C2D]" : "text-emerald-600"}>
-                      UGX {loan.balance.toLocaleString()}
+                    <span className={loan.outstanding_balance > 0 ? "text-[#E31C2D]" : "text-emerald-600"}>
+                      {formatCurrency(loan.outstanding_balance, "UGX")}
                     </span>
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col gap-1">
-                      {getStatusBadge(loan.status)}
+                      <LoanStatusBadge status={loan.status} />
                       {loan.days_overdue > 0 && (
                         <span className="text-[10px] text-rose-500 font-medium">
                           {loan.days_overdue} days late
@@ -283,7 +248,7 @@ export default function LoansPage() {
                     </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
-                    {new Date(loan.due_date).toLocaleDateString("en-US")}
+                    {formatDate(loan.due_date)}
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -293,18 +258,16 @@ export default function LoansPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
-                        <DropdownMenuItem>
-                          <Eye className="w-4 h-4 mr-2" /> View Details
-                        </DropdownMenuItem>
+                        <Link href={`/dashboard/loans/${loan.id}`}>
+                          <DropdownMenuItem>
+                            <Eye className="w-4 h-4 mr-2" /> View Details
+                          </DropdownMenuItem>
+                        </Link>
                         <DropdownMenuItem>
                           <FileText className="w-4 h-4 mr-2" /> Statement
                         </DropdownMenuItem>
                         <DropdownMenuItem>
-                          <Banknote className="w-4 h-4 mr-2" /> Repayment
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-[#004B91]">
-                          <ArrowUpRight className="w-4 h-4 mr-2" /> Trigger Auto-Strike
+                          <Banknote className="w-4 h-4 mr-2" /> Record Payment
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -313,7 +276,7 @@ export default function LoansPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                   No loans found.
                 </TableCell>
               </TableRow>
@@ -321,6 +284,15 @@ export default function LoansPage() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Pagination */}
+      <DataTablePagination
+        currentPage={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        pageSize={pageSize}
+        onPageChange={setPage}
+      />
     </div>
   );
 }
