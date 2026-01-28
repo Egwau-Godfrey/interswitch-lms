@@ -2,16 +2,16 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { 
-  LayoutDashboard, 
-  Users, 
-  Banknote, 
-  Package, 
-  CreditCard, 
-  BarChart3, 
-  UserCog, 
-  Key, 
+import { usePathname, useRouter } from "next/navigation";
+import {
+  LayoutDashboard,
+  Users,
+  Banknote,
+  Package,
+  CreditCard,
+  BarChart3,
+  UserCog,
+  Key,
   Settings,
   LogOut,
   Menu,
@@ -30,6 +30,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useSession, signOut } from "next-auth/react";
+import { toast } from "sonner";
 
 const sidebarLinks = [
   { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
@@ -45,8 +47,49 @@ const sidebarLinks = [
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const { setTheme, theme } = useTheme();
+  const { data: session } = useSession();
+
+  const handleLogout = async () => {
+    try {
+      await signOut({ redirect: false });
+      toast.success("Logged out successfully");
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Logout error:", error);
+      toast.error("Failed to logout");
+    }
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (session?.user?.firstName && session?.user?.lastName) {
+      return `${session.user.firstName.charAt(0)}${session.user.lastName.charAt(0)}`.toUpperCase();
+    }
+    if (session?.user?.name) {
+      const nameParts = session.user.name.split(" ");
+      return nameParts.length > 1
+        ? `${nameParts[0].charAt(0)}${nameParts[1].charAt(0)}`.toUpperCase()
+        : nameParts[0].substring(0, 2).toUpperCase();
+    }
+    return "AD";
+  };
+
+  // Get user display name
+  const getUserDisplayName = () => {
+    if (session?.user?.firstName && session?.user?.lastName) {
+      return `${session.user.firstName} ${session.user.lastName}`;
+    }
+    return session?.user?.name || session?.user?.username || "Admin User";
+  };
+
+  // Get user role
+  const getUserRole = () => {
+    return session?.user?.isAdmin ? "Super Admin" : "Agent";
+  };
 
   return (
     <div className="flex h-screen bg-background overflow-hidden">
@@ -99,16 +142,15 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="p-4 border-t">
-          <Link href="/">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn("w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10", !isSidebarOpen && "px-2")}
-            >
-              <LogOut className="w-5 h-5" />
-              {isSidebarOpen && <span>Logout</span>}
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className={cn("w-full justify-start gap-3 text-destructive hover:text-destructive hover:bg-destructive/10", !isSidebarOpen && "px-2")}
+          >
+            <LogOut className="w-5 h-5" />
+            {isSidebarOpen && <span>Logout</span>}
+          </Button>
         </div>
       </aside>
 
@@ -135,21 +177,22 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
               {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </Button>
             <div className="hidden md:flex flex-col items-end mr-2">
-              <span className="text-sm font-medium">Admin User</span>
-              <span className="text-xs text-muted-foreground">Super Admin</span>
+              <span className="text-sm font-medium">{getUserDisplayName()}</span>
+              <span className="text-xs text-muted-foreground">{getUserRole()}</span>
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10 border-2 border-primary/20">
-                    <AvatarImage src="" alt="Admin" />
-                    <AvatarFallback className="bg-[#004B91] text-white">AD</AvatarFallback>
+                    <AvatarImage src="" alt={getUserDisplayName()} />
+                    <AvatarFallback className="bg-[#004B91] text-white">{getUserInitials()}</AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem asChild>
-                  <Link href="/" className="w-full text-destructive cursor-pointer">Logout</Link>
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Logout</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

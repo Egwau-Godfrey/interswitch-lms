@@ -9,13 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
+import { signIn } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
   const [isLoading, setIsLoading] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [formData, setFormData] = React.useState({
-    email: "",
+    username: "",
     password: ""
   });
 
@@ -23,12 +24,35 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
 
-    // Simulate login
-    setTimeout(() => {
+    try {
+      const result = await signIn("credentials", {
+        username: formData.username,
+        password: formData.password,
+        redirect: false,
+      });
+
+      if (result?.error) {
+        toast.error("Invalid credentials", {
+          description: "Incorrect username/email or password",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (result?.ok) {
+        toast.success("Welcome back!", {
+          description: "Successfully logged in",
+        });
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      toast.error("Login failed", {
+        description: "An error occurred during login. Please try again.",
+      });
       setIsLoading(false);
-      toast.success("Welcome back, Admin!");
-      router.push("/dashboard");
-    }, 1500);
+    }
   };
 
   return (
@@ -65,17 +89,17 @@ export default function LoginPage() {
           <form onSubmit={handleLogin}>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="email">Email Address</Label>
+                <Label htmlFor="username">Username or Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="admin@interswitch.com" 
+                  <Input
+                    id="username"
+                    type="text"
+                    placeholder="admin@interswitch.com"
                     className="pl-10 h-11"
                     required
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   />
                 </div>
               </div>

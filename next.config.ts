@@ -16,7 +16,6 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  outputFileTracingRoot: path.resolve(__dirname, '../../'),
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -29,7 +28,12 @@ const nextConfig: NextConfig = {
         loaders: [LOADER]
       }
     }
-  }
+  },
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
 };
 
 export default nextConfig;
