@@ -6,22 +6,35 @@ export default auth((req) => {
   const isAuthenticated = !!req.auth;
 
   // Public routes that don't require authentication
-  const publicRoutes = ["/", "/api/auth"];
+  const publicRoutes = ["/"];
 
-  // Check if the current path is public
-  const isPublicRoute = publicRoutes.some((route) =>
+  // API routes that should be handled by NextAuth
+  const authApiRoutes = ["/api/auth"];
+
+  // Check if the current path is an auth API route
+  const isAuthApiRoute = authApiRoutes.some((route) =>
     pathname.startsWith(route)
   );
+
+  // Allow auth API routes to pass through
+  if (isAuthApiRoute) {
+    return NextResponse.next();
+  }
+
+  // Check if the current path is a public route
+  const isPublicRoute = publicRoutes.includes(pathname);
 
   // If user is not authenticated and trying to access protected route
   if (!isAuthenticated && !isPublicRoute) {
     const url = new URL("/", req.url);
+    url.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(url);
   }
 
   // If user is authenticated and trying to access login page
   if (isAuthenticated && pathname === "/") {
-    const url = new URL("/dashboard", req.url);
+    const callbackUrl = req.nextUrl.searchParams.get("callbackUrl");
+    const url = new URL(callbackUrl || "/dashboard", req.url);
     return NextResponse.redirect(url);
   }
 
@@ -29,5 +42,14 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public files (images, etc.)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

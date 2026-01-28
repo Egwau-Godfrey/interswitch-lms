@@ -15,8 +15,8 @@ export const dashboardApi = {
    * Get dashboard statistics (all-in-one endpoint)
    * Returns: stats, disbursement_trend, loan_status_distribution, overdue_aging, recent_activity
    */
-  getStats: async (): Promise<DashboardStats> => {
-    return apiClient.get<DashboardStats>('/dashboard/stats');
+  getStats: async (params?: { months?: number }): Promise<DashboardStats> => {
+    return apiClient.get<DashboardStats>('/dashboard/stats', params);
   },
 };
 

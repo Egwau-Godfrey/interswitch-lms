@@ -35,9 +35,11 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { useApi } from "@/hooks/use-api";
-import { dashboardApi } from "@/lib/api";
+import { dashboardApi, apiClient } from "@/lib/api";
 import type { DashboardStats } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
+import { useSession } from "next-auth/react";
+import { toast } from "sonner";
 
 // Mock data for development/fallback
 const mockStats: DashboardStats = {
@@ -88,15 +90,38 @@ const statusColors: Record<string, string> = {
 };
 
 export default function DashboardPage() {
-  // Fetch dashboard data with fallback
+  const { data: session } = useSession();
+  const [months, setMonths] = React.useState(6);
+
+  // Set access token when session is available
+  React.useEffect(() => {
+    if (session?.user?.accessToken) {
+      apiClient.setAccessToken(session.user.accessToken);
+    } else {
+      apiClient.clearAccessToken();
+    }
+  }, [session]);
+
+  // Fetch dashboard data with authentication
   const { data: stats, isLoading, error, refetch } = useApi(
-    () => dashboardApi.getStats().catch((err) => {
-      console.error("Dashboard API error:", err);
-      return mockStats;
-    }),
-    [],
-    { cacheKey: "dashboard-stats", refetchInterval: 60000 }
+    () => {
+      if (!session?.user?.accessToken) {
+        throw new Error("No access token available");
+      }
+      return dashboardApi.getStats({ months });
+    },
+    [months, session?.user?.accessToken],
+    { cacheKey: `dashboard-stats-${months}` }
   );
+
+  // Show error toast if API fails
+  React.useEffect(() => {
+    if (error) {
+      toast.error("Failed to load dashboard data", {
+        description: error.message || "Please try refreshing the page",
+      });
+    }
+  }, [error]);
 
   const displayStats = stats || mockStats;
 
@@ -114,10 +139,21 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
           <p className="text-muted-foreground">Real-time performance metrics for Interswitch Loans.</p>
         </div>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <select
+            value={months}
+            onChange={(e) => setMonths(Number(e.target.value))}
+            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value={3}>Last 3 months</option>
+            <option value={6}>Last 6 months</option>
+            <option value={12}>Last 12 months</option>
+          </select>
+          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+            <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* KPI Cards */}

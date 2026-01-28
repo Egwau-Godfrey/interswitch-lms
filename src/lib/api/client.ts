@@ -12,6 +12,7 @@ interface RequestConfig extends RequestInit {
 class ApiClient {
   private baseUrl: string;
   private apiKey: string | null = null;
+  private accessToken: string | null = null;
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -19,6 +20,14 @@ class ApiClient {
     if (DEFAULT_API_KEY) {
       this.apiKey = DEFAULT_API_KEY;
     }
+  }
+
+  setAccessToken(token: string) {
+    this.accessToken = token;
+  }
+
+  clearAccessToken() {
+    this.accessToken = null;
   }
 
   setApiKey(key: string) {
@@ -64,9 +73,14 @@ class ApiClient {
       'Content-Type': 'application/json',
     };
 
-    const apiKey = this.getApiKey();
-    if (apiKey) {
-      headers['X-API-Key'] = apiKey;
+    // Prefer Bearer token over API key
+    if (this.accessToken) {
+      headers['Authorization'] = `Bearer ${this.accessToken}`;
+    } else {
+      const apiKey = this.getApiKey();
+      if (apiKey) {
+        headers['X-API-Key'] = apiKey;
+      }
     }
 
     return headers;
