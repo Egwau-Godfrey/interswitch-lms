@@ -225,7 +225,7 @@ export default function DashboardPage() {
 
       {/* Secondary KPIs */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card className="border-l-4 border-l-purple-500">
+        <Card>
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Default Rate</p>
@@ -236,7 +236,7 @@ export default function DashboardPage() {
             </div>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-green-500">
+        <Card>
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Recovery Rate</p>
@@ -265,9 +265,9 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="month" className="text-xs" />
                   <YAxis tickFormatter={(v) => formatCurrency(v, "UGX", true)} className="text-xs" />
-                  <Tooltip 
-                    formatter={(value: number) => formatCurrency(value, "UGX")} 
-                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value, "UGX")}
+                    contentStyle={{ backgroundColor: "#ffffff", border: "1px solid hsl(var(--border))" }}
                   />
                   <Legend />
                   <Bar dataKey="disbursed" name="Disbursed" fill="#004B91" radius={[4, 4, 0, 0]} />
@@ -329,9 +329,9 @@ export default function DashboardPage() {
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis type="number" tickFormatter={(v) => formatCurrency(v, "UGX", true)} className="text-xs" />
                   <YAxis dataKey="range" type="category" className="text-xs" width={80} />
-                  <Tooltip 
-                    formatter={(value: number) => formatCurrency(value, "UGX")} 
-                    contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+                  <Tooltip
+                    formatter={(value: number) => formatCurrency(value, "UGX")}
+                    contentStyle={{ backgroundColor: "#ffffff", border: "1px solid hsl(var(--border))" }}
                   />
                   <Bar dataKey="amount" name="Amount" fill="#F59E0B" radius={[0, 4, 4, 0]}>
                     {displayStats.overdue_aging.map((entry, index) => (
