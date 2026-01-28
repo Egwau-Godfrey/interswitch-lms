@@ -24,6 +24,10 @@ class ApiClient {
     this.accessToken = null;
   }
 
+  getAccessToken(): string | null {
+    return this.accessToken;
+  }
+
   private buildUrl(endpoint: string, params?: Record<string, string | number | boolean | undefined>): string {
     const url = new URL(`${this.baseUrl}${endpoint}`);
 

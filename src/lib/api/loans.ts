@@ -90,10 +90,13 @@ export const loansApi = {
       });
     }
 
-    const apiKey = typeof window !== 'undefined' ? localStorage.getItem('api_key') : null;
-    const response = await fetch(url.toString(), {
-      headers: apiKey ? { 'X-API-Key': apiKey } : {},
-    });
+    const accessToken = apiClient.getAccessToken();
+    const headers: HeadersInit = {};
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    const response = await fetch(url.toString(), { headers });
 
     if (!response.ok) {
       throw new Error('Failed to export loans');
@@ -107,11 +110,14 @@ export const loansApi = {
    */
   downloadStatement: async (agentId: string): Promise<Blob> => {
     const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/loans/${agentId}/statement/download`;
-    const apiKey = typeof window !== 'undefined' ? localStorage.getItem('api_key') : null;
-    
-    const response = await fetch(url, {
-      headers: apiKey ? { 'X-API-Key': apiKey } : {},
-    });
+
+    const accessToken = apiClient.getAccessToken();
+    const headers: HeadersInit = {};
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       throw new Error('Failed to download statement');

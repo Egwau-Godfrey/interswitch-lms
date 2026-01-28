@@ -2,8 +2,8 @@
 
 This document lists all API endpoints required by the frontend with expected request/response formats.
 
-**Base URL**: `http://localhost:8000` (configurable via `NEXT_PUBLIC_API_BASE_URL`)  
-**Authentication**: `X-API-Key` header required on all requests
+**Base URL**: `http://localhost:8000` (configurable via `NEXT_PUBLIC_API_BASE_URL`)
+**Authentication**: Bearer token (JWT) from `/auth/login` required on all requests
 
 ---
 
@@ -638,7 +638,7 @@ All error responses should follow this format:
 1. All dates are in ISO 8601 format (UTC)
 2. All monetary amounts are in UGX (Ugandan Shillings) as integers
 3. Pagination uses `page` and `page_size` parameters
-4. The `X-API-Key` header is required for all endpoints
+4. Bearer token authentication (JWT from `/auth/login`) is required for all endpoints
 5. Employment status options: `full_time`, `part_time`, `contract`, `self_employed`, `unemployed`
 6. Agent status options: `pending`, `active`, `inactive`, `suspended`, `blacklisted`
 7. Loan status options: `pending`, `approved`, `disbursed`, `overdue`, `defaulted`, `cleared`, `failed`

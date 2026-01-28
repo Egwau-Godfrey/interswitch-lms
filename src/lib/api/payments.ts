@@ -53,10 +53,13 @@ export const paymentsApi = {
       });
     }
 
-    const apiKey = typeof window !== 'undefined' ? localStorage.getItem('api_key') : null;
-    const response = await fetch(url.toString(), {
-      headers: apiKey ? { 'X-API-Key': apiKey } : {},
-    });
+    const accessToken = apiClient.getAccessToken();
+    const headers: HeadersInit = {};
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    const response = await fetch(url.toString(), { headers });
 
     if (!response.ok) {
       throw new Error('Failed to export payments');

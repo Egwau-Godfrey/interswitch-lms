@@ -21,10 +21,6 @@ Before deploying to Vercel, you need to configure the following environment vari
    - Local: `http://localhost:8000`
    - Production: `https://your-api-domain.com`
 
-4. **NEXT_PUBLIC_API_KEY** (Optional)
-   - Description: API key for client-side API calls
-   - Example: Your API key from the backend
-
 ## Steps to Deploy on Vercel
 
 ### 1. Push Your Code to GitHub
@@ -53,7 +49,6 @@ In your Vercel project settings:
 NEXTAUTH_URL=https://your-domain.vercel.app
 NEXTAUTH_SECRET=your-generated-secret-here
 NEXT_PUBLIC_API_BASE_URL=https://your-api-domain.com
-NEXT_PUBLIC_API_KEY=your-api-key-here
 ```
 
 ### 4. Deploy
