@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { 
-  Search, 
-  Plus, 
-  Filter, 
-  Download, 
-  MoreVertical, 
+import {
+  Search,
+  Plus,
+  Filter,
+  Download,
+  MoreVertical,
   Banknote,
   Calendar,
   Eye,
@@ -21,13 +21,13 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import {
   DropdownMenu,
@@ -37,12 +37,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { useSession } from "next-auth/react";
@@ -83,9 +83,9 @@ export default function LoansPage() {
   const { data: stats, isLoading: isStatsLoading } = useApi(
     () => dashboardApi.getStats({ months: 12 }),
     [mounted, status === 'authenticated'],
-    { 
+    {
       cacheKey: 'dashboard-stats-loans-overview',
-      enabled: mounted && status === 'authenticated' 
+      enabled: mounted && status === 'authenticated'
     }
   );
 
@@ -106,7 +106,7 @@ export default function LoansPage() {
       };
     }),
     [page, pageSize, statusFilter, mounted, status === 'authenticated'],
-    { 
+    {
       cacheKey: `loans-${page}-${statusFilter}`,
       enabled: mounted && status === 'authenticated'
     }
@@ -126,11 +126,11 @@ export default function LoansPage() {
 
   // Use global stats if available
   const totalDisbursed = stats?.total_disbursed || 0;
-  
-  const totalOutstanding = stats 
+
+  const totalOutstanding = stats
     ? stats.loan_status_distribution
-        .filter(s => ['disbursed', 'overdue'].includes(s.status))
-        .reduce((sum, s) => sum + s.amount, 0)
+      .filter(s => ['disbursed', 'overdue'].includes(s.status))
+      .reduce((sum, s) => sum + s.amount, 0)
     : 0;
 
   const totalOverdue = stats?.total_overdue || 0;
@@ -209,8 +209,8 @@ export default function LoansPage() {
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search loans by ID, agent, or reference..." 
+          <Input
+            placeholder="Search loans by ID, agent, or reference..."
             className="pl-10 h-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -333,7 +333,7 @@ export default function LoansPage() {
         totalItems={totalItems}
         pageSize={pageSize}
         onPageChange={setPage}
-        onPageSizeChange={() => {}} // Page size is currently fixed
+        onPageSizeChange={() => { }} // Page size is currently fixed
       />
 
       {/* Record Payment Dialog */}
@@ -346,3 +346,4 @@ export default function LoansPage() {
     </div>
   );
 }
+//
