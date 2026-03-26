@@ -2,12 +2,12 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { 
-  Banknote, 
-  TrendingUp, 
-  AlertTriangle, 
-  CheckCircle2, 
-  ArrowUpRight, 
+import {
+  Banknote,
+  TrendingUp,
+  AlertTriangle,
+  CheckCircle2,
+  ArrowUpRight,
   ArrowDownRight,
   Clock,
   ExternalLink,
@@ -18,16 +18,16 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  LineChart, 
-  Line, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
   Cell,
   PieChart,
   Pie,
@@ -127,6 +127,19 @@ export default function DashboardPage() {
   }, [error, session]);
 
   const displayStats = stats || mockStats;
+  const isManager = session?.user?.role === 'manager';
+
+  if (isManager) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center h-[60vh] border rounded-lg border-dashed mt-6">
+        <h2 className="text-2xl font-bold mb-2">Manager Dashboard</h2>
+        <p className="text-muted-foreground max-w-md">
+          Welcome to the manager view. This interface is currently under development.
+          Your specific performance metrics, loan queue, and agent overview will appear here soon.
+        </p>
+      </div>
+    );
+  }
 
   // Prepare pie chart data
   const pieData = displayStats.loan_status_distribution.map((item) => ({
@@ -390,7 +403,7 @@ export default function DashboardPage() {
               <CardTitle>Recent Activity</CardTitle>
               <CardDescription>Latest transactions and events</CardDescription>
             </div>
-            <Link href="/dashboard/loans">
+            <Link href="/manager/loans">
               <Button variant="ghost" size="sm">
                 View All <ExternalLink className="ml-1 h-3 w-3" />
               </Button>

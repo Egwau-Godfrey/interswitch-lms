@@ -45,6 +45,7 @@ const nextAuthConfig = {
             firstName: data.user.first_name,
             lastName: data.user.last_name,
             isActive: data.user.is_active,
+            role: data.user.role,
           };
         } catch (error) {
           console.error("Authentication error:", error);
@@ -66,6 +67,7 @@ const nextAuthConfig = {
         token.lastName = user.lastName;
         token.username = user.username;
         token.isActive = user.isActive;
+        token.role = user.role;
       }
       return token;
     },
@@ -81,6 +83,7 @@ const nextAuthConfig = {
         session.user.lastName = token.lastName as string;
         session.user.username = token.username as string;
         session.user.isActive = token.isActive as boolean;
+        session.user.role = token.role as string;
       }
       return session;
     },
@@ -89,7 +92,7 @@ const nextAuthConfig = {
     signIn: "/",
   },
   session: {
-    strategy: "jwt",
+    strategy: "jwt" as const,
     maxAge: 24 * 60 * 60, // 24 hours (matching backend expiration)
   },
   trustHost: true,
@@ -97,3 +100,4 @@ const nextAuthConfig = {
 };
 
 export const { handlers, signIn, signOut, auth } = NextAuth(nextAuthConfig);
+//

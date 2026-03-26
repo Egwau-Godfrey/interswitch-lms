@@ -71,17 +71,20 @@ export function StatCard({
 
 // Currency formatter
 export function formatCurrency(
-  amount: number,
+  amount: number | undefined | null,
   currency: string = "UGX",
   compact: boolean = false
 ): string {
-  if (compact && Math.abs(amount) >= 1000000) {
-    return `${currency} ${(amount / 1000000).toFixed(2)}M`;
+  if (amount === undefined || amount === null) {
+    return "--";
   }
-  if (compact && Math.abs(amount) >= 1000) {
-    return `${currency} ${(amount / 1000).toFixed(1)}K`;
+  
+  const numericAmount = Number(amount);
+  
+  if (compact && Math.abs(numericAmount) >= 10000000) {
+    return `${currency} ${(numericAmount / 1000000).toFixed(2)}M`;
   }
-  return `${currency} ${amount.toLocaleString("en-US", {
+  return `${currency} ${numericAmount.toLocaleString("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
   })}`;

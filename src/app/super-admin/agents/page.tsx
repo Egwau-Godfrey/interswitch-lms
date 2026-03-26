@@ -39,6 +39,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -58,6 +68,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { agentsApi, apiClient } from "@/lib/api";
 import type { Agent } from "@/lib/types";
@@ -68,24 +79,21 @@ import { ExportButton } from "@/components/shared/export-button";
 import { formatDate } from "@/components/shared/stat-card";
 import { useSession } from "next-auth/react";
 
-// Mock data for fallback
-const mockAgents: Agent[] = [
-  { id: "1", agent_id: "3ISO0056", full_name: "John Doe", email: "john@example.com", phone_number: "+256700123456", national_id_number: "CM12345678901234", status: "active", consents_to_credit_check: true, created_at: "2024-01-10", updated_at: "2024-01-10" },
-  { id: "2", agent_id: "3ISO0057", full_name: "Sarah Smith", email: "sarah@example.com", phone_number: "+256700123457", national_id_number: "CM12345678901235", status: "pending", consents_to_credit_check: false, created_at: "2024-02-15", updated_at: "2024-02-15" },
-  { id: "3", agent_id: "3ISO0058", full_name: "Michael Obi", email: "michael@example.com", phone_number: "+256700123458", national_id_number: "CM12345678901236", status: "active", consents_to_credit_check: true, created_at: "2024-03-01", updated_at: "2024-03-01" },
-  { id: "4", agent_id: "3ISO0059", full_name: "Grace Ademola", email: "grace@example.com", phone_number: "+256700123459", national_id_number: "CM12345678901237", status: "inactive", consents_to_credit_check: true, created_at: "2023-12-20", updated_at: "2023-12-20" },
-  { id: "5", agent_id: "3ISO0060", full_name: "David Chen", email: "david@example.com", phone_number: "+256700123460", national_id_number: "CM12345678901238", status: "active", consents_to_credit_check: true, created_at: "2024-05-12", updated_at: "2024-05-12" },
-];
-
 export default function AgentsPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [isRegisterOpen, setIsRegisterOpen] = React.useState(false);
+  const [deletingAgent, setDeletingAgent] = React.useState<Agent | null>(null);
+  const [mounted, setMounted] = React.useState(false);
   const [page, setPage] = React.useState(1);
   const [pageSize] = React.useState(10);
   const [sortBy] = React.useState("created_at");
   const [sortOrder] = React.useState<"asc" | "desc">("desc");
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Set access token when session is available
   React.useEffect(() => {
@@ -98,21 +106,19 @@ export default function AgentsPage() {
 
   // Fetch agents from API with authentication
   const { data: agentsData, isLoading, error, refetch } = useApi(
-    () => {
-      if (!session?.user?.accessToken) {
-        throw new Error("No access token available");
-      }
-      return agentsApi.list({
-        page,
-        page_size: pageSize,
-        sort_by: sortBy,
-        sort_order: sortOrder,
-        status: statusFilter !== "all" ? statusFilter as Agent["status"] : undefined,
-        search: searchQuery || undefined
-      });
-    },
-    [page, pageSize, statusFilter, searchQuery, sortBy, sortOrder, session?.user?.accessToken],
-    { cacheKey: `agents-${page}-${statusFilter}-${searchQuery}-${sortBy}-${sortOrder}` }
+    () => agentsApi.list({
+      page,
+      page_size: pageSize,
+      sort_by: sortBy,
+      sort_order: sortOrder,
+      status: statusFilter !== "all" ? statusFilter as Agent["status"] : undefined,
+      search: searchQuery || undefined
+    }),
+    [page, pageSize, statusFilter, searchQuery, sortBy, sortOrder, mounted, status === 'authenticated'],
+    { 
+      cacheKey: `agents-${page}-${statusFilter}-${searchQuery}-${sortBy}-${sortOrder}`,
+      enabled: mounted && status === 'authenticated'
+    }
   );
 
   // Show error toast if API fails (but not for session loading)
@@ -133,17 +139,67 @@ export default function AgentsPage() {
 
   // Create agent mutation
   const createAgent = useMutation(
-    (data: Partial<Agent>) => agentsApi.create(data),
+    (data: any) => agentsApi.create(data),
     {
       onSuccess: () => {
         toast.success("Agent registered successfully!");
         setIsRegisterOpen(false);
         refetch();
       },
-      onError: () => {
-        // Mock success for development
-        toast.success("Agent registered successfully!");
-        setIsRegisterOpen(false);
+      onError: (err) => {
+        toast.error("Registration failed", {
+          description: err.message || "Please check the details and try again."
+        });
+      },
+    }
+  );
+
+  const deleteAgentMutation = useMutation(
+    (agentId: string) => agentsApi.delete(agentId),
+    {
+      onSuccess: () => {
+        toast.success("Agent deactivated successfully!");
+        setDeletingAgent(null);
+        refetch();
+      },
+      onError: (err) => {
+        toast.error("Deactivation failed", {
+          description: err.message || "Failed to deactivate agent."
+        });
+        setDeletingAgent(null);
+      },
+    }
+  );
+
+  const handleToggleAgentStatus = () => {
+    if (deletingAgent) {
+      const isInactive = deletingAgent.status === "inactive";
+      if (isInactive) {
+        // Activate agent
+        updateAgentMutation.mutate({
+          agentId: deletingAgent.agent_id,
+          data: { status: "active" as any }
+        });
+      } else {
+        // Deactivate agent
+        deleteAgentMutation.mutate(deletingAgent.agent_id);
+      }
+    }
+  };
+
+  const updateAgentMutation = useMutation(
+    ({ agentId, data }: { agentId: string; data: any }) => agentsApi.update(agentId, data),
+    {
+      onSuccess: () => {
+        toast.success("Agent activated successfully!");
+        setDeletingAgent(null);
+        refetch();
+      },
+      onError: (err) => {
+        toast.error("Activation failed", {
+          description: err.message || "Failed to activate agent."
+        });
+        setDeletingAgent(null);
       },
     }
   );
@@ -158,7 +214,7 @@ export default function AgentsPage() {
       phone_number: formData.get("phone") as string,
       national_id_number: formData.get("national_id") as string,
       monthly_income: Number(formData.get("income")),
-      employment_status: formData.get("employment") as string,
+      employment_status: formData.get("employment") as any,
       employer_name: formData.get("employer") as string,
       consents_to_credit_check: true,
     });
@@ -169,9 +225,11 @@ export default function AgentsPage() {
     setPage(1);
   };
 
-  if (error && !agentsData) {
-    return <ErrorState message="Failed to load agents" onRetry={refetch} />;
+  if (error && error.message !== "No access token available") {
+    return <ErrorState message={error.message || "Failed to load agents"} onRetry={refetch} />;
   }
+
+  if (!mounted) return null;
 
   return (
     <div className="space-y-6">
@@ -185,16 +243,11 @@ export default function AgentsPage() {
             <RefreshCw className="w-4 h-4" />
           </Button>
           <ExportButton
-            data={agents}
             filename="agents"
-            columns={[
-              { key: "agent_id", header: "Agent ID" },
-              { key: "full_name", header: "Name" },
-              { key: "email", header: "Email" },
-              { key: "phone_number", header: "Phone" },
-              { key: "status", header: "Status" },
-              { key: "created_at", header: "Created" },
-            ]}
+            onExportCsv={() => agentsApi.exportCsv({
+              status: statusFilter !== "all" ? statusFilter as any : undefined,
+              search: searchQuery || undefined
+            })}
           />
           <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
             <DialogTrigger asChild>
@@ -298,24 +351,43 @@ export default function AgentsPage() {
       </form>
 
       <div className="rounded-md border bg-card">
-        {isLoading ? (
-          <div className="p-8">
-            <LoadingState message="Loading agents..." />
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="w-[100px]">Agent ID</TableHead>
-                <TableHead>Agent</TableHead>
-                <TableHead className="hidden md:table-cell">Contact</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="hidden lg:table-cell">Joined Date</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {agents.length > 0 ? (
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="w-[100px]">Agent ID</TableHead>
+              <TableHead>Agent</TableHead>
+              <TableHead className="hidden md:table-cell">Contact</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="hidden lg:table-cell">Joined Date</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading || !agentsData ? (
+              // Enhanced skeleton loading matching columns
+              Array.from({ length: pageSize }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <Skeleton className="h-8 w-8 rounded-full" />
+                      <Skeleton className="h-4 w-24" />
+                    </div>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell">
+                    <div className="space-y-2">
+                      <Skeleton className="h-3 w-32" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                  <TableCell className="hidden lg:table-cell"><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell className="text-right flex justify-end">
+                    <Skeleton className="h-8 w-8" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : agents.length > 0 ? (
                 agents.map((agent) => (
                   <TableRow key={agent.id}>
                     <TableCell className="font-mono text-xs font-semibold">{agent.agent_id}</TableCell>
@@ -359,23 +431,37 @@ export default function AgentsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <Link href={`/dashboard/agents/${agent.agent_id}`}>
+                          <Link href={`/super-admin/agents/${agent.agent_id}`}>
                             <DropdownMenuItem>
                               <Eye className="w-4 h-4 mr-2" /> View Details
                             </DropdownMenuItem>
                           </Link>
-                          <Link href={`/dashboard/loans/new?agent_id=${agent.agent_id}`}>
+                          <Link href={`/super-admin/loans/new?agent_id=${agent.agent_id}`}>
                             <DropdownMenuItem>
                               <Banknote className="w-4 h-4 mr-2" /> New Loan
                             </DropdownMenuItem>
                           </Link>
-                          <DropdownMenuItem>
-                            <Clock className="w-4 h-4 mr-2" /> History
-                          </DropdownMenuItem>
+                          <Link href={`/super-admin/agents/${agent.agent_id}?tab=transactions`}>
+                            <DropdownMenuItem>
+                              <Clock className="w-4 h-4 mr-2" /> History
+                            </DropdownMenuItem>
+                          </Link>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="w-4 h-4 mr-2" /> Deactivate
-                          </DropdownMenuItem>
+                          {agent.status === "inactive" ? (
+                            <DropdownMenuItem 
+                              className="text-emerald-600"
+                              onClick={() => setDeletingAgent(agent)}
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-2" /> Activate
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem 
+                              className="text-destructive"
+                              onClick={() => setDeletingAgent(agent)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" /> Deactivate
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -388,18 +474,53 @@ export default function AgentsPage() {
                   </TableCell>
                 </TableRow>
               )}
-            </TableBody>
-          </Table>
-        )}
+          </TableBody>
+        </Table>
       </div>
 
       <DataTablePagination
-        currentPage={page}
+        page={page}
         totalPages={totalPages}
         totalItems={totalItems}
         pageSize={pageSize}
         onPageChange={setPage}
+        onPageSizeChange={(size) => {
+          // You might need a setPageSize state if you want to support changing page size
+          // For now just resetting page to 1
+          setPage(1);
+        }}
       />
+
+      <AlertDialog open={!!deletingAgent} onOpenChange={() => setDeletingAgent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {deletingAgent?.status === "inactive" ? "Activate Agent" : "Deactivate Agent"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deletingAgent?.status === "inactive" 
+                ? `Are you sure you want to activate agent ${deletingAgent?.full_name}? They will be able to access the system again.`
+                : `Are you sure you want to deactivate agent ${deletingAgent?.full_name}? They will lose access to the system immediately. Active loans will still need to be settled.`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleAgentStatus}
+              className={deletingAgent?.status === "inactive" 
+                ? "bg-emerald-600 text-white hover:bg-emerald-700" 
+                : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              }
+            >
+              {deleteAgentMutation.isLoading || updateAgentMutation.isLoading 
+                ? (deletingAgent?.status === "inactive" ? "Activating..." : "Deactivating...") 
+                : (deletingAgent?.status === "inactive" ? "Activate" : "Deactivate")
+              }
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

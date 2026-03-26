@@ -32,25 +32,42 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession, signOut } from "next-auth/react";
 import { toast } from "sonner";
+import { apiClient } from "@/lib/api/client";
 
-const sidebarLinks = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { href: "/dashboard/agents", label: "Agents", icon: Users },
-  { href: "/dashboard/loans", label: "Loans", icon: Banknote },
-  { href: "/dashboard/products", label: "Loan Products", icon: Package },
-  { href: "/dashboard/payments", label: "Payments", icon: CreditCard },
-  { href: "/dashboard/reports", label: "Reports", icon: BarChart3 },
-  { href: "/dashboard/users", label: "Users", icon: UserCog },
-  { href: "/dashboard/api-management", label: "API Management", icon: Key },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
-];
+// Dynamic sidebar links generated based on basePath
 
-export function DashboardLayout({ children }: { children: React.ReactNode }) {
+export function DashboardLayout({ children, basePath = "/dashboard" }: { children: React.ReactNode, basePath?: string }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const [mounted, setMounted] = React.useState(false);
   const { setTheme, theme } = useTheme();
   const { data: session } = useSession();
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Sync access token withApiClient synchronously during render to prevent child effects 
+  // from racing ahead and making unauthenticated API calls
+  if (session?.user?.accessToken) {
+    apiClient.setAccessToken(session.user.accessToken);
+  } else if (session === null) {
+    apiClient.clearAccessToken();
+  }
+
+  const sidebarLinks = React.useMemo(() => [
+    { href: basePath, label: "Overview", icon: LayoutDashboard },
+    { href: `${basePath}/agents`, label: "Agents", icon: Users },
+    { href: `${basePath}/loans`, label: "Loans", icon: Banknote },
+    { href: `${basePath}/products`, label: "Loan Products", icon: Package },
+    { href: `${basePath}/payments`, label: "Payments", icon: CreditCard },
+    { href: `${basePath}/reports`, label: "Reports", icon: BarChart3 },
+    { href: `${basePath}/users`, label: "Users", icon: UserCog },
+    { href: `${basePath}/api-management`, label: "API Management", icon: Key },
+    { href: `${basePath}/settings`, label: "Settings", icon: Settings },
+  ], [basePath]);
+
 
   const handleLogout = async () => {
     try {
@@ -101,7 +118,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         )}
       >
         <div className="h-16 flex items-center px-6 border-b">
-          <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
+          <Link href={basePath} className="flex items-center gap-3 overflow-hidden">
             <div className="w-8 h-8 rounded bg-[#E31C2D] flex items-center justify-center shrink-0">
               <Banknote className="w-5 h-5 text-white" />
             </div>
@@ -116,7 +133,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
         <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
           {sidebarLinks.map((link) => {
             const Icon = link.icon;
-            const isActive = pathname === link.href || (link.href !== "/dashboard" && pathname.startsWith(link.href));
+            const isActive = pathname === link.href || (link.href !== basePath && pathname.startsWith(link.href));
             
             return (
               <Link
@@ -168,34 +185,43 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           </Button>
 
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="text-muted-foreground hover:text-foreground"
-            >
-              {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
-            </Button>
-            <div className="hidden md:flex flex-col items-end mr-2">
-              <span className="text-sm font-medium">{getUserDisplayName()}</span>
-              <span className="text-xs text-muted-foreground">{getUserRole()}</span>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar className="h-10 w-10 border-2 border-primary/20">
-                    <AvatarImage src="" alt={getUserDisplayName()} />
-                    <AvatarFallback className="bg-[#004B91] text-white">{getUserInitials()}</AvatarFallback>
-                  </Avatar>
+            {mounted && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+                <div className="hidden md:flex flex-col items-end mr-2">
+                  <span className="text-sm font-medium">{getUserDisplayName()}</span>
+                  <span className="text-xs text-muted-foreground">{getUserRole()}</span>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button 
+                      id="user-menu-trigger" 
+                      variant="ghost" 
+                      className="relative h-10 w-10 rounded-full"
+                      suppressHydrationWarning
+                    >
+                      <Avatar className="h-10 w-10 border-2 border-primary/20">
+                        <AvatarImage src="" alt={getUserDisplayName()} />
+                        <AvatarFallback className="bg-[#004B91] text-white">{getUserInitials()}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Logout</span>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
           </div>
         </header>
 

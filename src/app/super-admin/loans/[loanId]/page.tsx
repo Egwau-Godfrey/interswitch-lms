@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -34,14 +34,17 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { loansApi } from "@/lib/api";
-import type { Loan, LoanPayment, LoanDetailResponse, LoanStatementResponse, LoanStatementEntry } from "@/lib/types";
+import type { Loan, LoanPayment, LoanDetailResponse, LoanStatementResponse, LoanStatementEntry, Agent } from "@/lib/types";
 import { LoanStatusBadge, PaymentStatusBadge } from "@/components/shared/status-badges";
 import { LoadingState, ErrorState } from "@/components/shared/loading-states";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
+import { RecordPaymentDialog } from "@/components/shared/record-payment-dialog";
+import { generateLoanStatementPDF } from "@/lib/pdf-utils";
 
 // Mock data for development
 const mockLoan: Loan = {
@@ -65,6 +68,11 @@ const mockLoan: Loan = {
   disbursement_reference: "DSB-001-2026",
   created_at: "2026-01-05T10:30:00",
   updated_at: "2026-01-10T10:30:00",
+  applicant_id: "agent-1",
+  loan_type: "float",
+  disbursed_amount: 500000,
+  application_fee: 300,
+  penalty_applied: true,
 };
 
 const mockLoanDetail: LoanDetailResponse = {
@@ -142,22 +150,63 @@ export default function LoanDetailPage() {
   const params = useParams();
   const router = useRouter();
   const loanId = params.loanId as string;
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get("tab") || "payments";
+  const [activeTab, setActiveTab] = React.useState(initialTab);
+  const { data: session } = useSession();
 
   const [confirmAction, setConfirmAction] = React.useState<"clear" | "writeoff" | null>(null);
+  const [isRecordPaymentOpen, setIsRecordPaymentOpen] = React.useState(false);
 
   // Fetch loan detail
   const { data: loanDetail, isLoading, error, refetch } = useApi(
-    () => loansApi.getDetail(loanId).catch(() => mockLoanDetail),
-    [loanId],
-    { cacheKey: `loan-${loanId}` }
+    () => loansApi.getDetail(loanId),
+    [loanId, session],
+    { 
+      cacheKey: `loan-${loanId}`,
+      enabled: !!session?.user?.accessToken
+    }
   );
 
   // Fetch statement
-  const { data: statement } = useApi(
-    () => loansApi.getStatement(loanId).catch(() => mockStatement),
-    [loanId],
-    { cacheKey: `loan-statement-${loanId}` }
+  const { data: statement, isLoading: isStatementLoading, refetch: refetchStatement } = useApi(
+    () => loansApi.getStatement(loanId),
+    [loanId, session],
+    { 
+      cacheKey: `loan-statement-${loanId}`,
+      enabled: !!session?.user?.accessToken,
+      onError: (err) => {
+        console.error("Statement Fetch Error:", err);
+        toast.error(`Failed to load ledger: ${err.message}`);
+      }
+    }
   );
+
+  const handleRefresh = () => {
+    refetch();
+    refetchStatement();
+    toast.success("Data refreshed");
+  };
+
+  const handleDownloadPDF = () => {
+    if (!displayLoan || !displayAgent || !displayStatement) {
+      toast.error("Loan data not fully loaded");
+      return;
+    }
+    
+    try {
+      generateLoanStatementPDF(
+        displayLoan,
+        displayAgent as Agent,
+        displayProduct,
+        displayStatement
+      );
+      toast.success("Preparing PDF download...");
+    } catch (err) {
+      console.error("PDF Error:", err);
+      toast.error("Failed to generate PDF");
+    }
+  };
 
   // Clear loan mutation
   const clearLoan = useMutation(
@@ -183,30 +232,61 @@ export default function LoanDetailPage() {
     }
   );
 
-  const displayLoan = loanDetail?.loan || mockLoan;
-  const displayAgent = loanDetail?.agent || mockLoanDetail.agent;
-  const displayProduct = loanDetail?.product || mockLoanDetail.product;
-  const displayPayments = loanDetail?.payments || mockLoanDetail.payments;
-  const displayStatement = statement || mockStatement;
-
-  const paymentProgress = displayLoan.principal_amount > 0
-    ? Math.round((displayLoan.total_paid / (displayLoan.principal_amount + displayLoan.interest_amount + displayLoan.penalty_amount)) * 100)
-    : 0;
-
   if (isLoading) {
-    return <LoadingState message="Loading loan details..." />;
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-10 w-64" />
+          <Skeleton className="h-10 w-32" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-24 w-full" />
+          ))}
+        </div>
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
   }
 
-  if (error && !loanDetail) {
-    return <ErrorState message="Failed to load loan details" onRetry={() => router.refresh()} />;
+  if (error || !loanDetail) {
+    return (
+      <ErrorState 
+        message={error?.message || "Failed to load loan details"} 
+        onRetry={refetch} 
+      />
+    );
   }
+
+  const displayLoan = loanDetail.loan;
+  const displayAgent = loanDetail.agent;
+  const displayProduct = loanDetail.product;
+  const displayPayments = loanDetail.payments;
+  // Handle potentially missing statement with a stable default including required IDs
+  const displayStatement: LoanStatementResponse = statement || { 
+    loan_id: displayLoan.id,
+    agent_id: displayAgent.agent_id,
+    entries: [], 
+    opening_balance: 0, 
+    closing_balance: 0 
+  };
+
+  // Stable calculation: totalRepaymentTarget includes all accrued costs
+  const totalRepaymentTarget = Number(displayLoan.principal_amount) + 
+                                Number(displayLoan.application_fee || 0) + 
+                                Number(displayLoan.interest_amount || 0) + 
+                                Number(displayLoan.penalty_amount || 0);
+
+  const paymentProgress = totalRepaymentTarget > 0
+    ? Math.round((Number(displayLoan.total_paid) / totalRepaymentTarget) * 100)
+    : 0;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/loans">
+          <Link href="/super-admin/loans">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -217,13 +297,21 @@ export default function LoanDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
             <Download className="h-4 w-4 mr-2" />
             Download Statement
+          </Button>
+          <Button 
+            className="bg-emerald-600 hover:bg-emerald-700" 
+            size="sm"
+            onClick={() => setIsRecordPaymentOpen(true)}
+          >
+            <Banknote className="h-4 w-4 mr-2" />
+            Record Payment
           </Button>
           {displayLoan.status !== "cleared" && displayLoan.status !== "failed" && (
             <Button 
@@ -313,7 +401,7 @@ export default function LoanDetailPage() {
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-muted-foreground">
-                {formatCurrency(displayLoan.total_paid, "UGX")} paid of {formatCurrency(displayLoan.principal_amount + displayLoan.interest_amount + displayLoan.penalty_amount, "UGX")}
+                {formatCurrency(displayLoan.total_paid, "UGX")} paid of {formatCurrency(totalRepaymentTarget, "UGX")}
               </span>
               <span className="font-medium">{paymentProgress}%</span>
             </div>
@@ -339,7 +427,7 @@ export default function LoanDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Product</p>
-                <p className="font-medium">{displayProduct.name}</p>
+                <p className="font-medium">{displayProduct?.name || (displayLoan.loan_type === 'pay_day' ? 'Pay Day Loan' : 'Float Loan')}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Tenure</p>
@@ -391,7 +479,7 @@ export default function LoanDetailPage() {
                 <p className="text-sm text-muted-foreground">{displayAgent.agent_id}</p>
               </div>
             </div>
-            <Link href={`/dashboard/agents/${displayAgent.agent_id}`}>
+            <Link href={`/super-admin/agents/${displayAgent.agent_id}`}>
               <Button variant="outline" size="sm" className="w-full">
                 View Agent Profile
               </Button>
@@ -401,7 +489,7 @@ export default function LoanDetailPage() {
       </div>
 
       {/* Payment History Tabs */}
-      <Tabs defaultValue="payments" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="payments">
             <Receipt className="h-4 w-4 mr-2" />
@@ -462,29 +550,57 @@ export default function LoanDetailPage() {
                 <CardTitle>Loan Statement</CardTitle>
                 <CardDescription>Transaction history for this loan</CardDescription>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
                 <Download className="h-4 w-4 mr-2" />
                 Export PDF
               </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg border">
                   <div>
-                    <p className="text-xs text-muted-foreground">Agent</p>
+                    <p className="text-xs text-muted-foreground uppercase font-semibold">Agent Name</p>
                     <p className="font-medium">{displayAgent.full_name}</p>
+                    <p className="text-[10px] text-muted-foreground">{displayAgent.agent_id}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Agent ID</p>
-                    <p className="font-medium">{displayAgent.agent_id}</p>
+                    <p className="text-xs text-muted-foreground uppercase font-semibold">Product</p>
+                    <p className="font-medium">
+                      {displayProduct?.name || 
+                       (displayLoan.loan_type === 'pay_day' ? 'Pay Day Loan' : 
+                        displayLoan.loan_type === 'float' ? 'Float Loan' : 'Loan')}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Status: {displayLoan.status.toUpperCase()}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Product</p>
-                    <p className="font-medium">{displayProduct.name}</p>
+                    <p className="text-xs text-muted-foreground uppercase font-semibold">Principal</p>
+                    <p className="font-medium">{formatCurrency(displayLoan.principal_amount, "UGX")}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Status</p>
-                    <LoanStatusBadge status={displayLoan.status} />
+                    <p className="text-xs text-muted-foreground uppercase font-semibold">Outstanding</p>
+                    <p className="font-bold text-primary">{formatCurrency(displayLoan.outstanding_balance, "UGX")}</p>
+                  </div>
+                </div>
+
+                {/* Debug Info (Only for admins/managers) */}
+                {statement?.debug_info && (
+                  <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-[10px] font-mono whitespace-pre-wrap">
+                    DEBUG: {JSON.stringify(statement.debug_info, null, 2)}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-3 gap-4 text-center">
+                  <div className="p-2 border rounded-md">
+                    <p className="text-[10px] text-muted-foreground uppercase">Total Interest</p>
+                    <p className="text-sm font-semibold">{formatCurrency(displayLoan.interest_amount, "UGX")}</p>
+                  </div>
+                  <div className="p-2 border rounded-md">
+                    <p className="text-[10px] text-muted-foreground uppercase">Total Penalty</p>
+                    <p className="text-sm font-semibold">{formatCurrency(displayLoan.penalty_amount, "UGX")}</p>
+                  </div>
+                  <div className="p-2 border rounded-md">
+                    <p className="text-[10px] text-muted-foreground uppercase">Total Paid</p>
+                    <p className="text-sm font-semibold text-green-600">{formatCurrency(displayLoan.total_paid, "UGX")}</p>
                   </div>
                 </div>
 
@@ -493,6 +609,7 @@ export default function LoanDetailPage() {
                     <TableRow>
                       <TableHead>Date</TableHead>
                       <TableHead>Description</TableHead>
+                      <TableHead>Reference</TableHead>
                       <TableHead>Debit</TableHead>
                       <TableHead>Credit</TableHead>
                       <TableHead>Balance</TableHead>
@@ -502,7 +619,14 @@ export default function LoanDetailPage() {
                     {displayStatement.entries.map((entry: LoanStatementEntry, idx: number) => (
                       <TableRow key={idx}>
                         <TableCell>{formatDate(entry.date)}</TableCell>
-                        <TableCell>{entry.description}</TableCell>
+                        <TableCell className={
+                          entry.description.includes("Interest") || entry.description.includes("Penalty") 
+                            ? "italic text-muted-foreground" 
+                            : ""
+                        }>
+                          {entry.description}
+                        </TableCell>
+                        <TableCell className="font-mono text-[10px] text-muted-foreground">{entry.reference || "-"}</TableCell>
                         <TableCell className="text-red-600">
                           {entry.debit > 0 ? formatCurrency(entry.debit, "UGX") : "-"}
                         </TableCell>
@@ -513,7 +637,7 @@ export default function LoanDetailPage() {
                       </TableRow>
                     ))}
                     <TableRow className="border-t-2 bg-muted/50">
-                      <TableCell colSpan={4} className="font-bold text-lg">Closing Balance</TableCell>
+                      <TableCell colSpan={5} className="font-bold text-lg text-right pr-8">Closing Balance</TableCell>
                       <TableCell className="font-bold text-lg">{formatCurrency(displayStatement.closing_balance, "UGX")}</TableCell>
                     </TableRow>
                   </TableBody>
@@ -548,6 +672,13 @@ export default function LoanDetailPage() {
         variant="destructive"
         onConfirm={() => { writeOffLoan.mutate(); }}
         isLoading={writeOffLoan.isLoading}
+      />
+
+      <RecordPaymentDialog
+        open={isRecordPaymentOpen}
+        onOpenChange={setIsRecordPaymentOpen}
+        loanId={loanId}
+        onSuccess={() => handleRefresh()}
       />
     </div>
   );

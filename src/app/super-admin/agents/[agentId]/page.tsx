@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -39,137 +40,105 @@ import type { Agent, Loan, AgentTransaction, LoanBalanceResponse } from "@/lib/t
 import { AgentStatusBadge, LoanStatusBadge } from "@/components/shared/status-badges";
 import { LoadingState, ErrorState, EmptyState } from "@/components/shared/loading-states";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
-
-// Mock data for development
-const mockAgent: Agent = {
-  id: "1",
-  agent_id: "3ISO0056",
-  full_name: "John Doe",
-  email: "john.doe@example.com",
-  phone_number: "+256700123456",
-  national_id_number: "CM12345678901234",
-  employer_name: "Interswitch Uganda Ltd",
-  employment_status: "full_time",
-  monthly_income: 2500000,
-  consents_to_credit_check: true,
-  default_product_id: null,
-  status: "active",
-  created_at: "2025-06-15T10:30:00",
-  updated_at: "2025-12-01T14:22:00",
-};
-
-const mockLoanBalance: LoanBalanceResponse = {
-  agent_id: "3ISO0056",
-  has_loan: true,
-  loan_id: "loan-001",
-  status: "disbursed",
-  principal_amount: 500000,
-  interest_rate: 10,
-  interest: 50000,
-  penalty: 0,
-  surcharge: 50000,
-  loan_balance: 550000,
-  total_paid: 0,
-  disbursed_at: "2026-01-05T10:30:00",
-  due_date: "2026-02-04T10:30:00",
-  tenure_days: 30,
-  days_since_disbursement: 5,
-  is_overdue: false,
-  days_overdue: 0,
-  is_cleared: false,
-  product_id: "prod-001",
-  product_name: "Quick Loan 30",
-};
-
-const mockLoans: Loan[] = [
-  {
-    id: "loan-001",
-    agent_id: "3ISO0056",
-    product_id: "prod-001",
-    principal_amount: 500000,
-    interest_rate: 10,
-    penalty_rate: 1,
-    interest_amount: 50000,
-    penalty_amount: 0,
-    total_paid: 0,
-    outstanding_balance: 550000,
-    tenure_days: 30,
-    due_date: "2026-02-04T10:30:00",
-    disbursed_at: "2026-01-05T10:30:00",
-    cleared_at: null,
-    status: "disbursed",
-    is_overdue: false,
-    days_overdue: 0,
-    disbursement_reference: "DSB-001-2026",
-    created_at: "2026-01-05T10:30:00",
-    updated_at: "2026-01-05T10:30:00",
-  },
-  {
-    id: "loan-002",
-    agent_id: "3ISO0056",
-    product_id: "prod-001",
-    principal_amount: 300000,
-    interest_rate: 10,
-    penalty_rate: 1,
-    interest_amount: 30000,
-    penalty_amount: 0,
-    total_paid: 330000,
-    outstanding_balance: 0,
-    tenure_days: 30,
-    due_date: "2025-12-20T10:30:00",
-    disbursed_at: "2025-11-20T10:30:00",
-    cleared_at: "2025-12-15T14:22:00",
-    status: "cleared",
-    is_overdue: false,
-    days_overdue: 0,
-    disbursement_reference: "DSB-002-2025",
-    created_at: "2025-11-20T10:30:00",
-    updated_at: "2025-12-15T14:22:00",
-  },
-];
-
-const mockTransactions: AgentTransaction[] = [
-  { id: "1", agent_id: "3ISO0056", transaction_date: "2026-01-09T14:30:00", credit_amount: 150000, debit_amount: 0, terminal: "TML001", biller: "MTN Mobile Money", narration: "Commission payout", balance: 450000, status: "success", request_ref: "REQ001" },
-  { id: "2", agent_id: "3ISO0056", transaction_date: "2026-01-08T10:15:00", credit_amount: 0, debit_amount: 50000, terminal: "TML001", biller: "Airtel Money", narration: "Cash withdrawal", balance: 300000, status: "success", request_ref: "REQ002" },
-  { id: "3", agent_id: "3ISO0056", transaction_date: "2026-01-07T16:45:00", credit_amount: 200000, debit_amount: 0, terminal: "TML002", biller: "Bank Transfer", narration: "Deposit", balance: 350000, status: "success", request_ref: "REQ003" },
-];
+import { DataTablePagination } from "@/components/shared/data-table-pagination";
 
 export default function AgentDetailPage() {
   const params = useParams();
+  const { status } = useSession();
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const router = useRouter();
   const agentId = params.agentId as string;
+  const [mounted, setMounted] = React.useState(false);
+
+  // Pagination state for Loans
+  const [loansPage, setLoansPage] = React.useState(1);
+  const [loansPageSize, setLoansPageSize] = React.useState(10);
+
+  // Pagination state for Transactions
+  const [txPage, setTxPage] = React.useState(1);
+  const [txPageSize, setTxPageSize] = React.useState(10);
+  const activeTab = searchParams?.get('tab') || 'loans';
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Fetch agent data
   const { data: agent, isLoading: agentLoading, error: agentError } = useApi(
-    () => agentsApi.get(agentId).catch(() => mockAgent),
-    [agentId],
-    { cacheKey: `agent-${agentId}` }
+    () => agentsApi.get(agentId),
+    [agentId, mounted, status === 'authenticated'],
+    { 
+      cacheKey: `agent-${agentId}`,
+      enabled: mounted && status === 'authenticated'
+    }
   );
 
   // Fetch loan balance
   const { data: loanBalance, isLoading: balanceLoading } = useApi(
-    () => loansApi.getBalance(agentId).catch(() => mockLoanBalance),
-    [agentId],
-    { cacheKey: `agent-balance-${agentId}` }
+    () => loansApi.getBalance(agentId),
+    [agentId, mounted, status === 'authenticated'],
+    { 
+      cacheKey: `agent-balance-${agentId}`,
+      enabled: mounted && status === 'authenticated'
+    }
   );
 
-  const displayAgent = agent || mockAgent;
-  const displayBalance = loanBalance || mockLoanBalance;
+  // Fetch loan history
+  const { data: loansData, isLoading: loansLoading } = useApi(
+    () => agentsApi.getLoanHistory(agentId, { page: loansPage, page_size: loansPageSize }),
+    [agentId, mounted, status === 'authenticated', loansPage, loansPageSize],
+    { 
+      cacheKey: `agent-loans-${agentId}-${loansPage}-${loansPageSize}`,
+      enabled: mounted && status === 'authenticated'
+    }
+  );
 
-  if (agentLoading) {
-    return <LoadingState message="Loading agent details..." />;
-  }
+  // Fetch transaction history
+  const { data: transactionsData, isLoading: transactionsLoading } = useApi(
+    () => agentsApi.getTransactions(agentId, { page: txPage, page_size: txPageSize }),
+    [agentId, mounted, status === 'authenticated', txPage, txPageSize],
+    { 
+      cacheKey: `agent-transactions-${agentId}-${txPage}-${txPageSize}`,
+      enabled: mounted && status === 'authenticated'
+    }
+  );
+
+  const displayAgent = agent;
+  const displayBalance = loanBalance;
+  const loans = loansData?.data || [];
+  const transactions = transactionsData?.data || [];
 
   if (agentError && !agent) {
-    return <ErrorState message="Failed to load agent details" onRetry={() => router.refresh()} />;
+    return <ErrorState message={agentError.message || "Failed to load agent details"} onRetry={() => router.refresh()} />;
   }
+
+  if (agentLoading || !displayAgent) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-10 w-10" />
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-80 w-full" />
+          <Skeleton className="h-80 w-full" />
+          <Skeleton className="h-80 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!mounted) return null;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/dashboard/agents">
+          <Link href="/super-admin/agents">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -180,13 +149,13 @@ export default function AgentDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/dashboard/agents/${agentId}/edit`}>
+          <Link href={`/super-admin/agents/${agentId}/edit`}>
             <Button variant="outline" size="sm">
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </Button>
           </Link>
-          <Link href={`/dashboard/loans/new?agent_id=${agentId}`}>
+          <Link href={`/super-admin/loans/new?agent_id=${agentId}`}>
             <Button size="sm">
               <Banknote className="h-4 w-4 mr-2" />
               New Loan
@@ -285,12 +254,24 @@ export default function AgentDetailPage() {
           </CardHeader>
           <CardContent>
             {balanceLoading ? (
-              <div className="space-y-3">
-                <Skeleton className="h-8 w-32" />
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-28" />
+              <div className="space-y-6">
+                <div>
+                  <Skeleton className="h-4 w-32 mb-2" />
+                  <Skeleton className="h-8 w-48" />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Skeleton className="h-3 w-16 mb-2" />
+                    <Skeleton className="h-5 w-24" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-3 w-16 mb-2" />
+                    <Skeleton className="h-5 w-24" />
+                  </div>
+                </div>
+                <Skeleton className="h-10 w-full" />
               </div>
-            ) : displayBalance.has_loan ? (
+            ) : displayBalance?.has_loan ? (
               <div className="space-y-4">
                 <div>
                   <p className="text-xs text-muted-foreground">Outstanding Balance</p>
@@ -319,7 +300,7 @@ export default function AgentDetailPage() {
                   </div>
                   <div className="flex items-center justify-between text-sm mt-2">
                     <span className="text-muted-foreground">Due Date</span>
-                    <span>{formatDate(displayBalance.due_date!)}</span>
+                    <span>{displayBalance.due_date ? formatDate(displayBalance.due_date) : "-"}</span>
                   </div>
                   {displayBalance.is_overdue && (
                     <div className="flex items-center justify-between text-sm mt-2 text-red-600">
@@ -328,7 +309,7 @@ export default function AgentDetailPage() {
                     </div>
                   )}
                 </div>
-                <Link href={`/dashboard/loans/${displayBalance.loan_id}`}>
+                <Link href={`/super-admin/loans/${displayBalance.loan_id}`}>
                   <Button variant="outline" size="sm" className="w-full">
                     View Loan Details
                   </Button>
@@ -337,7 +318,7 @@ export default function AgentDetailPage() {
             ) : (
               <div className="text-center py-6">
                 <p className="text-muted-foreground mb-4">No active loan</p>
-                <Link href={`/dashboard/loans/new?agent_id=${agentId}`}>
+                <Link href={`/super-admin/loans/new?agent_id=${agentId}`}>
                   <Button size="sm">
                     <Banknote className="h-4 w-4 mr-2" />
                     Create Loan
@@ -350,7 +331,7 @@ export default function AgentDetailPage() {
       </div>
 
       {/* Tabs for History */}
-      <Tabs defaultValue="loans" className="space-y-4">
+      <Tabs defaultValue={activeTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="loans">
             <Banknote className="h-4 w-4 mr-2" />
@@ -369,34 +350,63 @@ export default function AgentDetailPage() {
               <CardDescription>All loans associated with this agent</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Loan ID</TableHead>
-                    <TableHead>Principal</TableHead>
-                    <TableHead>Total Due</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Disbursed</TableHead>
-                    <TableHead>Due Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockLoans.map((loan) => (
-                    <TableRow key={loan.id}>
-                      <TableCell>
-                        <Link href={`/dashboard/loans/${loan.id}`} className="text-primary hover:underline">
-                          {loan.id.slice(0, 8)}...
-                        </Link>
-                      </TableCell>
-                      <TableCell>{formatCurrency(loan.principal_amount, "UGX")}</TableCell>
-                      <TableCell>{formatCurrency(loan.principal_amount + loan.interest_amount, "UGX")}</TableCell>
-                      <TableCell><LoanStatusBadge status={loan.status} /></TableCell>
-                      <TableCell>{loan.disbursed_at ? formatDate(loan.disbursed_at) : "-"}</TableCell>
-                      <TableCell>{formatDate(loan.due_date)}</TableCell>
-                    </TableRow>
+              {loansLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="h-10 w-full" />
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              ) : loans.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Loan ID</TableHead>
+                      <TableHead>Principal</TableHead>
+                      <TableHead>Total Due</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Disbursed</TableHead>
+                      <TableHead>Due Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loans.map((loan) => (
+                      <TableRow key={loan.id}>
+                        <TableCell>
+                          <Link href={`/super-admin/loans/${loan.id}`} className="text-primary hover:underline">
+                            {loan.id.slice(0, 8)}...
+                          </Link>
+                        </TableCell>
+                        <TableCell>{formatCurrency(loan.principal_amount, "UGX")}</TableCell>
+                        <TableCell>{formatCurrency(Number(loan.principal_amount || 0) + Number(loan.interest_amount || 0), "UGX")}</TableCell>
+                        <TableCell><LoanStatusBadge status={loan.status} /></TableCell>
+                        <TableCell>{loan.disbursed_at ? formatDate(loan.disbursed_at) : "-"}</TableCell>
+                        <TableCell>{formatDate(loan.due_date)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No loan history found.
+                </div>
+              )}
+              
+              {loans.length > 0 && loansData && (
+                <DataTablePagination
+                  page={loansPage}
+                  pageSize={loansPageSize}
+                  totalItems={loansData.total}
+                  totalPages={loansData.total_pages}
+                  onPageChange={setLoansPage}
+                  onPageSizeChange={(size) => {
+                    setLoansPageSize(size);
+                    setLoansPage(1);
+                  }}
+                  pageSizeOptions={[5, 10, 15, 20]}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -408,34 +418,63 @@ export default function AgentDetailPage() {
               <CardDescription>Agent wallet transactions</CardDescription>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Credit</TableHead>
-                    <TableHead>Debit</TableHead>
-                    <TableHead>Balance</TableHead>
-                    <TableHead>Reference</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {mockTransactions.map((tx) => (
-                    <TableRow key={tx.id}>
-                      <TableCell>{formatDate(tx.transaction_date, "long")}</TableCell>
-                      <TableCell>{tx.narration}</TableCell>
-                      <TableCell className="text-green-600">
-                        {tx.credit_amount > 0 ? formatCurrency(tx.credit_amount, "UGX") : "-"}
-                      </TableCell>
-                      <TableCell className="text-red-600">
-                        {tx.debit_amount > 0 ? formatCurrency(tx.debit_amount, "UGX") : "-"}
-                      </TableCell>
-                      <TableCell>{formatCurrency(tx.balance, "UGX")}</TableCell>
-                      <TableCell className="font-mono text-xs">{tx.request_ref}</TableCell>
-                    </TableRow>
+              {transactionsLoading ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex gap-4">
+                      <Skeleton className="h-10 w-full" />
+                    </div>
                   ))}
-                </TableBody>
-              </Table>
+                </div>
+              ) : transactions.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Credit</TableHead>
+                      <TableHead>Debit</TableHead>
+                      <TableHead>Balance</TableHead>
+                      <TableHead>Reference</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((tx) => (
+                      <TableRow key={tx.id}>
+                        <TableCell>{formatDate(tx.transaction_date, "long")}</TableCell>
+                        <TableCell>{tx.narration}</TableCell>
+                        <TableCell className="text-green-600">
+                          {tx.credit_amount > 0 ? formatCurrency(tx.credit_amount, "UGX") : "-"}
+                        </TableCell>
+                        <TableCell className="text-red-600">
+                          {tx.debit_amount > 0 ? formatCurrency(tx.debit_amount, "UGX") : "-"}
+                        </TableCell>
+                        <TableCell>{formatCurrency(tx.balance, "UGX")}</TableCell>
+                        <TableCell className="font-mono text-xs">{tx.request_ref}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  No transaction history found.
+                </div>
+              )}
+
+              {transactions.length > 0 && transactionsData && (
+                <DataTablePagination
+                  page={txPage}
+                  pageSize={txPageSize}
+                  totalItems={transactionsData.total}
+                  totalPages={transactionsData.total_pages}
+                  onPageChange={setTxPage}
+                  onPageSizeChange={(size) => {
+                    setTxPageSize(size);
+                    setTxPage(1);
+                  }}
+                  pageSizeOptions={[5, 10, 15, 20]}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

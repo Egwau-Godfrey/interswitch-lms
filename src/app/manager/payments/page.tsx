@@ -138,7 +138,7 @@ export default function PaymentsPage() {
   const [isPostOpen, setIsPostOpen] = React.useState(false);
 
   // Fetch payments from API
-  const { data: paymentsData, isLoading, error, refetch } = useApi(
+  const { data: paymentsData, isLoading, error, refetch, isRefetching } = useApi(
     () => paymentsApi.list({
       page,
       page_size: pageSize,
@@ -204,11 +204,11 @@ export default function PaymentsPage() {
     const pendingPayments = payments.filter((p) => p.status === "pending");
 
     return {
-      todayTotal: todayPayments.reduce((sum, p) => sum + p.amount, 0),
+      todayTotal: todayPayments.reduce((sum, p) => sum + Number(p.amount), 0),
       todayCount: todayPayments.length,
-      autoDebitTotal: autoDebitPayments.reduce((sum, p) => sum + p.amount, 0),
+      autoDebitTotal: autoDebitPayments.reduce((sum, p) => sum + Number(p.amount), 0),
       autoDebitCount: autoDebitPayments.length,
-      pendingTotal: pendingPayments.reduce((sum, p) => sum + p.amount, 0),
+      pendingTotal: pendingPayments.reduce((sum, p) => sum + Number(p.amount), 0),
       pendingCount: pendingPayments.length,
     };
   }, [payments]);
@@ -233,6 +233,32 @@ export default function PaymentsPage() {
     setPage(1);
   };
 
+  const handleExport = async () => {
+    try {
+      toast.loading("Preparing export...", { id: "export-loading" });
+      const blob = await paymentsApi.exportCsv({
+        status: statusFilter !== "all" ? statusFilter as any : undefined,
+        channel: channelFilter !== "all" ? channelFilter as any : undefined,
+      });
+      
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `payments_export_${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.dismiss("export-loading");
+      toast.success("Payments exported successfully");
+    } catch (err: any) {
+      console.error("Export error:", err);
+      toast.dismiss("export-loading");
+      toast.error(err.message || "Failed to export payments");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -241,11 +267,20 @@ export default function PaymentsPage() {
           <p className="text-muted-foreground">Track all repayments and collection activities.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => refetch()}
+            disabled={isRefetching}
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${isRefetching ? "animate-spin" : ""}`} />
+            {isRefetching ? "Refreshing..." : "Refresh"}
           </Button>
-          <Button variant="outline" className="hidden sm:flex">
+          <Button 
+            variant="outline" 
+            className="hidden sm:flex"
+            onClick={handleExport}
+          >
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>

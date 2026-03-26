@@ -31,12 +31,17 @@ export default auth((req) => {
     return NextResponse.redirect(url);
   }
 
-  // If user is authenticated and trying to access login page
+  // User wants to always be able to view the login page at "/"
+  // Commenting out the automatic redirect for authenticated users.
+  /*
   if (isAuthenticated && pathname === "/") {
     const callbackUrl = req.nextUrl.searchParams.get("callbackUrl");
-    const url = new URL(callbackUrl || "/dashboard", req.url);
+    const role = (req.auth as any)?.user?.role;
+    const defaultDashboard = role === "super_admin" ? "/super-admin" : "/manager";
+    const url = new URL(callbackUrl || defaultDashboard, req.url);
     return NextResponse.redirect(url);
   }
+  */
 
   return NextResponse.next();
 });

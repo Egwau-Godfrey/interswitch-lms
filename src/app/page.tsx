@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
 import { motion } from "framer-motion";
-import { signIn } from "next-auth/react";
+import { signIn, getSession, signOut } from "next-auth/react";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -19,6 +19,14 @@ export default function LoginPage() {
     username: "",
     password: ""
   });
+
+  React.useEffect(() => {
+    getSession().then((session) => {
+      if (session) {
+        signOut({ redirect: false });
+      }
+    });
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +51,15 @@ export default function LoginPage() {
         toast.success("Welcome back!", {
           description: "Successfully logged in",
         });
-        router.push("/dashboard");
+        
+        const session = await getSession();
+        const role = session?.user?.role;
+        
+        if (role === "super_admin") {
+          router.push("/super-admin");
+        } else {
+          router.push("/manager");
+        }
         router.refresh();
       }
     } catch (error) {

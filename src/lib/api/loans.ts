@@ -57,10 +57,10 @@ export const loansApi = {
   },
 
   /**
-   * Get loan statement history for an agent
+   * Get loan statement history for a loan
    */
-  getStatement: async (agentId: string): Promise<LoanStatementResponse> => {
-    return apiClient.get<LoanStatementResponse>(`/loans/${agentId}/statement`);
+  getStatement: async (loanId: string): Promise<LoanStatementResponse> => {
+    return apiClient.get<LoanStatementResponse>(`/loans/${loanId}/ledger`);
   },
 
   /**
@@ -108,8 +108,8 @@ export const loansApi = {
   /**
    * Download loan statement as PDF
    */
-  downloadStatement: async (agentId: string): Promise<Blob> => {
-    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/loans/${agentId}/statement/download`;
+  downloadStatement: async (loanId: string): Promise<Blob> => {
+    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/loans/${loanId}/ledger/download`;
 
     const accessToken = apiClient.getAccessToken();
     const headers: HeadersInit = {};

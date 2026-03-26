@@ -40,18 +40,21 @@ export function useApi<T>(
     cacheKey,
   } = options;
 
-  const [data, setData] = React.useState<T | undefined>(() => {
-    if (cacheKey) {
-      const cached = cache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return cached.data as T;
-      }
-    }
-    return undefined;
-  });
-  const [isLoading, setIsLoading] = React.useState(!data);
+  const [data, setData] = React.useState<T | undefined>(undefined);
+  const [isLoading, setIsLoading] = React.useState(true);
   const [isRefetching, setIsRefetching] = React.useState(false);
   const [error, setError] = React.useState<Error | null>(null);
+
+  // Sync cache on mount only to prevent hydration mismatch
+  React.useEffect(() => {
+    if (cacheKey && enabled) {
+      const cached = cache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        setData(cached.data as T);
+        setIsLoading(false);
+      }
+    }
+  }, [cacheKey, enabled]);
 
   const fetchData = React.useCallback(
     async (isRefetch = false) => {

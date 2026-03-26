@@ -39,34 +39,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useApi, useMutation } from "@/hooks/use-api";
-import { agentsApi, productsApi, loansApi } from "@/lib/api";
+import { useSession } from "next-auth/react";
+import { agentsApi, productsApi, loansApi, apiClient } from "@/lib/api";
 import type { Agent, LoanProduct, EligibleProductsResponse } from "@/lib/types";
 import { AgentStatusBadge } from "@/components/shared/status-badges";
 import { formatCurrency } from "@/components/shared/stat-card";
 
-// Mock data for development
-const mockProducts: LoanProduct[] = [
-  { id: "prod-001", name: "Quick Loan 30", min_amount: 50000, max_amount: 500000, interest_rate: 10, penalty_rate: 1, tenure_days: 30, is_active: true, created_at: "2025-01-01", updated_at: "2025-01-01" },
-  { id: "prod-002", name: "SME Boost 60", min_amount: 100000, max_amount: 2000000, interest_rate: 12, penalty_rate: 1.5, tenure_days: 60, is_active: true, created_at: "2025-01-01", updated_at: "2025-01-01" },
-  { id: "prod-003", name: "Payroll Advance", min_amount: 30000, max_amount: 300000, interest_rate: 8, penalty_rate: 0.5, tenure_days: 14, is_active: true, created_at: "2025-01-01", updated_at: "2025-01-01" },
-];
-
-const mockAgent: Agent = {
-  id: "1",
-  agent_id: "3ISO0056",
-  full_name: "John Doe",
-  email: "john.doe@example.com",
-  phone_number: "+256700123456",
-  national_id_number: "CM12345678901234",
-  employer_name: "Interswitch Uganda Ltd",
-  employment_status: "full_time",
-  monthly_income: 2500000,
-  consents_to_credit_check: true,
-  default_product_id: "prod-001",
-  status: "active",
-  created_at: "2025-06-15T10:30:00",
-  updated_at: "2025-12-01T14:22:00",
-};
 
 const formSchema = z.object({
   agent_id: z.string().min(1, "Agent ID is required"),
@@ -79,24 +57,44 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
-function NewLoanPageContent() {
+export function NewLoanPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const presetAgentId = searchParams.get("agent_id");
-
+  const [isMounted, setIsMounted] = React.useState(false);
   const [agentSearch, setAgentSearch] = React.useState(presetAgentId || "");
   const [selectedAgent, setSelectedAgent] = React.useState<Agent | null>(null);
   const [selectedProduct, setSelectedProduct] = React.useState<LoanProduct | null>(null);
   const [isSearching, setIsSearching] = React.useState(false);
+  const { data: session } = useSession();
+
+  // Set API token when session is loaded
+  React.useEffect(() => {
+    if (session?.user?.accessToken) {
+      apiClient.setAccessToken(session.user.accessToken);
+    }
+  }, [session]);
 
   // Fetch products
   const { data: productsData } = useApi(
-    () => productsApi.list().catch(() => ({ data: mockProducts, total: mockProducts.length, page: 1, page_size: 10, total_pages: 1 })),
-    [],
-    { cacheKey: "products-list" }
+    async () => {
+      if (session?.user?.accessToken) {
+        apiClient.setAccessToken(session.user.accessToken);
+      }
+      return productsApi.list();
+    },
+    [session?.user?.accessToken],
+    { 
+      cacheKey: "products-list",
+      enabled: !!session?.user?.accessToken
+    }
   );
 
-  const products: LoanProduct[] = productsData?.data || mockProducts;
+  const products: LoanProduct[] = productsData?.data || [];
+
+  React.useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -132,14 +130,11 @@ function NewLoanPageContent() {
         if (product) setSelectedProduct(product);
       }
     } catch {
-      // Use mock for development
-      setSelectedAgent(mockAgent);
-      form.setValue("agent_id", mockAgent.agent_id);
-      if (mockAgent.default_product_id) {
-        form.setValue("product_id", mockAgent.default_product_id);
-        const product = products.find(p => p.id === mockAgent.default_product_id);
-        if (product) setSelectedProduct(product);
-      }
+      toast.error("Agent not found or error fetching agent data");
+      setSelectedAgent(null);
+      form.setValue("agent_id", "");
+      form.setValue("product_id", "");
+      setSelectedProduct(null);
     } finally {
       setIsSearching(false);
     }
@@ -170,12 +165,10 @@ function NewLoanPageContent() {
     {
       onSuccess: (loan) => {
         toast.success("Loan application submitted successfully!");
-        router.push(`/dashboard/loans/${loan.id}`);
+        router.push(`/super-admin/loans/${loan.id}`);
       },
-      onError: () => {
-        // Mock success for development
-        toast.success("Loan application submitted successfully!");
-        router.push("/dashboard/loans");
+      onError: (error: any) => {
+        toast.error(error.message || "Failed to submit loan application");
       },
     }
   );
@@ -194,11 +187,15 @@ function NewLoanPageContent() {
     ? new Date(Date.now() + selectedProduct.tenure_days * 24 * 60 * 60 * 1000)
     : null;
 
+  if (!isMounted) {
+    return <div className="flex items-center justify-center min-h-[400px]">Loading...</div>;
+  }
+
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/dashboard/loans">
+        <Link href="/super-admin/loans">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>

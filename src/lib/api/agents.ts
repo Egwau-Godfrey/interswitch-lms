@@ -8,6 +8,7 @@ import type {
   AgentCreate,
   AgentUpdate,
   AgentTransaction,
+  Loan,
   PaginatedResponse,
   AgentListParams,
   EligibleProductsResponse,
@@ -43,6 +44,13 @@ export const agentsApi = {
   },
 
   /**
+   * Deactivate/Deep delete an agent
+   */
+  delete: async (agentId: string): Promise<void> => {
+    return apiClient.delete<void>(`/agents/${agentId}`);
+  },
+
+  /**
    * Get eligible loan products for an agent
    */
   getEligibleProducts: async (agentId: string): Promise<EligibleProductsResponse> => {
@@ -65,8 +73,8 @@ export const agentsApi = {
   getLoanHistory: async (
     agentId: string,
     params?: { page?: number; page_size?: number }
-  ): Promise<PaginatedResponse<Agent>> => {
-    return apiClient.get<PaginatedResponse<Agent>>(`/agents/${agentId}/loans`, params);
+  ): Promise<PaginatedResponse<Loan>> => {
+    return apiClient.get<PaginatedResponse<Loan>>(`/agents/${agentId}/loans`, params);
   },
 
   /**

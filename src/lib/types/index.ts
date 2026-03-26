@@ -15,6 +15,7 @@ export interface User {
   phone_number: string;
   is_active: boolean;
   is_admin: boolean;
+  role: 'super_admin' | 'manager' | 'agent' | string;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +30,7 @@ export interface UserCreate {
   password: string;
   is_admin?: boolean;
   is_active?: boolean;
+  role?: 'super_admin' | 'manager' | 'agent' | string;
 }
 
 export interface UserUpdate {
@@ -39,6 +41,7 @@ export interface UserUpdate {
   phone_number?: string;
   is_admin?: boolean;
   is_active?: boolean;
+  role?: string;
   password?: string;
 }
 
@@ -143,9 +146,13 @@ export type LoanStatus = 'pending' | 'approved' | 'disbursed' | 'overdue' | 'def
 
 export interface Loan {
   id: string;
+  applicant_id: string | null;
   agent_id: string;
-  product_id: string;
+  product_id: string | null;
+  loan_type: string;
   principal_amount: number;
+  disbursed_amount: number | null;
+  application_fee: number;
   interest_rate: number;
   penalty_rate: number;
   interest_amount: number;
@@ -160,6 +167,7 @@ export interface Loan {
   is_overdue: boolean;
   days_overdue: number;
   disbursement_reference: string | null;
+  penalty_applied: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -283,6 +291,7 @@ export interface LoanStatementResponse {
   entries: LoanStatementEntry[];
   opening_balance: number;
   closing_balance: number;
+  debug_info?: any;
 }
 
 export interface EligibleProductsResponse {
@@ -307,6 +316,7 @@ export interface ListParams {
   search?: string;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
+  [key: string]: any;
 }
 
 export interface LoanListParams extends ListParams {
@@ -340,6 +350,7 @@ export interface DashboardStats {
   total_active_loans: number;
   total_disbursed: number;
   total_collections: number;
+  total_interest_earned: number;
   total_overdue: number;
   overdue_count: number;
   default_rate: number;
@@ -378,7 +389,7 @@ export interface RecentActivityItem {
   id: string;
   type: string;
   description: string;
-  amount: number;
+  amount?: number;
   timestamp: string;
 }
 
@@ -386,42 +397,55 @@ export interface RecentActivityItem {
 // Report Types
 // ============================================
 export interface PortfolioReport {
-  total_loans: number;
-  total_disbursed: number;
-  total_outstanding: number;
-  total_collected: number;
-  loans_by_status: Record<LoanStatus, { count: number; value: number }>;
   par_30: number;
   par_60: number;
   par_90: number;
+  total_portfolio: number;
+  active_loans_count: number;
   average_loan_size: number;
-  average_tenure: number;
+  by_product: Array<{
+    product_id: string;
+    product_name: string;
+    total_disbursed: number;
+    active_count: number;
+    overdue_count: number;
+    total_outstanding: number;
+  }>;
 }
 
 export interface CollectionsReport {
-  period: string;
-  total_collections: number;
-  collection_count: number;
-  collection_efficiency: number;
-  top_performing_agents: Array<{
-    agent_id: string;
-    agent_name: string;
-    total_collected: number;
-    loans_cleared: number;
+  total_collected: number;
+  collection_rate: number;
+  by_channel: Array<{
+    channel: string;
+    amount: number;
+    count: number;
+    percentage: number;
+  }>;
+  by_period: Array<{
+    period: string;
+    amount: number;
+    count: number;
   }>;
 }
 
 export interface DisbursementReport {
-  period: string;
   total_disbursed: number;
-  disbursement_count: number;
+  loan_count: number;
+  average_amount: number;
   by_product: Array<{
     product_id: string;
     product_name: string;
+    total_disbursed: number;
+    active_count: number;
+    overdue_count: number;
+    total_outstanding: number;
+  }>;
+  by_period: Array<{
+    period: string;
     amount: number;
     count: number;
   }>;
-  average_processing_time: number;
 }
 
 // ============================================

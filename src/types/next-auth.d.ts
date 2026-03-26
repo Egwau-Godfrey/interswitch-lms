@@ -11,6 +11,7 @@ declare module "next-auth" {
     lastName?: string;
     username?: string;
     isActive?: boolean;
+    role?: string;
   }
 
   interface Session {
@@ -24,6 +25,7 @@ declare module "next-auth" {
       lastName?: string;
       username?: string;
       isActive?: boolean;
+      role?: string;
     } & DefaultSession["user"];
   }
 }
@@ -39,5 +41,6 @@ declare module "next-auth/jwt" {
     lastName?: string;
     username?: string;
     isActive?: boolean;
+    role?: string;
   }
 }

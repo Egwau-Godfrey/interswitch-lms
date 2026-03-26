@@ -119,7 +119,7 @@ export default function LoansPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Link href="/dashboard/loans/new">
+          <Link href="/manager/loans/new">
             <Button className="bg-[#E31C2D] hover:bg-[#C21827]">
               <Plus className="w-4 h-4 mr-2" />
               New Loan Application
@@ -258,7 +258,7 @@ export default function LoansPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
-                        <Link href={`/dashboard/loans/${loan.id}`}>
+                        <Link href={`/manager/loans/${loan.id}`}>
                           <DropdownMenuItem>
                             <Eye className="w-4 h-4 mr-2" /> View Details
                           </DropdownMenuItem>
