@@ -283,6 +283,23 @@ export default function UsersPage() {
 
   if (!mounted) return null; // Avoid hydration mismatch for useId hooks
 
+  // Error state if API fails
+  if (error && status === "authenticated") {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+        <div className="rounded-full bg-destructive/10 p-4 mb-4">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Failed to load users</h2>
+        <p className="text-muted-foreground mb-4">{error.message || "An unexpected error occurred. Please try refreshing the page."}</p>
+        <Button variant="outline" onClick={() => refetch()}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

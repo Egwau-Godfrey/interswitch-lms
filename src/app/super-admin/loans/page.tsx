@@ -57,12 +57,6 @@ import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
 import { RecordPaymentDialog } from "@/components/shared/record-payment-dialog";
 
-// Mock data for fallback
-const mockLoans: Loan[] = [
-  { id: "L001", agent_id: "3ISO0056", applicant_id: "agent-1", loan_type: "float", product_id: "prod-001", principal_amount: 500000, disbursed_amount: 500000, application_fee: 300, interest_rate: 10, penalty_rate: 1, interest_amount: 50000, penalty_amount: 0, total_paid: 200000, outstanding_balance: 350000, tenure_days: 30, due_date: "2026-02-15T00:00:00Z", disbursed_at: "2026-01-15T10:00:00Z", cleared_at: null, status: "disbursed", is_overdue: false, days_overdue: 0, disbursement_reference: "DSB-001", penalty_applied: false, created_at: "2026-01-15T10:00:00Z", updated_at: "2026-01-15T10:00:00Z" },
-  { id: "L002", agent_id: "3ISO0057", applicant_id: "agent-2", loan_type: "float", product_id: "prod-001", principal_amount: 750000, disbursed_amount: 750000, application_fee: 300, interest_rate: 10, penalty_rate: 1, interest_amount: 75000, penalty_amount: 25000, total_paid: 100000, outstanding_balance: 750000, tenure_days: 30, due_date: "2025-12-20T00:00:00Z", disbursed_at: "2025-11-20T10:00:00Z", cleared_at: null, status: "overdue", is_overdue: true, days_overdue: 21, disbursement_reference: "DSB-002", penalty_applied: true, created_at: "2025-11-20T10:00:00Z", updated_at: "2026-01-10T10:30:00Z" },
-  { id: "L003", agent_id: "3ISO0058", applicant_id: "agent-3", loan_type: "pay_day", product_id: "prod-002", principal_amount: 1000000, disbursed_amount: 980000, application_fee: 20000, interest_rate: 8, penalty_rate: 1, interest_amount: 80000, penalty_amount: 0, total_paid: 1080000, outstanding_balance: 0, tenure_days: 60, due_date: "2025-12-01T00:00:00Z", disbursed_at: "2025-10-01T10:00:00Z", cleared_at: "2025-11-28T10:00:00Z", status: "cleared", is_overdue: false, days_overdue: 0, disbursement_reference: "DSB-003", penalty_applied: false, created_at: "2025-10-01T10:00:00Z", updated_at: "2025-11-28T10:00:00Z" },
-];
 
 export default function LoansPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -89,21 +83,13 @@ export default function LoansPage() {
     }
   );
 
+
   // Fetch loans from API
   const { data: loansData, isLoading, error, refetch } = useApi(
     () => loansApi.list({
       page,
       page_size: pageSize,
       status: statusFilter !== "all" ? statusFilter as LoanStatus : undefined,
-    }).catch((err) => {
-      console.error("Loans API error:", err);
-      return {
-        data: mockLoans,
-        total: mockLoans.length,
-        page: 1,
-        page_size: 10,
-        total_pages: 1
-      };
     }),
     [page, pageSize, statusFilter, mounted, status === 'authenticated'],
     {
@@ -112,15 +98,16 @@ export default function LoansPage() {
     }
   );
 
-  const loans = loansData?.data || mockLoans;
-  const totalItems = loansData?.total || mockLoans.length;
+  const loans = loansData?.data || [];
+  const totalItems = loansData?.total || 0;
   const totalPages = loansData?.total_pages || 1;
+
 
   // Filter by search query locally
   const filteredLoans = loans.filter(loan =>
     !searchQuery ||
-    loan.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    loan.agent_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    loan.id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    loan.agent_id?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     loan.disbursement_reference?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -135,6 +122,23 @@ export default function LoansPage() {
 
   const totalOverdue = stats?.total_overdue || 0;
   const recoveryRate = stats?.recovery_rate || 0;
+
+  // Error state if API fails
+  if (error && status === "authenticated") {
+    return (
+      <div className="flex flex-col items-center justify-center h-[60vh] text-center">
+        <div className="rounded-full bg-destructive/10 p-4 mb-4">
+          <AlertTriangle className="h-8 w-8 text-destructive" />
+        </div>
+        <h2 className="text-2xl font-bold mb-2">Failed to load loans</h2>
+        <p className="text-muted-foreground mb-4">{error.message || "An unexpected error occurred. Please try refreshing the page."}</p>
+        <Button variant="outline" onClick={() => refetch()}>
+          <RefreshCw className="w-4 h-4 mr-2" />
+          Retry
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
