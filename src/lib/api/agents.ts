@@ -81,7 +81,7 @@ export const agentsApi = {
    * Export agents to CSV
    */
   exportCsv: async (params?: AgentListParams): Promise<Blob> => {
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000'}/agents/export`);
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL}/agents/export`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
