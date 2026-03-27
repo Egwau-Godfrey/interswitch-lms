@@ -55,20 +55,10 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { paymentsApi } from "@/lib/api";
-import type { LoanPayment, PaymentChannel, PaymentStatus } from "@/lib/types";
+import type { LoanPayment, PaymentChannel, PaymentStatus, PaymentCreate } from "@/lib/types";
 import { formatCurrency } from "@/components/shared/stat-card";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
-
-// Mock data for fallback
-const mockPayments: LoanPayment[] = [
-  { id: "pay-001", loan_id: "loan-001", amount: 100000, payment_reference: "PAY-001-2026", channel: "mobile_money", status: "posted", payment_date: "2026-01-15T10:30:00Z", created_at: "2026-01-15T10:30:00Z" },
-  { id: "pay-002", loan_id: "loan-002", amount: 250000, payment_reference: "PAY-002-2026", channel: "bank_transfer", status: "posted", payment_date: "2026-01-14T14:45:00Z", created_at: "2026-01-14T14:45:00Z" },
-  { id: "pay-003", loan_id: "loan-003", amount: 75000, payment_reference: "PAY-003-2026", channel: "auto_debit", status: "pending", payment_date: "2026-01-13T09:15:00Z", created_at: "2026-01-13T09:15:00Z" },
-  { id: "pay-004", loan_id: "loan-004", amount: 180000, payment_reference: "PAY-004-2026", channel: "card", status: "posted", payment_date: "2026-01-12T16:20:00Z", created_at: "2026-01-12T16:20:00Z" },
-  { id: "pay-005", loan_id: "loan-005", amount: 50000, payment_reference: "PAY-005-2026", channel: "manual", status: "failed", payment_date: "2026-01-11T11:00:00Z", created_at: "2026-01-11T11:00:00Z" },
-  { id: "pay-006", loan_id: "loan-001", amount: 120000, payment_reference: "PAY-006-2026", channel: "mobile_money", status: "posted", payment_date: "2026-01-10T08:30:00Z", created_at: "2026-01-10T08:30:00Z" },
-  { id: "pay-007", loan_id: "loan-006", amount: 95000, payment_reference: "PAY-007-2026", channel: "auto_debit", status: "reversed", payment_date: "2026-01-09T13:45:00Z", created_at: "2026-01-09T13:45:00Z" },
-];
+import { ErrorState, EmptyState } from "@/components/shared/loading-states";
 
 // Helper function to format date
 function formatDate(dateString: string): string {
@@ -120,7 +110,8 @@ function PaymentChannelBadge({ channel }: { channel: PaymentChannel }) {
     bank_transfer: "Bank Transfer",
     card: "Card",
     auto_debit: "Auto-Debit",
-    manual: "Manual",
+    cash: "Cash",
+    wallet: "Wallet",
   };
   return (
     <Badge variant="outline" className="font-normal uppercase text-[10px]">
@@ -143,22 +134,31 @@ export default function PaymentsPage() {
       page,
       page_size: pageSize,
       status: statusFilter !== "all" ? statusFilter as PaymentStatus : undefined,
-    }).catch((err) => {
-      console.error("Payments API error:", err);
-      return { data: mockPayments, total: mockPayments.length, page: 1, page_size: 10, total_pages: 1 };
     }),
     [page, pageSize, statusFilter],
     { cacheKey: `payments-${page}-${statusFilter}` }
   );
 
-  const payments = paymentsData?.data || mockPayments;
-  const totalPages = paymentsData?.total_pages || 1;
-  const totalItems = paymentsData?.total || payments.length;
+  const payments = paymentsData?.data ?? [];
+  const totalPages = paymentsData?.total_pages ?? 1;
+  const totalItems = paymentsData?.total ?? 0;
+
+  // Show error state if API failed and no data
+  if (error && !payments.length) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
+        <ErrorState
+          message="Failed to load payments"
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
 
   // Post manual payment mutation
   const postPayment = useMutation(
-    (data: { loan_id: string; amount: number; channel: PaymentChannel; payment_reference?: string }) => 
-      paymentsApi.postManual(data),
+    (data: { loan_id: string; amount: number; channel: PaymentChannel; payment_reference?: string }) =>
+      paymentsApi.create(data as PaymentCreate),
     {
       onSuccess: () => {
         toast.success("Manual payment posted successfully!");
@@ -310,15 +310,17 @@ export default function PaymentsPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="channel">Channel</Label>
-                    <Select name="channel" defaultValue="manual">
+                    <Select name="channel" defaultValue="cash">
                       <SelectTrigger id="channel">
                         <SelectValue placeholder="Select channel" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="manual">Manual Entry</SelectItem>
+                        <SelectItem value="cash">Cash</SelectItem>
                         <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
                         <SelectItem value="mobile_money">Mobile Money</SelectItem>
                         <SelectItem value="card">Card</SelectItem>
+                        <SelectItem value="wallet">Wallet</SelectItem>
+                        <SelectItem value="auto_debit">Auto-Debit</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -426,7 +428,8 @@ export default function PaymentsPage() {
               <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
               <SelectItem value="card">Card</SelectItem>
               <SelectItem value="auto_debit">Auto-Debit</SelectItem>
-              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="cash">Cash</SelectItem>
+              <SelectItem value="wallet">Wallet</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -515,8 +518,13 @@ export default function PaymentsPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
-                  No payments found.
+                <TableCell colSpan={8} className="h-24">
+                  <EmptyState
+                    title="No payments found"
+                    description={searchQuery || statusFilter !== "all" || channelFilter !== "all"
+                      ? "Try adjusting your search or filters"
+                      : "Payments will appear here once they are recorded"}
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -527,12 +535,12 @@ export default function PaymentsPage() {
       {/* Pagination */}
       {!isLoading && filteredPayments.length > 0 && (
         <DataTablePagination
-          currentPage={page}
-          totalPages={totalPages}
+          page={page}
           pageSize={pageSize}
           totalItems={totalItems}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
         />
       )}
     </div>

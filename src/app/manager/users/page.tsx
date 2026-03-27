@@ -61,7 +61,7 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { usersApi } from "@/lib/api";
-import type { User } from "@/lib/types";
+import type { User, UserCreate } from "@/lib/types";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import {
   Select,
@@ -71,14 +71,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Mock data for fallback
-const mockUsers: User[] = [
-  { id: "user-001", username: "admin_jake", email: "jake@interswitch.com", agent_id: "ADMIN001", first_name: "Jake", last_name: "Adams", phone_number: "+256700111222", is_active: true, is_admin: true, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
-  { id: "user-002", username: "staff_mary", email: "mary@interswitch.com", agent_id: "STAFF001", first_name: "Mary", last_name: "Obi", phone_number: "+256700222333", is_active: true, is_admin: false, created_at: "2025-01-05T00:00:00Z", updated_at: "2025-01-05T00:00:00Z" },
-  { id: "user-003", username: "manager_sam", email: "sam@interswitch.com", agent_id: "MGR001", first_name: "Sam", last_name: "Chen", phone_number: "+256700333444", is_active: false, is_admin: true, created_at: "2025-01-10T00:00:00Z", updated_at: "2025-01-10T00:00:00Z" },
-  { id: "user-004", username: "ops_linda", email: "linda@interswitch.com", agent_id: "OPS001", first_name: "Linda", last_name: "Nakato", phone_number: "+256700444555", is_active: true, is_admin: false, created_at: "2025-01-15T00:00:00Z", updated_at: "2025-01-15T00:00:00Z" },
-  { id: "user-005", username: "support_john", email: "john@interswitch.com", agent_id: "SUP001", first_name: "John", last_name: "Mukasa", phone_number: "+256700555666", is_active: true, is_admin: false, created_at: "2025-01-20T00:00:00Z", updated_at: "2025-01-20T00:00:00Z" },
-];
 
 // Helper to get full name
 function getFullName(user: User): string {
@@ -113,21 +105,18 @@ export default function UsersPage() {
 
   // Fetch users from API
   const { data: usersData, isLoading, error, refetch } = useApi(
-    () => usersApi.list({ page, page_size: pageSize }).catch((err) => {
-      console.error("Users API error:", err);
-      return { data: mockUsers, total: mockUsers.length, page: 1, page_size: 10, total_pages: 1 };
-    }),
+    () => usersApi.list({ page, page_size: pageSize }),
     [page, pageSize],
     { cacheKey: `users-${page}` }
   );
 
-  const users = usersData?.data || mockUsers;
+  const users = usersData?.data || [];
   const totalPages = usersData?.total_pages || 1;
-  const totalItems = usersData?.total || users.length;
+  const totalItems = usersData?.total || 0;
 
   // Create user mutation
   const createUser = useMutation(
-    (data: Partial<User>) => usersApi.create(data),
+    (data: UserCreate) => usersApi.create(data),
     {
       onSuccess: () => {
         toast.success("User created successfully!");
@@ -205,11 +194,13 @@ export default function UsersPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     createUser.mutate({
+      agent_id: formData.get("agent_id") as string,
       first_name: formData.get("fname") as string,
       last_name: formData.get("lname") as string,
       email: formData.get("u_email") as string,
       username: formData.get("username") as string,
       phone_number: formData.get("phone") as string,
+      password: formData.get("password") as string,
       is_admin: formData.get("is_admin") === "on",
       is_active: formData.get("is_active") === "on",
     });
@@ -233,15 +224,6 @@ export default function UsersPage() {
     if (deleteUser) {
       deleteUserMutation.mutate(deleteUser.id);
     }
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize);
-    setPage(1);
   };
 
   return (
@@ -286,8 +268,16 @@ export default function UsersPage() {
                   <Input id="username" name="username" placeholder="john_doe" required />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="agent_id">Agent ID</Label>
+                  <Input id="agent_id" name="agent_id" placeholder="3ISO0001" required />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="u_email">Email Address</Label>
                   <Input id="u_email" name="u_email" type="email" placeholder="john@interswitch.com" required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input id="password" name="password" type="password" placeholder="••••••••" required minLength={8} />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
@@ -497,12 +487,12 @@ export default function UsersPage() {
       {/* Pagination */}
       {!isLoading && filteredUsers.length > 0 && (
         <DataTablePagination
-          currentPage={page}
-          totalPages={totalPages}
+          page={page}
           pageSize={pageSize}
           totalItems={totalItems}
-          onPageChange={handlePageChange}
-          onPageSizeChange={handlePageSizeChange}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
         />
       )}
 

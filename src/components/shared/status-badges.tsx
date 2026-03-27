@@ -9,7 +9,7 @@ import type { LoanStatus, AgentStatus, PaymentStatus } from "@/lib/types";
 // Loan Status Badge
 // ============================================
 interface LoanStatusBadgeProps {
-  status: LoanStatus;
+  status: LoanStatus | null;
   className?: string;
 }
 

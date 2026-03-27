@@ -43,101 +43,6 @@ import { LoadingState, ErrorState } from "@/components/shared/loading-states";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
 
-// Mock data for development
-const mockLoan: Loan = {
-  id: "loan-001",
-  agent_id: "3ISO0056",
-  product_id: "prod-001",
-  principal_amount: 500000,
-  interest_rate: 10,
-  penalty_rate: 1,
-  interest_amount: 50000,
-  penalty_amount: 5000,
-  total_paid: 200000,
-  outstanding_balance: 355000,
-  tenure_days: 30,
-  due_date: "2026-02-04T10:30:00",
-  disbursed_at: "2026-01-05T10:30:00",
-  cleared_at: null,
-  status: "overdue",
-  is_overdue: true,
-  days_overdue: 5,
-  disbursement_reference: "DSB-001-2026",
-  created_at: "2026-01-05T10:30:00",
-  updated_at: "2026-01-10T10:30:00",
-};
-
-const mockLoanDetail: LoanDetailResponse = {
-  loan: mockLoan,
-  agent: {
-    id: "1",
-    agent_id: "3ISO0056",
-    full_name: "John Doe",
-    email: "john.doe@example.com",
-    phone_number: "+256700123456",
-    national_id_number: "CM12345678901234",
-    employer_name: "Interswitch Uganda Ltd",
-    employment_status: "full_time",
-    monthly_income: 2500000,
-    consents_to_credit_check: true,
-    default_product_id: null,
-    status: "active",
-    created_at: "2025-06-15T10:30:00",
-    updated_at: "2025-12-01T14:22:00",
-  },
-  product: {
-    id: "prod-001",
-    name: "Quick Loan 30",
-    description: "Short-term loan product",
-    max_amount: 1000000,
-    interest_rate: 10,
-    penalty_rate: 1,
-    tenure_days: 30,
-    grace_period_days: 2,
-    requires_payroll: false,
-    is_default: true,
-    is_active: true,
-    created_at: "2025-01-01",
-    updated_at: "2025-01-01",
-  },
-  payments: [
-    {
-      id: "pay-001",
-      loan_id: "loan-001",
-      amount: 100000,
-      payment_reference: "PAY-001-2026",
-      channel: "mobile_money",
-      status: "posted",
-      payment_date: "2026-01-15T10:30:00",
-      created_at: "2026-01-15T10:30:00",
-    },
-    {
-      id: "pay-002",
-      loan_id: "loan-001",
-      amount: 100000,
-      payment_reference: "PAY-002-2026",
-      channel: "bank_transfer",
-      status: "posted",
-      payment_date: "2026-01-20T14:00:00",
-      created_at: "2026-01-20T14:00:00",
-    },
-  ],
-};
-
-const mockStatement: LoanStatementResponse = {
-  loan_id: "loan-001",
-  agent_id: "3ISO0056",
-  entries: [
-    { date: "2026-01-05", description: "Loan Disbursement", debit: 500000, credit: 0, balance: 500000, reference: "DSB-001" },
-    { date: "2026-01-05", description: "Interest Charge", debit: 50000, credit: 0, balance: 550000, reference: "INT-001" },
-    { date: "2026-01-15", description: "Payment Received", debit: 0, credit: 100000, balance: 450000, reference: "PAY-001" },
-    { date: "2026-01-20", description: "Payment Received", debit: 0, credit: 100000, balance: 350000, reference: "PAY-002" },
-    { date: "2026-02-05", description: "Penalty Charge", debit: 5000, credit: 0, balance: 355000, reference: "PEN-001" },
-  ],
-  opening_balance: 0,
-  closing_balance: 355000,
-};
-
 export default function LoanDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -147,17 +52,26 @@ export default function LoanDetailPage() {
 
   // Fetch loan detail
   const { data: loanDetail, isLoading, error, refetch } = useApi(
-    () => loansApi.getDetail(loanId).catch(() => mockLoanDetail),
+    () => loansApi.getDetail(loanId),
     [loanId],
     { cacheKey: `loan-${loanId}` }
   );
 
   // Fetch statement
   const { data: statement } = useApi(
-    () => loansApi.getStatement(loanId).catch(() => mockStatement),
+    () => loansApi.getStatement(loanId),
     [loanId],
     { cacheKey: `loan-statement-${loanId}` }
   );
+
+  // Show error toast on failure
+  React.useEffect(() => {
+    if (error) {
+      toast.error("Failed to load loan details", {
+        description: error.message || "Please try again",
+      });
+    }
+  }, [error]);
 
   // Clear loan mutation
   const clearLoan = useMutation(
@@ -183,13 +97,13 @@ export default function LoanDetailPage() {
     }
   );
 
-  const displayLoan = loanDetail?.loan || mockLoan;
-  const displayAgent = loanDetail?.agent || mockLoanDetail.agent;
-  const displayProduct = loanDetail?.product || mockLoanDetail.product;
-  const displayPayments = loanDetail?.payments || mockLoanDetail.payments;
-  const displayStatement = statement || mockStatement;
+  const displayLoan = loanDetail?.loan;
+  const displayAgent = loanDetail?.agent;
+  const displayProduct = loanDetail?.product;
+  const displayPayments = loanDetail?.payments ?? [];
+  const displayStatement = statement;
 
-  const paymentProgress = displayLoan.principal_amount > 0
+  const paymentProgress = displayLoan?.principal_amount
     ? Math.round((displayLoan.total_paid / (displayLoan.principal_amount + displayLoan.interest_amount + displayLoan.penalty_amount)) * 100)
     : 0;
 
@@ -198,7 +112,25 @@ export default function LoanDetailPage() {
   }
 
   if (error && !loanDetail) {
-    return <ErrorState message="Failed to load loan details" onRetry={() => router.refresh()} />;
+    return (
+      <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
+        <ErrorState
+          message="Failed to load loan details"
+          onRetry={() => refetch()}
+        />
+      </div>
+    );
+  }
+
+  if (!displayLoan) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
+        <ErrorState
+          message="Loan not found"
+          onRetry={() => router.push("/manager/loans")}
+        />
+      </div>
+    );
   }
 
   return (
@@ -339,7 +271,7 @@ export default function LoanDetailPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Product</p>
-                <p className="font-medium">{displayProduct.name}</p>
+                <p className="font-medium">{displayProduct?.name ?? "N/A"}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Tenure</p>
@@ -383,19 +315,23 @@ export default function LoanDetailPage() {
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-lg font-bold text-primary">
-                  {displayAgent.full_name.split(" ").map((n: string) => n[0]).join("")}
+                  {displayAgent?.full_name
+                    ? displayAgent.full_name.split(" ").map((n: string) => n[0]).join("")
+                    : "NA"}
                 </span>
               </div>
               <div>
-                <p className="font-medium">{displayAgent.full_name}</p>
-                <p className="text-sm text-muted-foreground">{displayAgent.agent_id}</p>
+                <p className="font-medium">{displayAgent?.full_name ?? "N/A"}</p>
+                <p className="text-sm text-muted-foreground">{displayAgent?.agent_id ?? "N/A"}</p>
               </div>
             </div>
-            <Link href={`/manager/agents/${displayAgent.agent_id}`}>
-              <Button variant="outline" size="sm" className="w-full">
-                View Agent Profile
-              </Button>
-            </Link>
+            {displayAgent && (
+              <Link href={`/manager/agents/${displayAgent.agent_id}`}>
+                <Button variant="outline" size="sm" className="w-full">
+                  View Agent Profile
+                </Button>
+              </Link>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -472,15 +408,15 @@ export default function LoanDetailPage() {
                 <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
                   <div>
                     <p className="text-xs text-muted-foreground">Agent</p>
-                    <p className="font-medium">{displayAgent.full_name}</p>
+                    <p className="font-medium">{displayAgent?.full_name ?? "N/A"}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Agent ID</p>
-                    <p className="font-medium">{displayAgent.agent_id}</p>
+                    <p className="font-medium">{displayAgent?.agent_id ?? "N/A"}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Product</p>
-                    <p className="font-medium">{displayProduct.name}</p>
+                    <p className="font-medium">{displayProduct?.name ?? "N/A"}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Status</p>
@@ -499,23 +435,33 @@ export default function LoanDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {displayStatement.entries.map((entry: LoanStatementEntry, idx: number) => (
-                      <TableRow key={idx}>
-                        <TableCell>{formatDate(entry.date)}</TableCell>
-                        <TableCell>{entry.description}</TableCell>
-                        <TableCell className="text-red-600">
-                          {entry.debit > 0 ? formatCurrency(entry.debit, "UGX") : "-"}
+                    {displayStatement?.entries && displayStatement.entries.length > 0 ? (
+                      displayStatement.entries.map((entry: LoanStatementEntry, idx: number) => (
+                        <TableRow key={idx}>
+                          <TableCell>{formatDate(entry.date)}</TableCell>
+                          <TableCell>{entry.description}</TableCell>
+                          <TableCell className="text-red-600">
+                            {entry.debit > 0 ? formatCurrency(entry.debit, "UGX") : "-"}
+                          </TableCell>
+                          <TableCell className="text-green-600">
+                            {entry.credit > 0 ? formatCurrency(entry.credit, "UGX") : "-"}
+                          </TableCell>
+                          <TableCell className="font-medium">{formatCurrency(entry.balance, "UGX")}</TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-muted-foreground">
+                          No statement entries available
                         </TableCell>
-                        <TableCell className="text-green-600">
-                          {entry.credit > 0 ? formatCurrency(entry.credit, "UGX") : "-"}
-                        </TableCell>
-                        <TableCell className="font-medium">{formatCurrency(entry.balance, "UGX")}</TableCell>
                       </TableRow>
-                    ))}
-                    <TableRow className="border-t-2 bg-muted/50">
-                      <TableCell colSpan={4} className="font-bold text-lg">Closing Balance</TableCell>
-                      <TableCell className="font-bold text-lg">{formatCurrency(displayStatement.closing_balance, "UGX")}</TableCell>
-                    </TableRow>
+                    )}
+                    {displayStatement && (
+                      <TableRow className="border-t-2 bg-muted/50">
+                        <TableCell colSpan={4} className="font-bold text-lg">Closing Balance</TableCell>
+                        <TableCell className="font-bold text-lg">{formatCurrency(displayStatement.closing_balance, "UGX")}</TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
 

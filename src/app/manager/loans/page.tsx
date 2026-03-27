@@ -54,19 +54,13 @@ import type { Loan, LoanStatus } from "@/lib/types";
 import { LoanStatusBadge } from "@/components/shared/status-badges";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
-
-// Mock data for fallback
-const mockLoans: Loan[] = [
-  { id: "L001", agent_id: "3ISO0056", product_id: "prod-001", principal_amount: 500000, interest_rate: 10, penalty_rate: 1, interest_amount: 50000, penalty_amount: 0, total_paid: 200000, outstanding_balance: 350000, tenure_days: 30, due_date: "2026-02-15T00:00:00Z", disbursed_at: "2026-01-15T10:00:00Z", cleared_at: null, status: "disbursed", is_overdue: false, days_overdue: 0, disbursement_reference: "DSB-001", created_at: "2026-01-15T10:00:00Z", updated_at: "2026-01-15T10:00:00Z" },
-  { id: "L002", agent_id: "3ISO0057", product_id: "prod-001", principal_amount: 750000, interest_rate: 10, penalty_rate: 1, interest_amount: 75000, penalty_amount: 25000, total_paid: 100000, outstanding_balance: 750000, tenure_days: 30, due_date: "2025-12-20T00:00:00Z", disbursed_at: "2025-11-20T10:00:00Z", cleared_at: null, status: "overdue", is_overdue: true, days_overdue: 21, disbursement_reference: "DSB-002", created_at: "2025-11-20T10:00:00Z", updated_at: "2026-01-10T10:00:00Z" },
-  { id: "L003", agent_id: "3ISO0058", product_id: "prod-002", principal_amount: 1000000, interest_rate: 8, penalty_rate: 1, interest_amount: 80000, penalty_amount: 0, total_paid: 1080000, outstanding_balance: 0, tenure_days: 60, due_date: "2025-12-01T00:00:00Z", disbursed_at: "2025-10-01T10:00:00Z", cleared_at: "2025-11-28T10:00:00Z", status: "cleared", is_overdue: false, days_overdue: 0, disbursement_reference: "DSB-003", created_at: "2025-10-01T10:00:00Z", updated_at: "2025-11-28T10:00:00Z" },
-];
+import { ErrorState, EmptyState } from "@/components/shared/loading-states";
 
 export default function LoansPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [page, setPage] = React.useState(1);
-  const [pageSize] = React.useState(10);
+  const [pageSize, setPageSize] = React.useState(10);
 
   // Fetch loans from API
   const { data: loansData, isLoading, error, refetch } = useApi(
@@ -74,23 +68,14 @@ export default function LoansPage() {
       page,
       page_size: pageSize,
       status: statusFilter !== "all" ? statusFilter as LoanStatus : undefined,
-    }).catch((err) => {
-      console.error("Loans API error:", err);
-      return {
-        data: mockLoans,
-        total: mockLoans.length,
-        page: 1,
-        page_size: 10,
-        total_pages: 1
-      };
     }),
     [page, pageSize, statusFilter],
     { cacheKey: `loans-${page}-${statusFilter}` }
   );
 
-  const loans = loansData?.data || mockLoans;
-  const totalItems = loansData?.total || mockLoans.length;
-  const totalPages = loansData?.total_pages || 1;
+  const loans = loansData?.data ?? [];
+  const totalItems = loansData?.total ?? 0;
+  const totalPages = loansData?.total_pages ?? 1;
 
   // Filter by search query locally
   const filteredLoans = loans.filter(loan =>
@@ -106,6 +91,18 @@ export default function LoansPage() {
   const totalOverdue = loans.filter(l => l.is_overdue).reduce((sum, l) => sum + l.outstanding_balance, 0);
   const clearedCount = loans.filter(l => l.status === "cleared").length;
   const recoveryRate = loans.length > 0 ? (clearedCount / loans.length) * 100 : 0;
+
+  // Show error state if API failed and no data
+  if (error && !loans.length) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
+        <ErrorState
+          message="Failed to load loans"
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -276,8 +273,13 @@ export default function LoansPage() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
-                  No loans found.
+                <TableCell colSpan={7} className="h-24">
+                  <EmptyState
+                    title="No loans found"
+                    description={searchQuery || statusFilter !== "all" 
+                      ? "Try adjusting your search or filters"
+                      : "Loans will appear here once they are created"}
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -287,11 +289,12 @@ export default function LoansPage() {
 
       {/* Pagination */}
       <DataTablePagination
-        currentPage={page}
-        totalPages={totalPages}
-        totalItems={totalItems}
+        page={page}
         pageSize={pageSize}
+        totalItems={totalItems}
+        totalPages={totalPages}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
       />
     </div>
   );

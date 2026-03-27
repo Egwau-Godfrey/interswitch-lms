@@ -45,13 +45,7 @@ import { productsApi, apiClient } from "@/lib/api";
 import type { LoanProduct } from "@/lib/types";
 import { formatCurrency } from "@/components/shared/stat-card";
 import { useSession } from "next-auth/react";
-
-// Mock data for fallback
-const mockProducts: LoanProduct[] = [
-  { id: "prod-001", name: "Quick Loan 30", description: "Short-term personal loan for agents", min_amount: 50000, max_amount: 500000, interest_rate: 10, penalty_rate: 1, tenure_days: 30, grace_period_days: 2, requires_payroll: false, is_default: true, is_active: true, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
-  { id: "prod-002", name: "SME Boost 60", description: "Medium-term loan for business growth", min_amount: 100000, max_amount: 2000000, interest_rate: 8, penalty_rate: 1, tenure_days: 60, grace_period_days: 5, requires_payroll: true, is_default: false, is_active: true, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
-  { id: "prod-003", name: "Payroll Advance", description: "Advance on upcoming salary payments", min_amount: 20000, max_amount: 150000, interest_rate: 5, penalty_rate: 0.5, tenure_days: 14, grace_period_days: 0, requires_payroll: true, is_default: false, is_active: false, created_at: "2025-01-01T00:00:00Z", updated_at: "2025-01-01T00:00:00Z" },
-];
+import { ErrorState, EmptyState } from "@/components/shared/loading-states";
 
 export default function ProductsPage() {
   const { data: session } = useSession();
@@ -92,7 +86,19 @@ export default function ProductsPage() {
     }
   }, [error, session]);
 
-  const products = productsData?.data || [];
+  const products = productsData?.data ?? [];
+
+  // Show error state if API failed and no data
+  if (error && !products.length) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
+        <ErrorState
+          message="Failed to load products"
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
 
   // Create product mutation
   const createProduct = useMutation(
@@ -268,7 +274,7 @@ export default function ProductsPage() {
             </Card>
           ))}
         </div>
-      ) : (
+      ) : products.length > 0 ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (
             <Card key={product.id} className={cn("relative", !product.is_active && "opacity-60")}>
@@ -353,6 +359,19 @@ export default function ProductsPage() {
               </CardContent>
             </Card>
           ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg">
+          <EmptyState
+            title="No products found"
+            description="Create your first loan product to get started"
+            action={
+              <Button onClick={() => setIsCreateOpen(true)} className="mt-4">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Product
+              </Button>
+            }
+          />
         </div>
       )}
 

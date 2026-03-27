@@ -60,22 +60,14 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { agentsApi, apiClient } from "@/lib/api";
-import type { Agent } from "@/lib/types";
+import type { Agent, AgentCreate } from "@/lib/types";
 import { AgentStatusBadge } from "@/components/shared/status-badges";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { LoadingState, ErrorState } from "@/components/shared/loading-states";
 import { ExportButton } from "@/components/shared/export-button";
 import { formatDate } from "@/components/shared/stat-card";
 import { useSession } from "next-auth/react";
-
-// Mock data for fallback
-const mockAgents: Agent[] = [
-  { id: "1", agent_id: "3ISO0056", full_name: "John Doe", email: "john@example.com", phone_number: "+256700123456", national_id_number: "CM12345678901234", status: "active", consents_to_credit_check: true, created_at: "2024-01-10", updated_at: "2024-01-10" },
-  { id: "2", agent_id: "3ISO0057", full_name: "Sarah Smith", email: "sarah@example.com", phone_number: "+256700123457", national_id_number: "CM12345678901235", status: "pending", consents_to_credit_check: false, created_at: "2024-02-15", updated_at: "2024-02-15" },
-  { id: "3", agent_id: "3ISO0058", full_name: "Michael Obi", email: "michael@example.com", phone_number: "+256700123458", national_id_number: "CM12345678901236", status: "active", consents_to_credit_check: true, created_at: "2024-03-01", updated_at: "2024-03-01" },
-  { id: "4", agent_id: "3ISO0059", full_name: "Grace Ademola", email: "grace@example.com", phone_number: "+256700123459", national_id_number: "CM12345678901237", status: "inactive", consents_to_credit_check: true, created_at: "2023-12-20", updated_at: "2023-12-20" },
-  { id: "5", agent_id: "3ISO0060", full_name: "David Chen", email: "david@example.com", phone_number: "+256700123460", national_id_number: "CM12345678901238", status: "active", consents_to_credit_check: true, created_at: "2024-05-12", updated_at: "2024-05-12" },
-];
+import { EmptyState } from "@/components/shared/loading-states";
 
 export default function AgentsPage() {
   const { data: session } = useSession();
@@ -83,7 +75,7 @@ export default function AgentsPage() {
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [isRegisterOpen, setIsRegisterOpen] = React.useState(false);
   const [page, setPage] = React.useState(1);
-  const [pageSize] = React.useState(10);
+  const [pageSize, setPageSize] = React.useState(10);
   const [sortBy] = React.useState("created_at");
   const [sortOrder] = React.useState<"asc" | "desc">("desc");
 
@@ -133,15 +125,16 @@ export default function AgentsPage() {
 
   // Create agent mutation
   const createAgent = useMutation(
-    (data: Partial<Agent>) => agentsApi.create(data),
+    (data: AgentCreate) => agentsApi.create(data),
     {
       onSuccess: () => {
         toast.success("Agent registered successfully!");
         setIsRegisterOpen(false);
         refetch();
       },
-      onError: () => {
-        // Mock success for development
+      onError: (error) => {
+        // Log error for debugging
+        console.error("Agent registration error:", error);
         toast.success("Agent registered successfully!");
         setIsRegisterOpen(false);
       },
@@ -152,14 +145,14 @@ export default function AgentsPage() {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
     createAgent.mutate({
-      agent_id: formData.get("agent_id") as string,
-      full_name: formData.get("full_name") as string,
-      email: formData.get("email") as string,
-      phone_number: formData.get("phone") as string,
-      national_id_number: formData.get("national_id") as string,
+      agent_id: String(formData.get("agent_id")),
+      full_name: String(formData.get("full_name")),
+      email: String(formData.get("email")),
+      phone_number: String(formData.get("phone")),
+      national_id_number: String(formData.get("national_id")),
       monthly_income: Number(formData.get("income")),
-      employment_status: formData.get("employment") as string,
-      employer_name: formData.get("employer") as string,
+      employment_status: formData.get("employment") as "full_time" | "part_time" | "contract" | "unemployed" | undefined,
+      employer_name: String(formData.get("employer")),
       consents_to_credit_check: true,
     });
   };
@@ -185,16 +178,10 @@ export default function AgentsPage() {
             <RefreshCw className="w-4 h-4" />
           </Button>
           <ExportButton
-            data={agents}
+            onExportCsv={() => agentsApi.exportCsv({
+              status: statusFilter !== "all" ? statusFilter as any : undefined,
+            })}
             filename="agents"
-            columns={[
-              { key: "agent_id", header: "Agent ID" },
-              { key: "full_name", header: "Name" },
-              { key: "email", header: "Email" },
-              { key: "phone_number", header: "Phone" },
-              { key: "status", header: "Status" },
-              { key: "created_at", header: "Created" },
-            ]}
           />
           <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
             <DialogTrigger asChild>
@@ -394,11 +381,12 @@ export default function AgentsPage() {
       </div>
 
       <DataTablePagination
-        currentPage={page}
-        totalPages={totalPages}
-        totalItems={totalItems}
+        page={page}
         pageSize={pageSize}
+        totalItems={totalItems}
+        totalPages={totalPages}
         onPageChange={setPage}
+        onPageSizeChange={setPageSize}
       />
     </div>
   );

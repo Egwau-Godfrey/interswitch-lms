@@ -40,43 +40,7 @@ import type { DashboardStats } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-
-// Mock data for development/fallback
-const mockStats: DashboardStats = {
-  total_active_loans: 156,
-  total_disbursed: 45000000,
-  total_collections: 38500000,
-  total_overdue: 6500000,
-  overdue_count: 23,
-  default_rate: 4.2,
-  recovery_rate: 85.5,
-  disbursement_trend: [
-    { month: "Jan", disbursed: 4200000, collected: 3800000 },
-    { month: "Feb", disbursed: 4800000, collected: 4100000 },
-    { month: "Mar", disbursed: 5100000, collected: 4900000 },
-    { month: "Apr", disbursed: 4500000, collected: 4200000 },
-    { month: "May", disbursed: 5500000, collected: 5000000 },
-    { month: "Jun", disbursed: 6000000, collected: 5200000 },
-  ],
-  loan_status_distribution: [
-    { status: "disbursed", count: 85, amount: 25000000 },
-    { status: "overdue", count: 23, amount: 6500000 },
-    { status: "cleared", count: 45, amount: 12000000 },
-    { status: "defaulted", count: 3, amount: 1500000 },
-  ],
-  overdue_aging: [
-    { range: "1-7 days", count: 10, amount: 2500000 },
-    { range: "8-14 days", count: 6, amount: 1800000 },
-    { range: "15-30 days", count: 4, amount: 1200000 },
-    { range: "30+ days", count: 3, amount: 1000000 },
-  ],
-  recent_activity: [
-    { id: "1", type: "loan_disbursed", description: "Loan disbursed to John Doe", amount: 500000, timestamp: new Date(Date.now() - 600000).toISOString() },
-    { id: "2", type: "payment_received", description: "Payment received from Sarah Smith", amount: 250000, timestamp: new Date(Date.now() - 1500000).toISOString() },
-    { id: "3", type: "loan_disbursed", description: "Loan disbursed to Michael Obi", amount: 1000000, timestamp: new Date(Date.now() - 3600000).toISOString() },
-    { id: "4", type: "loan_overdue", description: "Loan overdue for David Chen", amount: 750000, timestamp: new Date(Date.now() - 7200000).toISOString() },
-  ],
-};
+import { ErrorState } from "@/components/shared/loading-states";
 
 // Status colors for pie chart
 const statusColors: Record<string, string> = {
@@ -126,8 +90,19 @@ export default function DashboardPage() {
     }
   }, [error, session]);
 
-  const displayStats = stats || mockStats;
   const isManager = session?.user?.role === 'manager';
+
+  // Show error state if API failed and no data
+  if (error && !stats) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
+        <ErrorState
+          message="Failed to load dashboard data"
+          onRetry={refetch}
+        />
+      </div>
+    );
+  }
 
   if (isManager) {
     return (
@@ -142,11 +117,11 @@ export default function DashboardPage() {
   }
 
   // Prepare pie chart data
-  const pieData = displayStats.loan_status_distribution.map((item) => ({
+  const pieData = stats?.loan_status_distribution.map((item) => ({
     name: item.status.charAt(0).toUpperCase() + item.status.slice(1),
     value: item.count,
     color: statusColors[item.status] || "#6B7280",
-  }));
+  })) || [];
 
   return (
     <div className="space-y-6">
@@ -189,7 +164,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-                  {displayStats.total_active_loans}
+                  {stats?.total_active_loans ?? 0}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Active loans in portfolio
@@ -214,7 +189,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-                  {formatCurrency(displayStats.total_disbursed, "UGX", true)}
+                  {formatCurrency(stats?.total_disbursed ?? 0, "UGX", true)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Total amount disbursed
@@ -239,7 +214,7 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-                  {formatCurrency(displayStats.total_collections, "UGX", true)}
+                  {formatCurrency(stats?.total_collections ?? 0, "UGX", true)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   Total payments collected
@@ -264,10 +239,10 @@ export default function DashboardPage() {
             ) : (
               <>
                 <div className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-                  {formatCurrency(displayStats.total_overdue, "UGX", true)}
+                  {formatCurrency(stats?.total_overdue ?? 0, "UGX", true)}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {displayStats.overdue_count} loans overdue
+                  {stats?.overdue_count ?? 0} loans overdue
                 </p>
               </>
             )}
@@ -281,7 +256,7 @@ export default function DashboardPage() {
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Default Rate</p>
-              <p className="text-2xl font-bold">{displayStats.default_rate.toFixed(1)}%</p>
+              <p className="text-2xl font-bold">{stats?.default_rate?.toFixed(1) ?? "0.0"}%</p>
             </div>
             <div className="h-12 w-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
               <Percent className="h-6 w-6 text-purple-600 dark:text-purple-400" />
@@ -292,7 +267,7 @@ export default function DashboardPage() {
           <CardContent className="flex items-center justify-between p-6">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Recovery Rate</p>
-              <p className="text-2xl font-bold">{displayStats.recovery_rate.toFixed(1)}%</p>
+              <p className="text-2xl font-bold">{stats?.recovery_rate?.toFixed(1) ?? "0.0"}%</p>
             </div>
             <div className="h-12 w-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
               <Target className="h-6 w-6 text-green-600 dark:text-green-400" />
@@ -313,12 +288,12 @@ export default function DashboardPage() {
               <Skeleton className="h-[350px]" />
             ) : (
               <ResponsiveContainer width="100%" height={350}>
-                <BarChart data={displayStats.disbursement_trend}>
+                <BarChart data={stats?.disbursement_trend ?? []}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="month" className="text-xs" />
                   <YAxis tickFormatter={(v) => formatCurrency(v, "UGX", true)} className="text-xs" />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value, "UGX")}
+                    formatter={(value: number | undefined) => formatCurrency(value ?? 0, "UGX")}
                     contentStyle={{ backgroundColor: "#ffffff", border: "1px solid hsl(var(--border))" }}
                   />
                   <Legend />
@@ -346,7 +321,7 @@ export default function DashboardPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    label={({ name, percent }) => `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
@@ -377,16 +352,16 @@ export default function DashboardPage() {
               <Skeleton className="h-[250px]" />
             ) : (
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={displayStats.overdue_aging} layout="vertical">
+                <BarChart data={stats?.overdue_aging ?? []} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis type="number" tickFormatter={(v) => formatCurrency(v, "UGX", true)} className="text-xs" />
                   <YAxis dataKey="range" type="category" className="text-xs" width={80} />
                   <Tooltip
-                    formatter={(value: number) => formatCurrency(value, "UGX")}
+                    formatter={(value: number | undefined) => formatCurrency(value ?? 0, "UGX")}
                     contentStyle={{ backgroundColor: "#ffffff", border: "1px solid hsl(var(--border))" }}
                   />
                   <Bar dataKey="amount" name="Amount" fill="#F59E0B" radius={[0, 4, 4, 0]}>
-                    {displayStats.overdue_aging.map((entry, index) => (
+                    {(stats?.overdue_aging ?? []).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={index > 2 ? "#EF4444" : "#F59E0B"} />
                     ))}
                   </Bar>
@@ -418,7 +393,7 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {displayStats.recent_activity.map((activity) => (
+                {(stats?.recent_activity ?? []).map((activity) => (
                   <div key={activity.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
                     <div className="flex items-center gap-3">
                       <div className={cn(
