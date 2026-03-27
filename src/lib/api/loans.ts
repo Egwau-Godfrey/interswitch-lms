@@ -81,7 +81,7 @@ export const loansApi = {
    * Export loans to CSV
    */
   exportCsv: async (params?: LoanListParams): Promise<Blob> => {
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL}/loans/export`);
+    const url = new URL(`${process.env.NEXT_PUBLIC_API_URL}/loans/export`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {
@@ -109,7 +109,7 @@ export const loansApi = {
    * Download loan statement as PDF
    */
   downloadStatement: async (loanId: string): Promise<Blob> => {
-    const url = `${process.env.NEXT_PUBLIC_API_BASE_URL}/loans/${loanId}/ledger/download`;
+    const url = `${process.env.NEXT_PUBLIC_BASE_URL}/loans/${loanId}/ledger/download`;
 
     const accessToken = apiClient.getAccessToken();
     const headers: HeadersInit = {};
