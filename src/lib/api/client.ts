@@ -2,7 +2,25 @@
 // API Client Configuration
 // ============================================
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL;
+const getApiBaseUrl = (): string => {
+  const url = process.env.NEXT_PUBLIC_API_BASE_URL;
+  
+  if (!url) {
+    throw new Error('NEXT_PUBLIC_API_BASE_URL environment variable is not set');
+  }
+  
+  // In production, enforce HTTPS
+  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
+    // If the current page is HTTPS, ensure API URL is also HTTPS
+    if (url.startsWith('http:')) {
+      return url.replace('http:', 'https:');
+    }
+  }
+  
+  return url;
+};
+
+const API_BASE_URL = getApiBaseUrl();
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;
