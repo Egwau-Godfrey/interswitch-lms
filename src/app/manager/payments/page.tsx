@@ -175,7 +175,7 @@ export default function PaymentsPage() {
   // Filter payments by search query (client-side for now)
   const filteredPayments = React.useMemo(() => {
     let result = payments;
-    
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter((p) =>
@@ -184,13 +184,34 @@ export default function PaymentsPage() {
         p.payment_reference?.toLowerCase().includes(query)
       );
     }
-    
+
     if (channelFilter !== "all") {
       result = result.filter((p) => p.channel === channelFilter);
     }
-    
+
     return result;
   }, [payments, searchQuery, channelFilter]);
+
+  // Calculate pagination for filtered results
+  const isFiltering = !!searchQuery || channelFilter !== "all";
+  const filteredTotalItems = filteredPayments.length;
+  const filteredTotalPages = isFiltering ? Math.ceil(filteredTotalItems / pageSize) || 1 : totalPages;
+
+  // Reset page to 1 when filtering changes
+  React.useEffect(() => {
+    if (isFiltering) {
+      setPage(1);
+    }
+  }, [searchQuery, channelFilter]);
+
+  // Paginate the filtered results
+  const paginatedPayments = React.useMemo(() => {
+    if (isFiltering) {
+      const startIndex = (page - 1) * pageSize;
+      return filteredPayments.slice(startIndex, startIndex + pageSize);
+    }
+    return filteredPayments;
+  }, [filteredPayments, page, pageSize, isFiltering]);
 
   // Calculate summary stats
   const summaryStats = React.useMemo(() => {
@@ -464,8 +485,8 @@ export default function PaymentsPage() {
                   <TableCell><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                 </TableRow>
               ))
-            ) : filteredPayments.length > 0 ? (
-              filteredPayments.map((payment) => (
+) : paginatedPayments.length > 0 ? (
+                paginatedPayments.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell className="font-mono text-xs font-semibold">{payment.id}</TableCell>
                   <TableCell className="font-mono text-xs">
@@ -532,17 +553,17 @@ export default function PaymentsPage() {
         </Table>
       </div>
 
-      {/* Pagination */}
-      {!isLoading && filteredPayments.length > 0 && (
-        <DataTablePagination
-          page={page}
-          pageSize={pageSize}
-          totalItems={totalItems}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          onPageSizeChange={setPageSize}
-        />
-      )}
+            {/* Pagination */}
+          {!isLoading && paginatedPayments.length > 0 && (
+            <DataTablePagination
+              page={page}
+              pageSize={pageSize}
+              totalItems={isFiltering ? filteredTotalItems : totalItems}
+              totalPages={isFiltering ? filteredTotalPages : totalPages}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
+          )}
     </div>
   );
 }

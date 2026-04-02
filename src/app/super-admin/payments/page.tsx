@@ -390,6 +390,27 @@ export default function PaymentsPage() {
     return result;
   }, [allPayments, statusFilter, channelFilter, searchQuery]);
 
+  // Calculate pagination for filtered results
+  const isFiltering = statusFilter !== "all" || channelFilter !== "all" || !!searchQuery;
+  const filteredTotalItems = filteredPayments.length;
+  const filteredTotalPages = isFiltering ? Math.ceil(filteredTotalItems / pageSize) || 1 : totalPages;
+
+  // Reset page to 1 when filtering changes
+  React.useEffect(() => {
+    if (isFiltering) {
+      setPage(1);
+    }
+  }, [searchQuery, statusFilter, channelFilter]);
+
+  // Paginate the filtered results
+  const paginatedPayments = React.useMemo(() => {
+    if (isFiltering) {
+      const startIndex = (page - 1) * pageSize;
+      return filteredPayments.slice(startIndex, startIndex + pageSize);
+    }
+    return filteredPayments;
+  }, [filteredPayments, page, pageSize, isFiltering]);
+
   // Summary stats from actual data
   const summaryStats = React.useMemo(() => {
     const today = new Date().toDateString();
@@ -584,8 +605,8 @@ export default function PaymentsPage() {
                 message={(error as Error)?.message || "Failed to load payments"}
                 onRetry={refetch}
               />
-            ) : filteredPayments.length > 0 ? (
-              filteredPayments.map((payment) => (
+) : paginatedPayments.length > 0 ? (
+                      paginatedPayments.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell className="font-mono text-xs font-semibold">{payment.id}</TableCell>
                   <TableCell className="font-mono text-xs">{payment.payment_reference || "-"}</TableCell>
@@ -644,15 +665,15 @@ export default function PaymentsPage() {
         </Table>
       </div>
 
-      {/* Pagination */}
-      {!isLoading && !error && totalPages > 1 && (
-        <DataTablePagination
-          page={page}
-          pageSize={pageSize}
-          totalItems={totalItems}
-          totalPages={totalPages}
-          onPageChange={setPage}
-          onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+              {/* Pagination */}
+            {!isLoading && !error && (isFiltering ? filteredTotalPages : totalPages) > 1 && (
+              <DataTablePagination
+                page={page}
+                pageSize={pageSize}
+                totalItems={isFiltering ? filteredTotalItems : totalItems}
+                totalPages={isFiltering ? filteredTotalPages : totalPages}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
         />
       )}
 
