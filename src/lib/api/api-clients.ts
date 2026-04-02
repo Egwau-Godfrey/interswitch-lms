@@ -21,7 +21,7 @@ export const apiClientsApi = {
    * List all API clients with optional filtering and pagination
    */
   list: async (params?: { page?: number; page_size?: number; is_active?: boolean }): Promise<PaginatedResponse<ApiClientType>> => {
-    return apiClient.get<PaginatedResponse<ApiClientType>>('/api-clients', params as Record<string, string | number | boolean | undefined>);
+    return apiClient.get<PaginatedResponse<ApiClientType>>('/api-clients/', params as Record<string, string | number | boolean | undefined>);
   },
 
   /**

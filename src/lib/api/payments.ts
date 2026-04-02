@@ -2,7 +2,7 @@
 // Payments API Service
 // ============================================
 
-import { apiClient } from './client';
+import { apiClient, getSecureApiBaseUrl } from './client';
 import type {
   LoanPayment,
   PaymentCreate,
@@ -22,7 +22,7 @@ export const paymentsApi = {
    * List all payments with pagination and filters
    */
   list: async (params?: PaymentListParams): Promise<PaginatedResponse<LoanPayment>> => {
-    return apiClient.get<PaginatedResponse<LoanPayment>>('/payments', params);
+    return apiClient.get<PaginatedResponse<LoanPayment>>('/payments/', params);
   },
 
   /**
@@ -36,7 +36,7 @@ export const paymentsApi = {
    * Get payments for a specific loan
    */
   getByLoan: async (loanId: string): Promise<LoanPayment[]> => {
-    const response = await apiClient.get<PaginatedResponse<LoanPayment>>('/payments', { loan_id: loanId, page_size: 100 });
+    const response = await apiClient.get<PaginatedResponse<LoanPayment>>('/payments/', { loan_id: loanId, page_size: 100 });
     return response.data;
   },
 
@@ -44,7 +44,7 @@ export const paymentsApi = {
    * Export payments to CSV
    */
   exportCsv: async (params?: PaymentListParams): Promise<Blob> => {
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL}/payments/export`);
+    const url = new URL(`${getSecureApiBaseUrl()}/payments/export`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {

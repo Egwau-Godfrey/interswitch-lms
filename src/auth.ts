@@ -1,6 +1,22 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 
+// Helper to get secure API URL (works on both client and server)
+const getSecureApiUrl = (): string => {
+  let url = process.env.NEXT_PUBLIC_API_BASE_URL;
+  
+  if (!url) {
+    throw new Error('NEXT_PUBLIC_API_BASE_URL environment variable is not set');
+  }
+  
+  // Always force HTTPS in production (VERCEL_ENV is set on Vercel)
+  if (url.startsWith('http:') && (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production')) {
+    url = url.replace('http:', 'https:');
+  }
+  
+  return url;
+};
+
 const nextAuthConfig = {
   providers: [
     Credentials({
@@ -10,8 +26,8 @@ const nextAuthConfig = {
       },
       authorize: async (credentials) => {
         try {
-          // Call the backend API
-          const apiUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
+          // Call the backend API with secure URL
+          const apiUrl = getSecureApiUrl();
           const response = await fetch(`${apiUrl}/auth/login`, {
             method: "POST",
             headers: {

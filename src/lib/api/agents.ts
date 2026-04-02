@@ -2,7 +2,7 @@
 // Agents API Service
 // ============================================
 
-import { apiClient } from './client';
+import { apiClient, getSecureApiBaseUrl } from './client';
 import type {
   Agent,
   AgentCreate,
@@ -26,7 +26,7 @@ export const agentsApi = {
    * List all agents with pagination and filters
    */
   list: async (params?: AgentListParams): Promise<PaginatedResponse<Agent>> => {
-    return apiClient.get<PaginatedResponse<Agent>>('/agents', params);
+    return apiClient.get<PaginatedResponse<Agent>>('/agents/', params);
   },
 
   /**
@@ -81,7 +81,7 @@ export const agentsApi = {
    * Export agents to CSV
    */
   exportCsv: async (params?: AgentListParams): Promise<Blob> => {
-    const url = new URL(`${process.env.NEXT_PUBLIC_API_BASE_URL}/agents/export`);
+    const url = new URL(`${getSecureApiBaseUrl()}/agents/export`);
     if (params) {
       Object.entries(params).forEach(([key, value]) => {
         if (value !== undefined && value !== null) {

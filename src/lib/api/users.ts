@@ -23,7 +23,7 @@ export const usersApi = {
    * List all users with pagination
    */
   list: async (params?: ListParams): Promise<PaginatedResponse<User>> => {
-    return apiClient.get<PaginatedResponse<User>>('/users', params);
+    return apiClient.get<PaginatedResponse<User>>('/users/', params);
   },
 
   /**

@@ -2,25 +2,23 @@
 // API Client Configuration
 // ============================================
 
-const getApiBaseUrl = (): string => {
-  const url = process.env.NEXT_PUBLIC_API_BASE_URL;
+// Export the secure URL getter so other files can use it
+export const getSecureApiBaseUrl = (): string => {
+  let url = process.env.NEXT_PUBLIC_API_BASE_URL;
   
   if (!url) {
     throw new Error('NEXT_PUBLIC_API_BASE_URL environment variable is not set');
   }
   
-  // In production, enforce HTTPS
-  if (typeof window !== 'undefined' && window.location.protocol === 'https:') {
-    // If the current page is HTTPS, ensure API URL is also HTTPS
-    if (url.startsWith('http:')) {
-      return url.replace('http:', 'https:');
-    }
+  // Always force HTTPS in production (VERCEL_ENV is set on Vercel)
+  if (url.startsWith('http:') && (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production')) {
+    url = url.replace('http:', 'https:');
   }
   
   return url;
 };
 
-const API_BASE_URL = getApiBaseUrl();
+const API_BASE_URL = getSecureApiBaseUrl();
 
 interface RequestConfig extends RequestInit {
   params?: Record<string, string | number | boolean | undefined>;

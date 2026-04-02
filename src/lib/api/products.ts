@@ -16,14 +16,14 @@ export const productsApi = {
    * List all loan products
    */
   list: async (params?: ListParams & { is_active?: boolean }): Promise<PaginatedResponse<LoanProduct>> => {
-    return apiClient.get<PaginatedResponse<LoanProduct>>('/loan-products', params as Record<string, string | number | boolean | undefined>);
+    return apiClient.get<PaginatedResponse<LoanProduct>>('/loan-products/', params as Record<string, string | number | boolean | undefined>);
   },
 
   /**
    * Get all active products (no pagination)
    */
   listActive: async (): Promise<LoanProduct[]> => {
-    const response = await apiClient.get<PaginatedResponse<LoanProduct>>('/loan-products', { is_active: true, page_size: 100 });
+    const response = await apiClient.get<PaginatedResponse<LoanProduct>>('/loan-products/', { is_active: true, page_size: 100 });
     return response.data;
   },
 
