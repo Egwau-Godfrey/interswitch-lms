@@ -1,0 +1,45 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+.next
+out
+.vercel
+dist
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env files (except .env.example)
+.env*.local
+.env*.development
+.env*.test
+
+# Logs
+logs
+*.log
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+*.md
+Dockerfile
+docker-compose*.yml
+.dockerignore
