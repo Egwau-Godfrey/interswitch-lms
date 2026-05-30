@@ -14,7 +14,7 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-ARG NEXT_PUBLIC_API_BASE_URL=https://isw-uat.qriscorp.com
+ARG NEXT_PUBLIC_API_BASE_URL=https://isw-prod.qriscorp.com
 ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
 # Build the application
 RUN npm run build
