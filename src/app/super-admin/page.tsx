@@ -13,6 +13,7 @@ import {
   RefreshCw,
   Percent,
   Target,
+  Wallet,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -298,25 +299,42 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Total Overdue */}
-        <Card className="relative overflow-hidden border border-amber-100 dark:border-amber-900/50 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 shadow-sm hover:shadow-md transition-shadow">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 dark:bg-amber-400/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
-            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Total Overdue</CardTitle>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
-              <AlertTriangle className="h-5 w-5 text-white" />
-            </div>
-          </CardHeader>
-          <CardContent className="relative">
-            <div className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
-              {formatCurrency(displayStats.total_overdue, "UGX", true)}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {displayStats.overdue_count} {displayStats.overdue_count === 1 ? 'loan' : 'loans'} overdue
-            </p>
-          </CardContent>
-        </Card>
+  {/* Total Overdue */}
+  <Card className="relative overflow-hidden border border-amber-100 dark:border-amber-900/50 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/50 dark:to-orange-950/50 shadow-sm hover:shadow-md transition-shadow">
+    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 dark:bg-amber-400/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+      <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">Total Overdue</CardTitle>
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center shadow-lg shadow-amber-500/25">
+        <AlertTriangle className="h-5 w-5 text-white" />
       </div>
+    </CardHeader>
+    <CardContent className="relative">
+      <div className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
+        {formatCurrency(displayStats.total_overdue, "UGX", true)}
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">
+        {displayStats.overdue_count} {displayStats.overdue_count === 1 ? 'loan' : 'loans'} overdue
+      </p>
+    </CardContent>
+  </Card>
+
+  {/* ISW Wallet Balance */}
+  <Card className="relative overflow-hidden border border-violet-100 dark:border-violet-900/50 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/50 dark:to-purple-950/50 shadow-sm hover:shadow-md transition-shadow">
+    <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 dark:bg-violet-400/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+      <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">ISW Wallet Balance</CardTitle>
+      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
+        <Wallet className="h-5 w-5 text-white" />
+      </div>
+    </CardHeader>
+    <CardContent className="relative">
+      <div className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
+        {formatCurrency(displayStats.isw_wallet_balance, "UGX", true)}
+      </div>
+      <p className="text-xs text-muted-foreground mt-1">Interswitch Wallet</p>
+    </CardContent>
+  </Card>
+</div>
 
       {/* Secondary KPIs */}
       <div className="grid gap-4 md:grid-cols-2">

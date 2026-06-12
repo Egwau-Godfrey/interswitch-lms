@@ -355,6 +355,7 @@ export interface DashboardStats {
   overdue_count: number;
   default_rate: number;
   recovery_rate: number;
+  isw_wallet_balance: number;
   disbursement_trend: DisbursementTrendData[];
   loan_status_distribution: LoanStatusDistribution[];
   overdue_aging: OverdueAgingData[];
