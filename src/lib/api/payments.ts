@@ -15,7 +15,7 @@ export const paymentsApi = {
    * Post a manual payment
    */
   create: async (data: PaymentCreate): Promise<LoanPayment> => {
-    return apiClient.post<LoanPayment>('/payments', data);
+    return apiClient.post<LoanPayment>('/payments/', data);
   },
 
   /**

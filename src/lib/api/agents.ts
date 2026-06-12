@@ -19,7 +19,7 @@ export const agentsApi = {
    * Create a new agent
    */
   create: async (data: AgentCreate): Promise<Agent> => {
-    return apiClient.post<Agent>('/agents', data);
+    return apiClient.post<Agent>('/agents/', data);
   },
 
   /**

@@ -16,7 +16,7 @@ export const usersApi = {
    * Create a new user
    */
   create: async (data: UserCreate): Promise<User> => {
-    return apiClient.post<User>('/users', data);
+    return apiClient.post<User>('/users/', data);
   },
 
   /**

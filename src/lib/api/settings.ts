@@ -12,7 +12,7 @@ export const settingsApi = {
    * Get all system settings
    */
   list: async (): Promise<SystemSetting[]> => {
-    return apiClient.get<SystemSetting[]>('/settings');
+    return apiClient.get<SystemSetting[]>('/settings/');
   },
 
   /**
