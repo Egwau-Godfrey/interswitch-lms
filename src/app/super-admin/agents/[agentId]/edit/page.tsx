@@ -69,6 +69,7 @@ export default function AgentEditPage() {
       monthly_income: Number(formData.get("income")),
       employment_status: formData.get("employment") as any,
       employer_name: formData.get("employer") as string,
+      status: formData.get("status") as string,
     });
   };
 
@@ -152,6 +153,24 @@ export default function AgentEditPage() {
               <div className="space-y-2">
                 <Label htmlFor="employer">Employer Name</Label>
                 <Input id="employer" name="employer" defaultValue={agent.employer_name || ""} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="status">Agent Status</Label>
+                <Select name="status" defaultValue={agent.status || "pending"}>
+                  <SelectTrigger id="status">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="suspended">Suspended</SelectItem>
+                    <SelectItem value="blacklisted">Blacklisted</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
