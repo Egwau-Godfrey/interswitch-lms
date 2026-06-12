@@ -310,7 +310,7 @@ export default function AgentsPage() {
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
                           <AvatarFallback className="bg-primary/10 text-primary text-[10px]">
-                            {agent.full_name.split(" ").map(n => n[0]).join("")}
+                            {agent.full_name?.split(" ").map(n => n[0]).join("") || "?"}
                           </AvatarFallback>
                         </Avatar>
                         <span className="font-medium">{agent.full_name}</span>

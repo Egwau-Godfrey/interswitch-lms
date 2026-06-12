@@ -371,7 +371,7 @@ export default function LoanDetailPage() {
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-lg font-bold text-primary">
-                  {displayAgent.full_name.split(" ").map((n: string) => n[0]).join("")}
+                  {displayAgent.full_name?.split(" ").map((n: string) => n[0]).join("") || "?"}
                 </span>
               </div>
               <div>

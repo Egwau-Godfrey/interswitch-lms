@@ -178,7 +178,7 @@ export default function AgentDetailPage() {
             <div className="flex items-center justify-center mb-4">
               <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-2xl font-bold text-primary">
-                  {displayAgent.full_name.split(" ").map(n => n[0]).join("")}
+                  {displayAgent.full_name?.split(" ").map(n => n[0]).join("") || "?"}
                 </span>
               </div>
             </div>

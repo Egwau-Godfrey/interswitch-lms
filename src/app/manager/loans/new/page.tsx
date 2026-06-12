@@ -251,7 +251,7 @@ export function NewLoanPageContent() {
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                       <span className="font-bold text-primary">
-                        {selectedAgent.full_name.split(" ").map(n => n[0]).join("")}
+                        {selectedAgent.full_name?.split(" ").map(n => n[0]).join("") || "?"}
                       </span>
                     </div>
                     <div>
