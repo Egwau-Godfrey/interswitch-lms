@@ -10,3 +10,4 @@ export { loansApi } from './loans';
 export { paymentsApi } from './payments';
 export { apiClientsApi } from './api-clients';
 export { dashboardApi, reportsApi } from './dashboard';
+export { scoringDashboardApi } from './scoring-dashboard';

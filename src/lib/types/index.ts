@@ -50,6 +50,7 @@ export interface UserUpdate {
 // ============================================
 export type EmploymentStatus = 'full_time' | 'part_time' | 'contract' | 'self_employed' | 'unemployed';
 export type AgentStatus = 'pending' | 'active' | 'inactive' | 'suspended' | 'blacklisted';
+export type RiskLevel = 'high' | 'medium' | 'low';
 
 export interface Agent {
   id: string;
@@ -66,6 +67,10 @@ export interface Agent {
   status: AgentStatus;
   created_at: string;
   updated_at: string;
+  loan_limit?: number | null;
+  last_credit_score?: number | null;
+  credit_score_risk_level?: RiskLevel | null;
+  last_scored_at?: string | null;
 }
 
 export interface AgentCreate {
@@ -487,3 +492,76 @@ export const LOAN_STATUS_LABELS: Record<LoanStatus, string> = {
   defaulted: 'Defaulted',
   failed: 'Failed',
 };
+
+// ============================================
+// Credit Scoring Dashboard Types
+// ============================================
+
+export interface ScoredAgent {
+  id: string;
+  agent_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone_number: string | null;
+  status: AgentStatus;
+  loan_limit: number;
+  last_credit_score: number;      // 0.0–1.0
+  score_percent: number;          // 0.0–100.0 (derived by backend)
+  credit_score_risk_level: RiskLevel;
+  last_scored_at: string;         // ISO datetime
+}
+
+export interface CreditScoreHistoryEntry {
+  id: string;
+  agent_id: string;
+  credit_score: number;
+  risk_level: RiskLevel;
+  loan_limit: number;
+  confidence: number;
+  scoring_method: 'rules' | 'ml' | 'hybrid';
+  trigger_type: 'manual' | 'webhook' | 'scheduled';
+  transaction_count: number;
+  created_at: string;
+  component_scores?: {
+    rule_score?: number;
+    ml_score?: number;
+  } | null;
+}
+
+export interface ScoringStats {
+  total_scored: number;
+  low_risk_count: number;
+  medium_risk_count: number;
+  high_risk_count: number;
+  avg_score: number;
+  avg_loan_limit: number;
+  total_loan_exposure: number;
+}
+
+export interface ScoredAgentListParams extends ListParams {
+  risk_level?: RiskLevel;
+  score_min?: number;
+  score_max?: number;
+  scored_from?: string;
+  scored_to?: string;
+}
+
+export interface BulkScoreRequest {
+  agent_ids: string[];
+}
+
+export interface BulkScoreResult {
+  agent_id: string;
+  success: boolean;
+  score?: number;
+  loan_limit?: number;
+  risk_level?: RiskLevel;
+  error?: string;
+}
+
+export interface BulkScoreResponse {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: BulkScoreResult[];
+}

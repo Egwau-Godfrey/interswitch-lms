@@ -18,7 +18,8 @@ import {
   X,
   ChevronRight,
   Sun,
-  Moon
+  Moon,
+  TrendingUp
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ export function DashboardLayout({ children, basePath = "/dashboard" }: { childre
     { href: `${basePath}/products`, label: "Loan Products", icon: Package },
     { href: `${basePath}/payments`, label: "Payments", icon: CreditCard },
     { href: `${basePath}/reports`, label: "Reports", icon: BarChart3 },
+    { href: `${basePath}/scoring`, label: "Credit Scoring", icon: TrendingUp },
     { href: `${basePath}/users`, label: "Users", icon: UserCog },
     { href: `${basePath}/api-management`, label: "API Management", icon: Key },
     { href: `${basePath}/settings`, label: "Settings", icon: Settings },

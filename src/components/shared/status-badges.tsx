@@ -132,3 +132,27 @@ export function AdminBadge({ isAdmin, className }: AdminBadgeProps) {
     </Badge>
   );
 }
+
+// ============================================
+// Risk Level Badge
+// ============================================
+interface RiskLevelBadgeProps {
+  riskLevel: 'high' | 'medium' | 'low';
+  className?: string;
+}
+
+const riskLevelConfig: Record<'high' | 'medium' | 'low', { label: string; className: string }> = {
+  low:    { label: 'Low Risk',    className: 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/30 dark:text-green-400' },
+  medium: { label: 'Medium Risk', className: 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-400' },
+  high:   { label: 'High Risk',   className: 'bg-red-100 text-red-800 border-red-300 dark:bg-red-900/30 dark:text-red-400' },
+};
+
+export function RiskLevelBadge({ riskLevel, className }: RiskLevelBadgeProps) {
+  const config = riskLevelConfig[riskLevel] || riskLevelConfig.high;
+  
+  return (
+    <Badge variant="outline" className={cn("font-medium border", config.className, className)}>
+      {config.label}
+    </Badge>
+  );
+}
