@@ -106,19 +106,6 @@ export default function DashboardPage() {
 
   // Only use real stats, no fallback to mock data
   const displayStats = stats;
-  const isManager = session?.user?.role === 'manager';
-
-  if (isManager) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 text-center h-[60vh] border rounded-lg border-dashed mt-6">
-        <h2 className="text-2xl font-bold mb-2">Manager Dashboard</h2>
-        <p className="text-muted-foreground max-w-md">
-          Welcome to the manager view. This interface is currently under development.
-          Your specific performance metrics, loan queue, and agent overview will appear here soon.
-        </p>
-      </div>
-    );
-  }
 
   // Prepare pie chart data (guard for undefined)
   const pieData = displayStats?.loan_status_distribution?.map((item) => ({
@@ -369,9 +356,9 @@ export default function DashboardPage() {
             <CardTitle>Disbursement vs Collections</CardTitle>
             <CardDescription>Monthly comparison of disbursed amounts vs collections</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-[350px] min-w-0">
             {mounted && displayStats.disbursement_trend.length > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={displayStats.disbursement_trend}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="month" className="text-xs" />
@@ -398,9 +385,9 @@ export default function DashboardPage() {
             <CardTitle>Loan Status Distribution</CardTitle>
             <CardDescription>Breakdown of loans by current status</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-[350px] min-w-0">
             {mounted && pieData.length > 0 ? (
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={pieData}
@@ -440,9 +427,9 @@ export default function DashboardPage() {
             <CardTitle>Overdue Aging</CardTitle>
             <CardDescription>Distribution of overdue loans by days past due</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-[250px] min-w-0">
             {displayStats.overdue_aging && displayStats.overdue_aging.length > 0 ? (
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={displayStats.overdue_aging} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis type="number" tickFormatter={(v) => formatCurrency(v, "UGX", true)} className="text-xs" />

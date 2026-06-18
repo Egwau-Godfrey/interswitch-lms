@@ -6,7 +6,6 @@ import {
   Search,
   Plus,
   Filter,
-  Download,
   MoreVertical,
   UserPlus,
   Mail,
@@ -15,20 +14,19 @@ import {
   Eye,
   Trash2,
   CheckCircle2,
-  XCircle,
   Clock,
   Banknote,
   RefreshCw
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
 } from "@/components/ui/table";
 import {
   DropdownMenu,
@@ -39,6 +37,16 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -48,14 +56,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useApi, useMutation } from "@/hooks/use-api";
@@ -66,32 +73,27 @@ import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { LoadingState, ErrorState } from "@/components/shared/loading-states";
 import { ExportButton } from "@/components/shared/export-button";
 import { formatDate } from "@/components/shared/stat-card";
-import { useSession } from "next-auth/react";
-import { EmptyState } from "@/components/shared/loading-states";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
+import { useApiAuth } from "@/hooks/use-api-auth";
+import { useWritePermission } from "@/hooks/use-write-permission";
 
 export default function AgentsPage() {
-  const { data: session } = useSession();
+  const { accessToken, isReady } = useApiAuth();
+  const { canWrite, isLoading: permLoading, writeDisabled, writeTooltip } =
+    useWritePermission("agents");
+  const { requireWrite: requireLoansWrite } = useWritePermission("loans");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [isRegisterOpen, setIsRegisterOpen] = React.useState(false);
+  const [targetAgent, setTargetAgent] = React.useState<Agent | null>(null);
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [sortBy] = React.useState("created_at");
   const [sortOrder] = React.useState<"asc" | "desc">("desc");
 
-  // Set access token when session is available
-  React.useEffect(() => {
-    if (session?.user?.accessToken) {
-      apiClient.setAccessToken(session.user.accessToken);
-    } else {
-      apiClient.clearAccessToken();
-    }
-  }, [session]);
-
-  // Fetch agents from API with authentication
   const { data: agentsData, isLoading, error, refetch } = useApi(
     () => {
-      if (!session?.user?.accessToken) {
+      if (!accessToken) {
         throw new Error("No access token available");
       }
       return agentsApi.list({
@@ -103,27 +105,24 @@ export default function AgentsPage() {
         search: searchQuery || undefined
       });
     },
-    [page, pageSize, statusFilter, searchQuery, sortBy, sortOrder, session?.user?.accessToken],
-    { cacheKey: `agents-${page}-${statusFilter}-${searchQuery}-${sortBy}-${sortOrder}` }
+    [page, pageSize, statusFilter, searchQuery, sortBy, sortOrder, accessToken],
+    { cacheKey: `agents-${page}-${statusFilter}-${searchQuery}-${sortBy}-${sortOrder}`, enabled: isReady }
   );
-
-  // Show error toast if API fails (but not for session loading)
-  React.useEffect(() => {
-    if (error && session?.user?.accessToken) {
-      // Only show error if we have a session but API failed
-      if (error.message !== "No access token available") {
-        toast.error("Failed to load agents", {
-          description: error.message || "Please try refreshing the page",
-        });
-      }
-    }
-  }, [error, session]);
 
   const agents = agentsData?.data || [];
   const totalItems = agentsData?.total || 0;
   const totalPages = agentsData?.total_pages || 0;
 
-  // Create agent mutation
+  const handleWriteError = (err: any): boolean => {
+    if (err?.status === 403) {
+      toast.error("Write access required", {
+        description: "This action requires write access granted by a super admin.",
+      });
+      return true;
+    }
+    return false;
+  };
+
   const createAgent = useMutation(
     (data: AgentCreate) => agentsApi.create(data),
     {
@@ -132,17 +131,63 @@ export default function AgentsPage() {
         setIsRegisterOpen(false);
         refetch();
       },
-      onError: (error) => {
-        // Log error for debugging
-        console.error("Agent registration error:", error);
-        toast.success("Agent registered successfully!");
-        setIsRegisterOpen(false);
+      onError: (err: any) => {
+        if (!handleWriteError(err)) {
+          console.error("Agent registration error:", err);
+          toast.error("Failed to register agent", {
+            description: err.message || "Please try again",
+          });
+        }
+      },
+    }
+  );
+
+  const updateAgentMutation = useMutation(
+    ({ agentId, data }: { agentId: string; data: any }) => agentsApi.update(agentId, data),
+    {
+      onSuccess: () => {
+        toast.success("Agent activated successfully!");
+        setTargetAgent(null);
+        refetch();
+      },
+      onError: (err: any) => {
+        if (!handleWriteError(err)) {
+          toast.error("Activation failed", {
+            description: err.message || "Failed to activate agent."
+          });
+        }
+        setTargetAgent(null);
+      },
+    }
+  );
+
+  const deleteAgentMutation = useMutation(
+    (agentId: string) => agentsApi.delete(agentId),
+    {
+      onSuccess: () => {
+        toast.success("Agent deactivated successfully!");
+        setTargetAgent(null);
+        refetch();
+      },
+      onError: (err: any) => {
+        if (!handleWriteError(err)) {
+          toast.error("Deactivation failed", {
+            description: err.message || "Failed to deactivate agent."
+          });
+        }
+        setTargetAgent(null);
       },
     }
   );
 
   const handleRegisterAgent = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!canWrite) {
+      toast.error("View-only access", {
+        description: "Registering agents requires write access granted by a super admin.",
+      });
+      return;
+    }
     const formData = new FormData(e.currentTarget);
     createAgent.mutate({
       agent_id: String(formData.get("agent_id")),
@@ -157,6 +202,18 @@ export default function AgentsPage() {
     });
   };
 
+  const handleToggleAgentStatus = () => {
+    if (!targetAgent) return;
+    if (targetAgent.status === "inactive") {
+      updateAgentMutation.mutate({
+        agentId: targetAgent.agent_id,
+        data: { status: "active" }
+      });
+      return;
+    }
+    deleteAgentMutation.mutate(targetAgent.agent_id);
+  };
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
@@ -168,6 +225,8 @@ export default function AgentsPage() {
 
   return (
     <div className="space-y-6">
+      {!canWrite && <WriteAccessAlert tabLabel="agent" />}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Agent Management</h1>
@@ -180,82 +239,96 @@ export default function AgentsPage() {
           <ExportButton
             onExportCsv={() => agentsApi.exportCsv({
               status: statusFilter !== "all" ? statusFilter as any : undefined,
+              search: searchQuery || undefined
             })}
             filename="agents"
           />
-          <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
+          <Dialog open={canWrite && isRegisterOpen} onOpenChange={canWrite ? setIsRegisterOpen : undefined}>
             <DialogTrigger asChild>
-              <Button className="bg-[#004B91] hover:bg-[#003B71]">
+              <Button
+                className={writeDisabled ? "bg-[#004B91]/70 hover:bg-[#003B71]/70" : "bg-[#004B91] hover:bg-[#003B71]"}
+                aria-disabled={writeDisabled}
+                title={writeTooltip}
+                onClick={() => {
+                  if (!canWrite) {
+                    toast.error("View-only access", {
+                      description: "Registering agents requires write access granted by a super admin.",
+                    });
+                  }
+                }}
+              >
                 <UserPlus className="w-4 h-4 mr-2" />
                 Register Agent
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px]">
-              <DialogHeader>
-                <DialogTitle>Register New Agent</DialogTitle>
-                <DialogDescription>
-                  Enter the agent's details to create a new account and opt them into the loan system.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleRegisterAgent} className="grid gap-6 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="agent_id">Agent ID</Label>
-                    <Input id="agent_id" placeholder="e.g. AGT001" required />
+            {canWrite && (
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Register New Agent</DialogTitle>
+                  <DialogDescription>
+                    Enter the agent's details to create a new account and opt them into the loan system.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleRegisterAgent} className="grid gap-6 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="agent_id">Agent ID</Label>
+                      <Input id="agent_id" placeholder="e.g. AGT001" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="full_name">Full Name</Label>
+                      <Input id="full_name" placeholder="John Doe" required />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="full_name">Full Name</Label>
-                    <Input id="full_name" placeholder="John Doe" required />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email Address</Label>
+                      <Input id="email" type="email" placeholder="john@example.com" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone Number</Label>
+                      <Input id="phone" placeholder="08012345678" required />
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input id="email" type="email" placeholder="john@example.com" required />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="national_id">National ID (NIN)</Label>
+                      <Input id="national_id" placeholder="12345678901" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="income">Monthly Income (UGX)</Label>
+                      <Input id="income" type="number" placeholder="50000" required />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input id="phone" placeholder="08012345678" required />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="employment">Employment Status</Label>
+                      <Select name="employment" defaultValue="full_time">
+                        <SelectTrigger id="employment">
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="full_time">Full Time</SelectItem>
+                          <SelectItem value="contract">Contract</SelectItem>
+                          <SelectItem value="self_employed">Self Employed</SelectItem>
+                          <SelectItem value="unemployed">Unemployed</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="employer">Employer Name</Label>
+                      <Input id="employer" placeholder="Company Ltd" />
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="national_id">National ID (NIN)</Label>
-                    <Input id="national_id" placeholder="12345678901" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="income">Monthly Income (UGX)</Label>
-                    <Input id="income" type="number" placeholder="50000" required />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="employment">Employment Status</Label>
-                    <Select>
-                      <SelectTrigger id="employment">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="full_time">Full Time</SelectItem>
-                        <SelectItem value="contract">Contract</SelectItem>
-                        <SelectItem value="self_employed">Self Employed</SelectItem>
-                        <SelectItem value="unemployed">Unemployed</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="employer">Employer Name</Label>
-                    <Input id="employer" placeholder="Company Ltd" />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsRegisterOpen(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-[#E31C2D] hover:bg-[#C21827]" disabled={createAgent.isLoading}>
-                    {createAgent.isLoading ? "Registering..." : "Complete Registration"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsRegisterOpen(false)}>Cancel</Button>
+                    <Button type="submit" className="bg-[#E31C2D] hover:bg-[#C21827]" disabled={createAgent.isLoading || permLoading}>
+                      {createAgent.isLoading ? "Registering..." : "Complete Registration"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            )}
           </Dialog>
         </div>
       </div>
@@ -263,8 +336,8 @@ export default function AgentsPage() {
       <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search agents by name, ID, or email..." 
+          <Input
+            placeholder="Search agents by name, ID, or email..."
             className="pl-10 h-10"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -351,18 +424,42 @@ export default function AgentsPage() {
                               <Eye className="w-4 h-4 mr-2" /> View Details
                             </DropdownMenuItem>
                           </Link>
-                          <Link href={`/manager/loans/new?agent_id=${agent.agent_id}`}>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (!requireLoansWrite()) return;
+                              window.location.href = `/manager/loans/new?agent_id=${agent.agent_id}`;
+                            }}
+                          >
+                            <Banknote className="w-4 h-4 mr-2" /> New Loan
+                          </DropdownMenuItem>
+                          <Link href={`/manager/agents/${agent.agent_id}?tab=transactions`}>
                             <DropdownMenuItem>
-                              <Banknote className="w-4 h-4 mr-2" /> New Loan
+                              <Clock className="w-4 h-4 mr-2" /> History
                             </DropdownMenuItem>
                           </Link>
-                          <DropdownMenuItem>
-                            <Clock className="w-4 h-4 mr-2" /> History
-                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="w-4 h-4 mr-2" /> Deactivate
-                          </DropdownMenuItem>
+                          {agent.status === "inactive" ? (
+                            <DropdownMenuItem
+                              className="text-emerald-600"
+                              disabled={writeDisabled}
+                              title={writeTooltip}
+                              onClick={() => setTargetAgent(agent)}
+                            >
+                              <CheckCircle2 className="w-4 h-4 mr-2" /> Activate
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              disabled={writeDisabled}
+                              title={writeTooltip}
+                              onClick={() => setTargetAgent(agent)}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" /> Deactivate
+                              {!canWrite && (
+                                <span className="ml-auto text-[10px] text-muted-foreground">Write required</span>
+                              )}
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -388,6 +485,38 @@ export default function AgentsPage() {
         onPageChange={setPage}
         onPageSizeChange={setPageSize}
       />
+
+      <AlertDialog open={!!targetAgent} onOpenChange={() => setTargetAgent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {targetAgent?.status === "inactive" ? "Activate Agent" : "Deactivate Agent"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {targetAgent?.status === "inactive"
+                ? `Are you sure you want to activate agent ${targetAgent?.full_name}? They will be able to access the system again.`
+                : `Are you sure you want to deactivate agent ${targetAgent?.full_name}? They will lose access to the system immediately. Active loans will still need to be settled.`
+              }
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleToggleAgentStatus}
+              className={targetAgent?.status === "inactive"
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              }
+              disabled={deleteAgentMutation.isLoading || updateAgentMutation.isLoading}
+            >
+              {deleteAgentMutation.isLoading || updateAgentMutation.isLoading
+                ? (targetAgent?.status === "inactive" ? "Activating..." : "Deactivating...")
+                : (targetAgent?.status === "inactive" ? "Activate" : "Deactivate")
+              }
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -57,7 +57,12 @@ export default function LoginPage() {
         
         if (role === "super_admin") {
           router.push("/super-admin");
+        } else if (role === "manager") {
+          router.push("/manager");
+        } else if (role === "agent") {
+          router.push("/agent");
         } else {
+          // Fallback for any unknown role — send to manager as safe default
           router.push("/manager");
         }
         router.refresh();

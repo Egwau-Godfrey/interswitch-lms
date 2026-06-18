@@ -49,6 +49,8 @@ interface ScoringTableProps {
   onRowClick: (agent: ScoredAgent) => void;
   onReScore: (agentId: string) => void;
   reScoringAgentId: string | null;
+  hasWriteAccess?: boolean;
+  writeTooltip?: string;
   basePath?: string;
 }
 
@@ -95,6 +97,8 @@ export function ScoringTable({
   onRowClick,
   onReScore,
   reScoringAgentId,
+  hasWriteAccess = true,
+  writeTooltip = "Write access requires a grant from a super admin",
   basePath = "/super-admin",
 }: ScoringTableProps) {
   return (
@@ -262,7 +266,8 @@ export function ScoringTable({
                         {/* Re-score */}
                         <DropdownMenuItem
                           onClick={() => onReScore(agent.agent_id)}
-                          disabled={isReScoring}
+                          disabled={isReScoring || !hasWriteAccess}
+                          title={hasWriteAccess ? undefined : writeTooltip}
                         >
                           {isReScoring ? (
                             <Loader2 className="animate-spin h-4 w-4 mr-2" />
@@ -270,6 +275,9 @@ export function ScoringTable({
                             <RefreshCw className="h-4 w-4 mr-2" />
                           )}
                           Re-score
+                          {!hasWriteAccess && (
+                            <span className="ml-auto text-[10px] text-muted-foreground">Write required</span>
+                          )}
                         </DropdownMenuItem>
 
                         {/* View Agent Profile */}

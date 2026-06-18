@@ -49,13 +49,18 @@ export function DashboardLayout({ children, basePath = "/dashboard" }: { childre
     setMounted(true);
   }, []);
 
-  // Sync access token withApiClient synchronously during render to prevent child effects 
-  // from racing ahead and making unauthenticated API calls
-  if (session?.user?.accessToken) {
-    apiClient.setAccessToken(session.user.accessToken);
-  } else if (session === null) {
+// Sync access token withApiClient when session changes
+const [sessionTokenApplied, setSessionTokenApplied] = React.useState<string | null>(null);
+React.useEffect(() => {
+  const token = session?.user?.accessToken || null;
+  if (token && token !== sessionTokenApplied) {
+    apiClient.setAccessToken(token);
+    setSessionTokenApplied(token);
+  } else if (!token && sessionTokenApplied) {
     apiClient.clearAccessToken();
+    setSessionTokenApplied(null);
   }
+}, [session, sessionTokenApplied]);
 
   const sidebarLinks = React.useMemo(() => [
     { href: basePath, label: "Overview", icon: LayoutDashboard },
@@ -107,7 +112,11 @@ export function DashboardLayout({ children, basePath = "/dashboard" }: { childre
 
   // Get user role
   const getUserRole = () => {
-    return session?.user?.isAdmin ? "Super Admin" : "Agent";
+    const role = session?.user?.role;
+    if (session?.user?.isAdmin || role === "super_admin") return "Super Admin";
+    if (role === "manager") return "Manager";
+    if (role === "agent") return "Agent";
+    return "User";
   };
 
   return (

@@ -1,7 +1,12 @@
 "use client";
 
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+import { PermissionsProvider } from "@/contexts/permissions-context";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return <DashboardLayout basePath="/manager">{children}</DashboardLayout>;
+  return (
+    <PermissionsProvider>
+      <DashboardLayout basePath="/manager">{children}</DashboardLayout>
+    </PermissionsProvider>
+  );
 }

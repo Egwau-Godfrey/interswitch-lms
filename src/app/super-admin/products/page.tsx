@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Download
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -209,6 +210,32 @@ export default function ProductsPage() {
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            className="hidden sm:flex"
+            onClick={async () => {
+              try {
+                toast.loading("Preparing export...", { id: "export-loading" });
+                const blob = await productsApi.exportCsv();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `products_export_${new Date().toISOString().split("T")[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                toast.dismiss("export-loading");
+                toast.success("Products exported successfully");
+              } catch (err: any) {
+                toast.dismiss("export-loading");
+                toast.error(err.message || "Failed to export products");
+              }
+            }}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
           </Button>
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>

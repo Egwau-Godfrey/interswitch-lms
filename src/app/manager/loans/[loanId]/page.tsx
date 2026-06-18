@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -37,31 +37,58 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { loansApi } from "@/lib/api";
-import type { Loan, LoanPayment, LoanDetailResponse, LoanStatementResponse, LoanStatementEntry } from "@/lib/types";
+import type { Loan, LoanPayment, LoanDetailResponse, LoanStatementResponse, LoanStatementEntry, Agent } from "@/lib/types";
 import { LoanStatusBadge, PaymentStatusBadge } from "@/components/shared/status-badges";
 import { LoadingState, ErrorState } from "@/components/shared/loading-states";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
+import { useWritePermission } from "@/hooks/use-write-permission";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
+import { RecordPaymentDialog } from "@/components/shared/record-payment-dialog";
+import { generateLoanStatementPDF } from "@/lib/pdf-utils";
+import { useApiAuth } from "@/hooks/use-api-auth";
 
 export default function LoanDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { accessToken, isReady } = useApiAuth();
   const loanId = params.loanId as string;
+  const initialTab = searchParams.get("tab") || "payments";
+  const [activeTab, setActiveTab] = React.useState(initialTab);
+  const { canWrite, writeDisabled, writeTooltip } = useWritePermission("loans");
+  const { canWrite: canWritePayments } = useWritePermission("payments");
+  const canRecordPayment = canWrite || canWritePayments;
 
   const [confirmAction, setConfirmAction] = React.useState<"clear" | "writeoff" | null>(null);
+  const [isRecordPaymentOpen, setIsRecordPaymentOpen] = React.useState(false);
+
+  React.useEffect(() => {
+    setActiveTab(searchParams.get("tab") || "payments");
+  }, [searchParams]);
 
   // Fetch loan detail
   const { data: loanDetail, isLoading, error, refetch } = useApi(
-    () => loansApi.getDetail(loanId),
-    [loanId],
-    { cacheKey: `loan-${loanId}` }
+    () => {
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+      return loansApi.getDetail(loanId);
+    },
+    [loanId, accessToken],
+    { cacheKey: `loan-${loanId}`, enabled: isReady }
   );
 
   // Fetch statement
   const { data: statement } = useApi(
-    () => loansApi.getStatement(loanId),
-    [loanId],
-    { cacheKey: `loan-statement-${loanId}` }
+    () => {
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+      return loansApi.getStatement(loanId);
+    },
+    [loanId, accessToken],
+    { cacheKey: `loan-statement-${loanId}`, enabled: isReady }
   );
 
   // Show error toast on failure
@@ -73,6 +100,16 @@ export default function LoanDetailPage() {
     }
   }, [error]);
 
+  const handleWriteError = (err: any): boolean => {
+    if (err?.status === 403) {
+      toast.error("Write access required", {
+        description: "This action requires write access granted by a super admin.",
+      });
+      return true;
+    }
+    return false;
+  };
+
   // Clear loan mutation
   const clearLoan = useMutation(
     () => loansApi.clearLoan(loanId),
@@ -82,10 +119,13 @@ export default function LoanDetailPage() {
         refetch();
         setConfirmAction(null);
       },
+      onError: (err) => {
+        if (handleWriteError(err)) return;
+        toast.error("Failed to clear loan", { description: err.message });
+      },
     }
   );
 
-  // Write off loan mutation
   const writeOffLoan = useMutation(
     () => loansApi.writeOff(loanId),
     {
@@ -93,6 +133,10 @@ export default function LoanDetailPage() {
         toast.success("Loan written off");
         refetch();
         setConfirmAction(null);
+      },
+      onError: (err) => {
+        if (handleWriteError(err)) return;
+        toast.error("Failed to write off loan", { description: err.message });
       },
     }
   );
@@ -103,8 +147,32 @@ export default function LoanDetailPage() {
   const displayPayments = loanDetail?.payments ?? [];
   const displayStatement = statement;
 
-  const paymentProgress = displayLoan?.principal_amount
-    ? Math.round((displayLoan.total_paid / (displayLoan.principal_amount + displayLoan.interest_amount + displayLoan.penalty_amount)) * 100)
+  const handleDownloadPDF = () => {
+    if (!displayLoan || !displayAgent || !displayStatement) {
+      toast.error("Loan data is not fully loaded yet");
+      return;
+    }
+
+    try {
+      generateLoanStatementPDF(
+        displayLoan,
+        displayAgent as Agent,
+        displayProduct || null,
+        displayStatement
+      );
+      toast.success("Statement PDF generated");
+    } catch (err) {
+      console.error("PDF generation error:", err);
+      toast.error("Failed to generate statement PDF");
+    }
+  };
+
+  const totalRepaymentTarget = displayLoan?.principal_amount
+    ? displayLoan.principal_amount + (displayLoan.application_fee || 0) + (displayLoan.interest_amount || 0) + (displayLoan.penalty_amount || 0)
+    : 0;
+
+  const paymentProgress = totalRepaymentTarget > 0 && displayLoan
+    ? Math.round((displayLoan.total_paid / totalRepaymentTarget) * 100)
     : 0;
 
   if (isLoading) {
@@ -135,6 +203,7 @@ export default function LoanDetailPage() {
 
   return (
     <div className="space-y-6">
+      {!canWrite && <WriteAccessAlert tabLabel="loan" />}
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -153,17 +222,56 @@ export default function LoanDetailPage() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="outline" size="sm">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadPDF}
+          >
             <Download className="h-4 w-4 mr-2" />
             Download Statement
           </Button>
+          <Button
+            className="bg-emerald-600 hover:bg-emerald-700"
+            size="sm"
+            onClick={() => {
+              if (!canRecordPayment) {
+                toast.error("View-only access", {
+                  description:
+                    "Recording payments requires write access on loans or payments, granted by a super admin.",
+                });
+                return;
+              }
+              setIsRecordPaymentOpen(true);
+            }}
+          >
+            <Banknote className="h-4 w-4 mr-2" />
+            Record Payment
+          </Button>
           {displayLoan.status !== "cleared" && displayLoan.status !== "failed" && (
-            <Button 
-              size="sm" 
-              onClick={() => setConfirmAction("clear")}
+            <Button
+              size="sm"
+              disabled={writeDisabled}
+              title={writeTooltip}
+              onClick={() => {
+                if (canWrite) setConfirmAction("clear");
+              }}
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
               Mark Cleared
+            </Button>
+          )}
+          {displayLoan.status !== "cleared" && displayLoan.status !== "failed" && (
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={writeDisabled}
+              title={writeTooltip}
+              onClick={() => {
+                if (canWrite) setConfirmAction("writeoff");
+              }}
+            >
+              <XCircle className="h-4 w-4 mr-2" />
+              Write Off
             </Button>
           )}
         </div>
@@ -243,12 +351,12 @@ export default function LoanDetailPage() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">
-                {formatCurrency(displayLoan.total_paid, "UGX")} paid of {formatCurrency(displayLoan.principal_amount + displayLoan.interest_amount + displayLoan.penalty_amount, "UGX")}
-              </span>
-              <span className="font-medium">{paymentProgress}%</span>
-            </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">
+              {formatCurrency(displayLoan.total_paid, "UGX")} paid of {formatCurrency(totalRepaymentTarget, "UGX")}
+            </span>
+            <span className="font-medium">{paymentProgress}%</span>
+          </div>
             <Progress value={paymentProgress} className="h-2" />
           </div>
         </CardContent>
@@ -337,7 +445,7 @@ export default function LoanDetailPage() {
       </div>
 
       {/* Payment History Tabs */}
-      <Tabs defaultValue="payments" className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList>
           <TabsTrigger value="payments">
             <Receipt className="h-4 w-4 mr-2" />
@@ -398,7 +506,7 @@ export default function LoanDetailPage() {
                 <CardTitle>Loan Statement</CardTitle>
                 <CardDescription>Transaction history for this loan</CardDescription>
               </div>
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
                 <Download className="h-4 w-4 mr-2" />
                 Export PDF
               </Button>
@@ -494,6 +602,16 @@ export default function LoanDetailPage() {
         variant="destructive"
         onConfirm={() => { writeOffLoan.mutate(); }}
         isLoading={writeOffLoan.isLoading}
+      />
+
+      <RecordPaymentDialog
+        open={isRecordPaymentOpen}
+        onOpenChange={setIsRecordPaymentOpen}
+        loanId={loanId}
+        submitDisabled={!canRecordPayment}
+        submitDisabledReason={writeTooltip}
+        onWriteError={handleWriteError}
+        onSuccess={() => refetch()}
       />
     </div>
   );

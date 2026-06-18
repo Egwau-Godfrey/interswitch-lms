@@ -14,10 +14,31 @@ import { ScoringTable } from "@/components/scoring/scoring-table";
 import { ScoreDetailDrawer } from "@/components/scoring/score-detail-drawer";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { ErrorState } from "@/components/shared/loading-states";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
 import type { ScoredAgent, RiskLevel } from "@/lib/types";
+
+// Try to load permissions context — only available when rendered under /manager layout
+// Super admin pages don't wrap with PermissionsProvider so we handle the missing context gracefully
+let usePermissionsHook: (() => { hasWriteAccess: (tab: string) => boolean; isLoading: boolean; refetch: () => void }) | null = null;
+try {
+  const ctx = require("@/contexts/permissions-context");
+  usePermissionsHook = ctx.usePermissions;
+} catch {
+  usePermissionsHook = null;
+}
 
 export default function ScoringPage() {
   const { data: session, status: authStatus } = useSession();
+  const role = (session?.user as any)?.role as string | undefined;
+  const isManager = role === "manager";
+  // For super_admin: always has write. For manager: check grants. Fallback: allow.
+  const permCtx = usePermissionsHook ? usePermissionsHook() : null;
+  const hasWriteAccess = role === "super_admin" || (session?.user as any)?.isAdmin
+    ? true
+    : (permCtx ? permCtx.hasWriteAccess("scoring") : !isManager);
+  const permLoading = permCtx ? permCtx.isLoading : false;
+  const writeDisabled = permLoading || !hasWriteAccess;
+  const writeTooltip = "Write access requires a grant from a super admin";
   const [mounted, setMounted] = React.useState(false);
 
   const [search, setSearch] = React.useState("");
@@ -86,6 +107,12 @@ export default function ScoringPage() {
   };
 
   const handleReScore = async (agentId: string) => {
+    if (!hasWriteAccess) {
+      toast.error("Write access required", {
+        description: "Contact a super admin to grant scoring write access.",
+      });
+      return;
+    }
     setReScoringAgentId(agentId);
     try {
       const result = await scoringDashboardApi.triggerScore(agentId);
@@ -96,7 +123,12 @@ export default function ScoringPage() {
       }
       refetch();
     } catch (e: any) {
-      toast.error(e?.message || "Re-scoring failed");
+      if ((e as any)?.message?.includes("403") || (e as any)?.message?.includes("Write access")) {
+        toast.error("Write access has expired or been revoked");
+        permCtx?.refetch();
+      } else {
+        toast.error(e?.message || "Re-scoring failed");
+      }
     } finally {
       setReScoringAgentId(null);
     }
@@ -131,6 +163,7 @@ export default function ScoringPage() {
 
   return (
     <div className="space-y-6">
+      {isManager && !hasWriteAccess && <WriteAccessAlert tabLabel="credit scoring" />}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Credit Scoring</h1>
@@ -169,6 +202,9 @@ export default function ScoringPage() {
         onRowClick={(agent) => { setSelectedAgent(agent); setIsDrawerOpen(true); }}
         onReScore={handleReScore}
         reScoringAgentId={reScoringAgentId}
+        hasWriteAccess={hasWriteAccess}
+        writeTooltip={writeTooltip}
+        basePath={isManager ? "/manager" : "/super-admin"}
       />
 
       <DataTablePagination
@@ -185,6 +221,8 @@ export default function ScoringPage() {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         onReScoreSuccess={() => refetch()}
+        hasWriteAccess={hasWriteAccess}
+        writeTooltip={writeTooltip}
       />
     </div>
   );

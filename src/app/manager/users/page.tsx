@@ -6,9 +6,7 @@ import {
   Search,
   MoreVertical,
   Shield,
-  UserCog,
   Mail,
-  Phone,
   CheckCircle2,
   XCircle,
   Trash2,
@@ -63,6 +61,7 @@ import { useApi, useMutation } from "@/hooks/use-api";
 import { usersApi } from "@/lib/api";
 import type { User, UserCreate } from "@/lib/types";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
 import {
   Select,
   SelectContent,
@@ -70,6 +69,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useWritePermission } from "@/hooks/use-write-permission";
+import { useApiAuth } from "@/hooks/use-api-auth";
 
 
 // Helper to get full name
@@ -95,6 +96,7 @@ function formatDate(dateString: string): string {
 }
 
 export default function UsersPage() {
+  const { accessToken, isReady } = useApiAuth();
   const [searchQuery, setSearchQuery] = React.useState("");
   const [roleFilter, setRoleFilter] = React.useState<string>("all");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
@@ -102,17 +104,34 @@ export default function UsersPage() {
   const [pageSize, setPageSize] = React.useState(10);
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [deleteUser, setDeleteUser] = React.useState<User | null>(null);
+  const [editUser, setEditUser] = React.useState<User | null>(null);
+  const { canWrite, writeDisabled, writeTooltip, requireWrite } = useWritePermission("users");
 
   // Fetch users from API
   const { data: usersData, isLoading, error, refetch } = useApi(
-    () => usersApi.list({ page, page_size: pageSize }),
-    [page, pageSize],
-    { cacheKey: `users-${page}` }
+    () => {
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+      return usersApi.list({ page, page_size: pageSize });
+    },
+    [page, pageSize, accessToken],
+    { cacheKey: `users-${page}`, enabled: isReady }
   );
 
   const users = usersData?.data || [];
   const totalPages = usersData?.total_pages || 1;
   const totalItems = usersData?.total || 0;
+
+  const handleWriteError = (err: any): boolean => {
+    if (err?.status === 403 || /write access|explicit grant|super admin/i.test(err?.message || "")) {
+      toast.error("Write access required", {
+        description: "This action requires write access granted by a super admin.",
+      });
+      return true;
+    }
+    return false;
+  };
 
   // Create user mutation
   const createUser = useMutation(
@@ -124,8 +143,10 @@ export default function UsersPage() {
         refetch();
       },
       onError: (err) => {
-        console.error("Create user error:", err);
-        toast.error("Failed to create user");
+        if (!handleWriteError(err)) {
+          console.error("Create user error:", err);
+          toast.error("Failed to create user");
+        }
       },
     }
   );
@@ -139,8 +160,10 @@ export default function UsersPage() {
         refetch();
       },
       onError: (err) => {
-        console.error("Update user error:", err);
-        toast.error("Failed to update user");
+        if (!handleWriteError(err)) {
+          console.error("Update user error:", err);
+          toast.error("Failed to update user");
+        }
       },
     }
   );
@@ -155,8 +178,10 @@ export default function UsersPage() {
         refetch();
       },
       onError: (err) => {
-        console.error("Delete user error:", err);
-        toast.error("Failed to delete user");
+        if (!handleWriteError(err)) {
+          console.error("Delete user error:", err);
+          toast.error("Failed to delete user");
+        }
       },
     }
   );
@@ -192,6 +217,7 @@ export default function UsersPage() {
 
   const handleCreateUser = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!requireWrite()) return;
     const formData = new FormData(e.currentTarget);
     createUser.mutate({
       agent_id: formData.get("agent_id") as string,
@@ -207,6 +233,7 @@ export default function UsersPage() {
   };
 
   const handleToggleActive = (user: User) => {
+    if (!requireWrite()) return;
     updateUser.mutate({
       id: user.id,
       data: { is_active: !user.is_active },
@@ -214,20 +241,41 @@ export default function UsersPage() {
   };
 
   const handleToggleAdmin = (user: User) => {
+    if (!requireWrite()) return;
     updateUser.mutate({
       id: user.id,
       data: { is_admin: !user.is_admin },
     });
   };
 
+  const handleEditUser = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!requireWrite() || !editUser) return;
+    const formData = new FormData(e.currentTarget);
+    updateUser.mutate({
+      id: editUser.id,
+      data: {
+        first_name: formData.get("fname") as string,
+        last_name: formData.get("lname") as string,
+        email: formData.get("u_email") as string,
+        phone_number: formData.get("phone") as string,
+        is_admin: formData.get("is_admin") === "on",
+        role: formData.get("is_admin") === "on" ? "super_admin" : "agent",
+        is_active: formData.get("is_active") === "on",
+      },
+    });
+    setEditUser(null);
+  };
+
   const handleDeleteUser = () => {
-    if (deleteUser) {
-      deleteUserMutation.mutate(deleteUser.id);
-    }
+    if (!requireWrite() || !deleteUser) return;
+    deleteUserMutation.mutate(deleteUser.id);
   };
 
   return (
     <div className="space-y-6">
+      {!canWrite && <WriteAccessAlert tabLabel="user administration" />}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">User Administration</h1>
@@ -238,14 +286,26 @@ export default function UsersPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+          <Dialog open={canWrite && isAddOpen} onOpenChange={canWrite ? setIsAddOpen : undefined}>
             <DialogTrigger asChild>
-              <Button className="bg-[#004B91] hover:bg-[#003B71]">
+              <Button
+                className={writeDisabled ? "bg-[#004B91]/70 hover:bg-[#003B71]/70" : "bg-[#004B91] hover:bg-[#003B71]"}
+                aria-disabled={writeDisabled}
+                title={writeTooltip}
+                onClick={() => {
+                  if (!canWrite) {
+                    toast.error("View-only access", {
+                      description: "Creating users requires write access granted by a super admin.",
+                    });
+                  }
+                }}
+              >
                 <UserPlus className="w-4 h-4 mr-2" />
                 Add Admin User
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            {canWrite && (
+              <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
                 <DialogTitle>Create Admin User</DialogTitle>
                 <DialogDescription>
@@ -297,12 +357,13 @@ export default function UsersPage() {
                   <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={createUser.isLoading}>
+                  <Button type="submit" disabled={createUser.isLoading || writeDisabled}>
                     {createUser.isLoading ? "Creating..." : "Create User"}
                   </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
+            )}
           </Dialog>
         </div>
       </div>
@@ -439,31 +500,39 @@ export default function UsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleToggleActive(user)}>
+                        <DropdownMenuItem
+                          onClick={() => handleToggleActive(user)}
+                          disabled={writeDisabled}
+                          title={writeTooltip}
+                        >
                           {user.is_active ? (
-                            <>
-                              <XCircle className="w-4 h-4 mr-2" />
-                              Deactivate
-                            </>
+                            <><XCircle className="w-4 h-4 mr-2" />Deactivate</>
                           ) : (
-                            <>
-                              <CheckCircle2 className="w-4 h-4 mr-2" />
-                              Activate
-                            </>
+                            <><CheckCircle2 className="w-4 h-4 mr-2" />Activate</>
                           )}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleToggleAdmin(user)}>
+                        <DropdownMenuItem
+                          onClick={() => handleToggleAdmin(user)}
+                          disabled={writeDisabled}
+                          title={writeTooltip}
+                        >
                           <Shield className="w-4 h-4 mr-2" />
                           {user.is_admin ? "Remove Admin" : "Make Admin"}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setEditUser(user)}
+                          disabled={writeDisabled}
+                          title={writeTooltip}
+                        >
                           <Edit2 className="w-4 h-4 mr-2" />
                           Edit User
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
+                        <DropdownMenuItem
                           className="text-destructive"
                           onClick={() => setDeleteUser(user)}
+                          disabled={writeDisabled}
+                          title={writeTooltip}
                         >
                           <Trash2 className="w-4 h-4 mr-2" />
                           Delete User
@@ -495,6 +564,58 @@ export default function UsersPage() {
           onPageSizeChange={setPageSize}
         />
       )}
+
+      {/* Edit User Dialog */}
+      <Dialog open={canWrite && !!editUser} onOpenChange={(open) => !open && setEditUser(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Edit User</DialogTitle>
+            <DialogDescription>
+              Update the details and permissions for {editUser ? getFullName(editUser) : "this user"}.
+            </DialogDescription>
+          </DialogHeader>
+          {editUser && (
+            <form onSubmit={handleEditUser} className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit_fname">First Name</Label>
+                  <Input id="edit_fname" name="fname" defaultValue={editUser.first_name} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit_lname">Last Name</Label>
+                  <Input id="edit_lname" name="lname" defaultValue={editUser.last_name} required />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_email">Email Address</Label>
+                <Input id="edit_email" name="u_email" type="email" defaultValue={editUser.email} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_phone">Phone Number</Label>
+                <Input id="edit_phone" name="phone" type="tel" defaultValue={editUser.phone_number} />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-center space-x-2">
+                  <Switch id="edit_is_admin" name="is_admin" defaultChecked={editUser.is_admin} />
+                  <Label htmlFor="edit_is_admin">Super Admin</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch id="edit_is_active" name="is_active" defaultChecked={editUser.is_active} />
+                  <Label htmlFor="edit_is_active">Active Account</Label>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setEditUser(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateUser.isLoading || writeDisabled}>
+                  {updateUser.isLoading ? "Saving..." : "Save Changes"}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteUser} onOpenChange={() => setDeleteUser(null)}>

@@ -2,7 +2,7 @@
 // Loan Products API Service
 // ============================================
 
-import { apiClient } from './client';
+import { apiClient, getSecureApiBaseUrl } from './client';
 import type {
   LoanProduct,
   LoanProductCreate,
@@ -74,5 +74,30 @@ export const productsApi = {
    */
   assignUser: async (productId: string, userId: string): Promise<void> => {
     return apiClient.post<void>(`/loan-products/${productId}/assign-user`, { user_id: userId });
+  },
+
+  exportCsv: async (params?: { is_active?: boolean }): Promise<Blob> => {
+    const url = new URL(`${getSecureApiBaseUrl()}/loan-products/export`);
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          url.searchParams.append(key, String(value));
+        }
+      });
+    }
+
+    const accessToken = apiClient.getAccessToken();
+    const headers: HeadersInit = {};
+    if (accessToken) {
+      headers['Authorization'] = `Bearer ${accessToken}`;
+    }
+
+    const response = await fetch(url.toString(), { headers });
+
+    if (!response.ok) {
+      throw new Error('Failed to export products');
+    }
+
+    return response.blob();
   },
 };

@@ -44,6 +44,8 @@ import { agentsApi, productsApi, loansApi, apiClient } from "@/lib/api";
 import type { Agent, LoanProduct, EligibleProductsResponse } from "@/lib/types";
 import { AgentStatusBadge } from "@/components/shared/status-badges";
 import { formatCurrency } from "@/components/shared/stat-card";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
+import { useWritePermission } from "@/hooks/use-write-permission";
 
 
 const formSchema = z.object({
@@ -68,6 +70,8 @@ export function NewLoanPageContent() {
   const [selectedProduct, setSelectedProduct] = React.useState<LoanProduct | null>(null);
   const [isSearching, setIsSearching] = React.useState(false);
   const { data: session } = useSession();
+  const { canWrite, writeDisabled, writeTooltip, requireWrite } =
+    useWritePermission("loans");
 
   // Set API token when session is loaded
   React.useEffect(() => {
@@ -156,6 +160,16 @@ export function NewLoanPageContent() {
     }
   };
 
+  const handleWriteError = (error: any): boolean => {
+    if (error?.status === 403) {
+      toast.error("Write access required", {
+        description: "Creating loans requires write access granted by a super admin.",
+      });
+      return true;
+    }
+    return false;
+  };
+
   // Create loan mutation
   const createLoan = useMutation(
     (data: FormValues) => loansApi.applyLoan({
@@ -169,12 +183,14 @@ export function NewLoanPageContent() {
         router.push(`/manager/loans/${loan.id}`);
       },
       onError: (error: any) => {
+        if (handleWriteError(error)) return;
         toast.error(error.message || "Failed to submit loan application");
       },
     }
   );
 
   const onSubmit = (data: FormValues) => {
+    if (!requireWrite()) return;
     createLoan.mutate(data);
   };
 
@@ -206,6 +222,8 @@ export function NewLoanPageContent() {
           <p className="text-muted-foreground">Create a new loan for an agent</p>
         </div>
       </div>
+
+      {!canWrite && <WriteAccessAlert tabLabel="loan" />}
 
       <div className="grid gap-6 md:grid-cols-3">
         {/* Main Form */}
@@ -385,7 +403,8 @@ export function NewLoanPageContent() {
             <CardFooter>
               <Button 
                 onClick={form.handleSubmit(onSubmit)}
-                disabled={!selectedAgent || !selectedProduct || createLoan.isLoading}
+                disabled={writeDisabled || !selectedAgent || !selectedProduct || createLoan.isLoading}
+                title={writeTooltip}
                 className="w-full"
               >
                 {createLoan.isLoading ? (

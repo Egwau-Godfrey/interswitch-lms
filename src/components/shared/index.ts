@@ -7,3 +7,4 @@ export { DateRangePicker } from './date-range-picker';
 export { DataTablePagination } from './data-table-pagination';
 export { LoadingState, ErrorState, EmptyState } from './loading-states';
 export { StatCard, formatCurrency, formatPercentage, formatDate } from './stat-card';
+export { WriteAccessAlert } from './write-access-alert';

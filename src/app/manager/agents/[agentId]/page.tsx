@@ -1,8 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -26,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 import {
   Table,
   TableBody,
@@ -41,13 +41,24 @@ import { AgentStatusBadge, LoanStatusBadge } from "@/components/shared/status-ba
 import { LoadingState, ErrorState, EmptyState } from "@/components/shared/loading-states";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
+import { useWritePermission } from "@/hooks/use-write-permission";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
+import { useApiAuth } from "@/hooks/use-api-auth";
 
 export default function AgentDetailPage() {
   const params = useParams();
-  const { status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const { accessToken, isReady } = useApiAuth();
   const agentId = params.agentId as string;
-  const [mounted, setMounted] = React.useState(false);
+  const initialTab = searchParams.get("tab") || "loans";
+  const [activeTab, setActiveTab] = React.useState(initialTab);
+  const { canWrite, writeDisabled, writeTooltip } = useWritePermission("agents");
+  const {
+    writeDisabled: loansWriteDisabled,
+    writeTooltip: loansWriteTooltip,
+    requireWrite: requireLoansWrite,
+  } = useWritePermission("loans");
 
   // Pagination state for Loans
   const [loansPage, setLoansPage] = React.useState(1);
@@ -58,46 +69,46 @@ export default function AgentDetailPage() {
   const [txPageSize, setTxPageSize] = React.useState(10);
 
   React.useEffect(() => {
-    setMounted(true);
-  }, []);
+    setActiveTab(searchParams.get("tab") || "loans");
+  }, [searchParams]);
 
   // Fetch agent data
   const { data: agent, isLoading: agentLoading, error: agentError, refetch } = useApi(
     () => agentsApi.get(agentId),
-    [agentId, mounted, status === 'authenticated'],
+    [agentId, accessToken],
     {
       cacheKey: `agent-${agentId}`,
-      enabled: mounted && status === 'authenticated'
+      enabled: isReady
     }
   );
 
   // Fetch loan balance
   const { data: loanBalance, isLoading: balanceLoading } = useApi(
     () => loansApi.getBalance(agentId),
-    [agentId, mounted, status === 'authenticated'],
+    [agentId, accessToken],
     {
       cacheKey: `agent-balance-${agentId}`,
-      enabled: mounted && status === 'authenticated'
+      enabled: isReady
     }
   );
 
   // Fetch loan history
   const { data: loansData, isLoading: loansLoading } = useApi(
     () => agentsApi.getLoanHistory(agentId, { page: loansPage, page_size: loansPageSize }),
-    [agentId, mounted, status === 'authenticated', loansPage, loansPageSize],
+    [agentId, loansPage, loansPageSize, accessToken],
     {
       cacheKey: `agent-loans-${agentId}-${loansPage}-${loansPageSize}`,
-      enabled: mounted && status === 'authenticated'
+      enabled: isReady
     }
   );
 
   // Fetch transaction history
   const { data: transactionsData, isLoading: transactionsLoading } = useApi(
     () => agentsApi.getTransactions(agentId, { page: txPage, page_size: txPageSize }),
-    [agentId, mounted, status === 'authenticated', txPage, txPageSize],
+    [agentId, txPage, txPageSize, accessToken],
     {
       cacheKey: `agent-transactions-${agentId}-${txPage}-${txPageSize}`,
-      enabled: mounted && status === 'authenticated'
+      enabled: isReady
     }
   );
 
@@ -138,6 +149,7 @@ export default function AgentDetailPage() {
 
   return (
     <div className="space-y-6">
+      {!canWrite && <WriteAccessAlert tabLabel="agent" />}
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -152,18 +164,37 @@ export default function AgentDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Link href={`/manager/agents/${agentId}/edit`}>
-            <Button variant="outline" size="sm">
-              <Edit className="h-4 w-4 mr-2" />
-              Edit
-            </Button>
-          </Link>
-          <Link href={`/manager/loans/new?agent_id=${agentId}`}>
-            <Button size="sm">
-              <Banknote className="h-4 w-4 mr-2" />
-              New Loan
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            title={writeTooltip}
+            disabled={writeDisabled}
+            onClick={() => {
+              if (canWrite) {
+                router.push(`/manager/agents/${agentId}/edit`);
+              } else {
+                toast.error("View-only access", {
+                  description: "Editing agents requires write access granted by a super admin.",
+                });
+              }
+            }}
+          >
+            <Edit className="h-4 w-4 mr-2" />
+            {writeDisabled ? "View" : "Edit"}
+          </Button>
+          <Button
+            size="sm"
+            disabled={loansWriteDisabled}
+            title={loansWriteTooltip}
+            onClick={() => {
+              if (requireLoansWrite()) {
+                router.push(`/manager/loans/new?agent_id=${agentId}`);
+              }
+            }}
+          >
+            <Banknote className="h-4 w-4 mr-2" />
+            New Loan
+          </Button>
         </div>
       </div>
 
@@ -306,7 +337,14 @@ export default function AgentDetailPage() {
       </div>
 
       {/* Tabs for Loan and Transaction History */}
-      <Tabs defaultValue="loans" className="space-y-4">
+      <Tabs
+        value={activeTab}
+        onValueChange={(tab) => {
+          setActiveTab(tab);
+          router.replace(`/manager/agents/${agentId}?tab=${tab}`, { scroll: false });
+        }}
+        className="space-y-4"
+      >
         <TabsList>
           <TabsTrigger value="loans">
             <Banknote className="h-4 w-4 mr-2" />

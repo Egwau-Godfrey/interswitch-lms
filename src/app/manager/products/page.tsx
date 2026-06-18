@@ -13,11 +13,12 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  Download
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
@@ -38,58 +38,39 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { productsApi, apiClient } from "@/lib/api";
 import type { LoanProduct } from "@/lib/types";
 import { formatCurrency } from "@/components/shared/stat-card";
-import { useSession } from "next-auth/react";
 import { ErrorState, EmptyState } from "@/components/shared/loading-states";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
+import { useApiAuth } from "@/hooks/use-api-auth";
+import { useWritePermission } from "@/hooks/use-write-permission";
 
 export default function ProductsPage() {
-  const { data: session } = useSession();
+  const { accessToken, isReady } = useApiAuth();
+  const { canWrite, writeDisabled, writeTooltip, requireWrite } = useWritePermission("loan-products");
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [editingProduct, setEditingProduct] = React.useState<LoanProduct | null>(null);
   const [page] = React.useState(1);
   const [pageSize] = React.useState(10);
+  const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
 
-  // Set access token when session is available
-  React.useEffect(() => {
-    if (session?.user?.accessToken) {
-      apiClient.setAccessToken(session.user.accessToken);
-    } else {
-      apiClient.clearAccessToken();
-    }
-  }, [session]);
-
-  // Fetch products from API with authentication
   const { data: productsData, isLoading, error, refetch } = useApi(
     () => {
-      if (!session?.user?.accessToken) {
+      if (!accessToken) {
         throw new Error("No access token available");
       }
       return productsApi.list({ page, page_size: pageSize });
     },
-    [page, pageSize, session?.user?.accessToken],
-    { cacheKey: `products-${page}` }
+    [page, pageSize, accessToken],
+    { cacheKey: `products-${page}`, enabled: isReady }
   );
 
-  // Show error toast if API fails (but not for session loading)
-  React.useEffect(() => {
-    if (error && session?.user?.accessToken) {
-      if (error.message !== "No access token available") {
-        toast.error("Failed to load products", {
-          description: error.message || "Please try refreshing the page",
-        });
-      }
-    }
-  }, [error, session]);
-
-  const products = productsData?.data ?? [];
-
-  // Show error state if API failed and no data
-  if (error && !products.length) {
+  if (error && !(productsData?.data?.length)) {
     return (
       <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
         <ErrorState
@@ -100,7 +81,18 @@ export default function ProductsPage() {
     );
   }
 
-  // Create product mutation
+  const products = productsData?.data ?? [];
+
+  const handleWriteError = (err: any): boolean => {
+    if (err?.status === 403) {
+      toast.error("Write access required", {
+        description: "This action requires write access granted by a super admin.",
+      });
+      return true;
+    }
+    return false;
+  };
+
   const createProduct = useMutation(
     (data: Partial<LoanProduct>) => productsApi.create(data as any),
     {
@@ -109,14 +101,14 @@ export default function ProductsPage() {
         setIsCreateOpen(false);
         refetch();
       },
-      onError: (err) => {
-        console.error("Create product error:", err);
-        toast.error("Failed to create product");
+      onError: (err: any) => {
+        if (!handleWriteError(err)) {
+          toast.error("Failed to create product");
+        }
       },
     }
   );
 
-  // Update product mutation  
   const updateProduct = useMutation(
     ({ id, data }: { id: string; data: Partial<LoanProduct> }) => productsApi.update(id, data as any),
     {
@@ -125,30 +117,33 @@ export default function ProductsPage() {
         setEditingProduct(null);
         refetch();
       },
-      onError: (err) => {
-        console.error("Update product error:", err);
-        toast.error("Failed to update product");
+      onError: (err: any) => {
+        if (!handleWriteError(err)) {
+          toast.error("Failed to update product");
+        }
       },
     }
   );
 
-  // Delete product mutation
   const deleteProduct = useMutation(
     (id: string) => productsApi.delete(id),
     {
       onSuccess: () => {
         toast.success("Product deleted successfully!");
+        setDeleteConfirmId(null);
         refetch();
       },
-      onError: (err) => {
-        console.error("Delete product error:", err);
-        toast.error("Failed to delete product");
+      onError: (err: any) => {
+        if (!handleWriteError(err)) {
+          toast.error("Failed to delete product");
+        }
       },
     }
   );
 
   const handleCreateProduct = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!requireWrite()) return;
     const formData = new FormData(e.currentTarget);
     createProduct.mutate({
       name: formData.get("name") as string,
@@ -165,7 +160,7 @@ export default function ProductsPage() {
 
   const handleUpdateProduct = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!editingProduct) return;
+    if (!editingProduct || !requireWrite()) return;
     const formData = new FormData(e.currentTarget);
     updateProduct.mutate({
       id: editingProduct.id,
@@ -182,15 +177,49 @@ export default function ProductsPage() {
     });
   };
 
-  const toggleProductStatus = (product: LoanProduct) => {
+  const handleToggleStatus = (product: LoanProduct) => {
+    if (!requireWrite()) return;
     updateProduct.mutate({
       id: product.id,
       data: { is_active: !product.is_active },
     });
   };
 
+  const handleDelete = (productId: string) => {
+    if (!requireWrite()) return;
+    setDeleteConfirmId(productId);
+  };
+
+  const confirmDelete = () => {
+    if (deleteConfirmId) {
+      deleteProduct.mutate(deleteConfirmId);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      toast.loading("Preparing export...", { id: "export-loading" });
+      const blob = await productsApi.exportCsv();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `products_export_${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.dismiss("export-loading");
+      toast.success("Products exported successfully");
+    } catch (err: any) {
+      toast.dismiss("export-loading");
+      toast.error(err.message || "Failed to export products");
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {!canWrite && <WriteAccessAlert tabLabel="loan product" />}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Loan Products</h1>
@@ -201,70 +230,90 @@ export default function ProductsPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+          <Button
+            variant="outline"
+            className="hidden sm:flex"
+            onClick={handleExport}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
+          </Button>
+          <Dialog open={isCreateOpen} onOpenChange={canWrite ? setIsCreateOpen : undefined}>
             <DialogTrigger asChild>
-              <Button className="bg-[#004B91] hover:bg-[#003B71]">
+              <Button
+                className="bg-[#004B91] hover:bg-[#003B71]"
+                disabled={writeDisabled}
+                title={writeTooltip}
+                onClick={() => {
+                  if (!canWrite) {
+                    toast.error("View-only access", {
+                      description: "Creating products requires write access granted by a super admin.",
+                    });
+                  }
+                }}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Create Product
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>Create Loan Product</DialogTitle>
-                <DialogDescription>Define a new loan product with interest and tenure settings.</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleCreateProduct} className="grid gap-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Product Name</Label>
-                  <Input id="name" name="name" placeholder="e.g. Quick Loan 30" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" name="description" placeholder="Brief description of the loan product" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+            {canWrite && (
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Create Loan Product</DialogTitle>
+                  <DialogDescription>Define a new loan product with interest and tenure settings.</DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleCreateProduct} className="grid gap-4 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="min_amount">Min Amount (UGX)</Label>
-                    <Input id="min_amount" name="min_amount" type="number" placeholder="50000" required />
+                    <Label htmlFor="name">Product Name</Label>
+                    <Input id="name" name="name" placeholder="e.g. Quick Loan 30" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="max_amount">Max Amount (UGX)</Label>
-                    <Input id="max_amount" name="max_amount" type="number" placeholder="500000" required />
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea id="description" name="description" placeholder="Brief description of the loan product" />
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="interest_rate">Interest Rate (%)</Label>
-                    <Input id="interest_rate" name="interest_rate" type="number" step="0.1" placeholder="10" required />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="min_amount">Min Amount (UGX)</Label>
+                      <Input id="min_amount" name="min_amount" type="number" placeholder="50000" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="max_amount">Max Amount (UGX)</Label>
+                      <Input id="max_amount" name="max_amount" type="number" placeholder="500000" required />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="penalty_rate">Penalty Rate (%/day)</Label>
-                    <Input id="penalty_rate" name="penalty_rate" type="number" step="0.1" placeholder="1" required />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="interest_rate">Interest Rate (%)</Label>
+                      <Input id="interest_rate" name="interest_rate" type="number" step="0.1" placeholder="10" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="penalty_rate">Penalty Rate (%/day)</Label>
+                      <Input id="penalty_rate" name="penalty_rate" type="number" step="0.1" placeholder="1" required />
+                    </div>
                   </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="tenure_days">Tenure (Days)</Label>
-                    <Input id="tenure_days" name="tenure_days" type="number" placeholder="30" required />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="tenure_days">Tenure (Days)</Label>
+                      <Input id="tenure_days" name="tenure_days" type="number" placeholder="30" required />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="grace_period_days">Grace Period (Days)</Label>
+                      <Input id="grace_period_days" name="grace_period_days" type="number" placeholder="2" />
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="grace_period_days">Grace Period (Days)</Label>
-                    <Input id="grace_period_days" name="grace_period_days" type="number" placeholder="2" />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={createProduct.isLoading}>
-                    {createProduct.isLoading ? "Creating..." : "Create Product"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+                    <Button type="submit" disabled={createProduct.isLoading}>
+                      {createProduct.isLoading ? "Creating..." : "Create Product"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            )}
           </Dialog>
         </div>
       </div>
 
-      {/* Products Grid */}
       {isLoading ? (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -294,18 +343,43 @@ export default function ProductsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditingProduct(product)}>
+                      <DropdownMenuItem
+                        onClick={() => {
+                          if (canWrite) {
+                            setEditingProduct(product);
+                          } else {
+                            toast.error("View-only access", {
+                              description: "Editing products requires write access granted by a super admin.",
+                            });
+                          }
+                        }}
+                        disabled={writeDisabled}
+                        title={writeTooltip}
+                      >
                         <Edit2 className="w-4 h-4 mr-2" /> Edit
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => toggleProductStatus(product)}>
+                      <DropdownMenuItem
+                        onClick={() => handleToggleStatus(product)}
+                        disabled={writeDisabled}
+                        title={writeTooltip}
+                      >
                         {product.is_active ? (
                           <><XCircle className="w-4 h-4 mr-2" /> Deactivate</>
                         ) : (
                           <><CheckCircle2 className="w-4 h-4 mr-2" /> Activate</>
                         )}
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => deleteProduct.mutate(product.id)}>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        className="text-destructive"
+                        onClick={() => handleDelete(product.id)}
+                        disabled={writeDisabled}
+                        title={writeTooltip}
+                      >
                         <Trash2 className="w-4 h-4 mr-2" /> Delete
+                        {!canWrite && (
+                          <span className="ml-auto text-[10px] text-muted-foreground">Write required</span>
+                        )}
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
@@ -364,18 +438,20 @@ export default function ProductsPage() {
         <div className="flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-lg">
           <EmptyState
             title="No products found"
-            description="Create your first loan product to get started"
-            action={
+            description={canWrite
+              ? "Create your first loan product to get started"
+              : "No loan products have been configured yet."
+            }
+            action={canWrite ? (
               <Button onClick={() => setIsCreateOpen(true)} className="mt-4">
                 <Plus className="w-4 h-4 mr-2" />
                 Create Product
               </Button>
-            }
+            ) : undefined}
           />
         </div>
       )}
 
-      {/* Edit Product Dialog */}
       <Dialog open={!!editingProduct} onOpenChange={(open) => !open && setEditingProduct(null)}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -430,6 +506,27 @@ export default function ProductsPage() {
               </DialogFooter>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Delete Product</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this product? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteConfirmId(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteProduct.isLoading}
+            >
+              {deleteProduct.isLoading ? "Deleting..." : "Delete"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

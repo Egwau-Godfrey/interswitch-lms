@@ -1,14 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
   Legend,
   LineChart,
   Line,
@@ -25,6 +25,7 @@ import { generateReportPDF } from "@/lib/pdf-utils";
 import { formatCurrency } from "@/components/shared/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
+import { useApiAuth } from "@/hooks/use-api-auth";
 
 const statusColors: Record<string, string> = {
   disbursed: "#004B91",
@@ -35,9 +36,32 @@ const statusColors: Record<string, string> = {
 };
 
 export default function ReportsPage() {
-  const { data: stats, isLoading: isLoadingStats } = useApi(() => dashboardApi.getStats());
-  const { data: portfolioReport, isLoading: isLoadingPortfolio } = useApi(() => reportsApi.getPortfolioReport());
-  const { data: collectionsReport, isLoading: isLoadingCollections } = useApi(() => reportsApi.getCollectionsReport());
+  const { accessToken, isReady } = useApiAuth();
+
+  const { data: stats, isLoading: isLoadingStats } = useApi(
+    () => {
+      if (!accessToken) throw new Error("No access token available");
+      return dashboardApi.getStats();
+    },
+    [accessToken],
+    { enabled: isReady }
+  );
+  const { data: portfolioReport, isLoading: isLoadingPortfolio } = useApi(
+    () => {
+      if (!accessToken) throw new Error("No access token available");
+      return reportsApi.getPortfolioReport();
+    },
+    [accessToken],
+    { enabled: isReady }
+  );
+  const { data: collectionsReport, isLoading: isLoadingCollections } = useApi(
+    () => {
+      if (!accessToken) throw new Error("No access token available");
+      return reportsApi.getCollectionsReport();
+    },
+    [accessToken],
+    { enabled: isReady }
+  );
 
   const portfolioChartsData = React.useMemo(() => {
     if (!stats?.loan_status_distribution) return [];
@@ -71,10 +95,16 @@ export default function ReportsPage() {
   const avgLoanSize = portfolioReport?.average_loan_size || 0;
   const collectionEfficiency = collectionsReport?.collection_rate || 0;
   const totalInterestEarned = stats?.total_interest_earned || 0;
-  const isReady = stats && portfolioReport && collectionsReport;
+  const isDataReady = stats && portfolioReport && collectionsReport;
+
+  const ChartSkeleton = () => (
+    <div className="flex items-center justify-center h-full">
+      <Skeleton className="h-full w-full" />
+    </div>
+  );
 
   const handleDownloadPDF = () => {
-    if (!isReady) {
+    if (!isDataReady) {
       toast.error("Report data is still loading. Please wait.");
       return;
     }
@@ -90,6 +120,7 @@ export default function ReportsPage() {
       toast.error("Failed to generate PDF report");
     }
   };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -102,10 +133,10 @@ export default function ReportsPage() {
             <Calendar className="w-4 h-4 mr-2" />
             Last 30 Days
           </Button>
-          <Button 
+          <Button
             className="bg-[#E31C2D] hover:bg-[#C21827]"
             onClick={handleDownloadPDF}
-            disabled={!isReady}
+            disabled={!isDataReady}
           >
             <Download className="w-4 h-4 mr-2" />
             Download PDF Report
@@ -174,26 +205,30 @@ export default function ReportsPage() {
             <CardTitle>Portfolio Status Distribution</CardTitle>
             <CardDescription>Breakdown of all active and historical loans</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={portfolioChartsData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {portfolioChartsData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          <CardContent className="h-[300px] min-w-0">
+            {!isDataReady || isLoadingStats ? (
+              <ChartSkeleton />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={portfolioChartsData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {portfolioChartsData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -202,18 +237,22 @@ export default function ReportsPage() {
             <CardTitle>Monthly Growth Trends</CardTitle>
             <CardDescription>Disbursements vs Collections (Millions UGX)</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyTrendsData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="disbursed" name="Disbursements" stroke="#004B91" strokeWidth={2} />
-                <Line type="monotone" dataKey="collected" name="Collections" stroke="#10B981" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+          <CardContent className="h-[300px] min-w-0">
+            {!isDataReady || isLoadingStats ? (
+              <ChartSkeleton />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyTrendsData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="disbursed" name="Disbursements" stroke="#004B91" strokeWidth={2} />
+                  <Line type="monotone" dataKey="collected" name="Collections" stroke="#10B981" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -222,16 +261,20 @@ export default function ReportsPage() {
             <CardTitle>Aging Analysis (Overdue Value)</CardTitle>
             <CardDescription>Value of outstanding loans categorized by days past due</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={agingChartsData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="range" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `UGX ${value/1000}k`} />
-                <Tooltip />
-                <Bar dataKey="value" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="h-[300px] min-w-0">
+            {!isDataReady || isLoadingStats ? (
+              <ChartSkeleton />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={agingChartsData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="range" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => `UGX ${value/1000}k`} />
+                  <Tooltip />
+                  <Bar dataKey="value" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>

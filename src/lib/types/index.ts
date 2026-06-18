@@ -565,3 +565,95 @@ export interface BulkScoreResponse {
   failed: number;
   results: BulkScoreResult[];
 }
+
+// ============================================
+// RBAC — Permission Grants & Audit Log Types
+// ============================================
+
+export type GrantScope = 'system' | 'tab';
+
+export type AuditEventType =
+  | 'grant_created'
+  | 'grant_revoked'
+  | 'grant_expired'
+  | 'write_action'
+  | 'unauthorized_attempt'
+  | 'route_blocked';
+
+export const ADMIN_TABS = [
+  'agents',
+  'loans',
+  'scoring',
+  'loan-products',
+  'payments',
+  'reports',
+  'users',
+  'settings',
+  'api-management',
+] as const;
+export type AdminTab = typeof ADMIN_TABS[number];
+
+export interface PermissionGrant {
+  id: string;
+  granted_to_user_id: string;
+  granted_to_user: {
+    username: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+  };
+  granted_by_user: {
+    username: string;
+    first_name: string;
+    last_name: string;
+  };
+  scope: GrantScope;
+  tab_name: AdminTab | null;
+  is_permanent: boolean;
+  expires_at: string | null;       // ISO datetime
+  is_active: boolean;
+  revoked_at: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  event_type: AuditEventType;
+  actor_user_id: string;
+  actor_role: string;
+  actor_name?: string;             // joined from users table
+  target_user_id: string | null;
+  grant_id: string | null;
+  tab_name: string | null;
+  scope: string | null;
+  http_method: string | null;
+  endpoint: string | null;
+  detail: Record<string, unknown> | null;
+  ip_address: string | null;
+  created_at: string;
+}
+
+export interface CreateGrantRequest {
+  granted_to_user_id: string;
+  scope: GrantScope;
+  tab_name?: AdminTab;
+  is_permanent: boolean;
+  expires_at?: string;             // ISO datetime, required when is_permanent=false
+  notes?: string;
+}
+
+export interface GrantListParams extends ListParams {
+  user_id?: string;
+  tab_name?: string;
+  is_active?: boolean;
+  scope?: GrantScope;
+}
+
+export interface AuditLogParams extends ListParams {
+  event_type?: AuditEventType;
+  actor_user_id?: string;
+  tab_name?: string;
+  date_from?: string;
+  date_to?: string;
+}

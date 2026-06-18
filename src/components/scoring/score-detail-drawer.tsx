@@ -24,6 +24,8 @@ interface ScoreDetailDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   onReScoreSuccess: () => void;
+  hasWriteAccess?: boolean;
+  writeTooltip?: string;
 }
 
 export function ScoreDetailDrawer({
@@ -31,6 +33,8 @@ export function ScoreDetailDrawer({
   isOpen,
   onClose,
   onReScoreSuccess,
+  hasWriteAccess = true,
+  writeTooltip = "Write access requires a grant from a super admin",
 }: ScoreDetailDrawerProps) {
   const { data: history, isLoading: historyLoading } = useApi(
     () => scoringDashboardApi.getScoreHistory(agent!.agent_id, 10),
@@ -121,8 +125,17 @@ export function ScoreDetailDrawer({
             variant="outline"
             size="sm"
             className="w-full"
-            disabled={reScoreMutation.isLoading}
-            onClick={() => reScoreMutation.mutate(undefined as any)}
+            disabled={reScoreMutation.isLoading || !hasWriteAccess}
+            title={hasWriteAccess ? undefined : writeTooltip}
+            onClick={() => {
+              if (!hasWriteAccess) {
+                toast.error("View-only access", {
+                  description: "Re-scoring requires write access granted by a super admin.",
+                });
+                return;
+              }
+              reScoreMutation.mutate(undefined as any);
+            }}
           >
             {reScoreMutation.isLoading ? (
               <Loader2 className="h-4 w-4 mr-2 animate-spin" />

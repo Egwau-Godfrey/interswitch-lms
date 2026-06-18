@@ -4,57 +4,58 @@ import { NextResponse } from "next/server";
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isAuthenticated = !!req.auth;
+  const role: string = (req.auth as any)?.user?.role ?? "";
 
-  // Public routes that don't require authentication
-  const publicRoutes = ["/"];
-
-  // API routes that should be handled by NextAuth
-  const authApiRoutes = ["/api/auth"];
-
-  // Check if the current path is an auth API route
-  const isAuthApiRoute = authApiRoutes.some((route) =>
-    pathname.startsWith(route)
-  );
-
-  // Allow auth API routes to pass through
-  if (isAuthApiRoute) {
+  // Always allow NextAuth API routes through
+  if (pathname.startsWith("/api/auth")) {
     return NextResponse.next();
   }
 
-  // Check if the current path is a public route
-  const isPublicRoute = publicRoutes.includes(pathname);
+  // Public routes — always accessible
+  const publicRoutes = ["/"];
+  if (publicRoutes.includes(pathname)) {
+    return NextResponse.next();
+  }
 
-  // If user is not authenticated and trying to access protected route
-  if (!isAuthenticated && !isPublicRoute) {
+  // Unauthenticated users get redirected to login
+  if (!isAuthenticated) {
     const url = new URL("/", req.url);
     url.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(url);
   }
 
-  // User wants to always be able to view the login page at "/"
-  // Commenting out the automatic redirect for authenticated users.
-  /*
-  if (isAuthenticated && pathname === "/") {
-    const callbackUrl = req.nextUrl.searchParams.get("callbackUrl");
-    const role = (req.auth as any)?.user?.role;
-    const defaultDashboard = role === "super_admin" ? "/super-admin" : "/manager";
-    const url = new URL(callbackUrl || defaultDashboard, req.url);
-    return NextResponse.redirect(url);
+  // ── Role-based route guards ──────────────────────────────────────────
+  // /super-admin/* — only super_admin (or legacy is_admin)
+  if (pathname.startsWith("/super-admin")) {
+    if (role === "super_admin" || (req.auth as any)?.user?.isAdmin) {
+      return NextResponse.next();
+    }
+    // manager → their own portal; agent → agent portal
+    const fallback = role === "manager" ? "/manager" : "/agent";
+    return NextResponse.redirect(new URL(fallback, req.url));
   }
-  */
 
+  // /manager/* — super_admin or manager
+  if (pathname.startsWith("/manager")) {
+    if (role === "super_admin" || role === "manager" || (req.auth as any)?.user?.isAdmin) {
+      return NextResponse.next();
+    }
+    // agent (or unknown) → agent portal
+    return NextResponse.redirect(new URL("/agent", req.url));
+  }
+
+  // /agent/* — any authenticated user may access their own portal
+  // (agents are already blocked from /manager and /super-admin above)
+  if (pathname.startsWith("/agent")) {
+    return NextResponse.next();
+  }
+
+  // All other authenticated routes — allow through
   return NextResponse.next();
 });
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (images, etc.)
-     */
     "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

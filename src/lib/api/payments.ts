@@ -67,4 +67,8 @@ export const paymentsApi = {
 
     return response.blob();
   },
+
+  delete: async (paymentId: string): Promise<void> => {
+    return apiClient.delete(`/payments/${paymentId}`);
+  },
 };

@@ -81,6 +81,10 @@ export function formatCurrency(
   
   const numericAmount = Number(amount);
   
+  if (Number.isNaN(numericAmount)) {
+    return "--";
+  }
+  
   if (compact && Math.abs(numericAmount) >= 10000000) {
     return `${currency} ${(numericAmount / 1000000).toFixed(2)}M`;
   }

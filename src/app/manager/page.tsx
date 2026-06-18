@@ -13,7 +13,8 @@ import {
   ExternalLink,
   RefreshCw,
   Percent,
-  Target
+  Target,
+  Wallet,
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -90,8 +91,6 @@ export default function DashboardPage() {
     }
   }, [error, session]);
 
-  const isManager = session?.user?.role === 'manager';
-
   // Show error state if API failed and no data
   if (error && !stats) {
     return (
@@ -100,18 +99,6 @@ export default function DashboardPage() {
           message="Failed to load dashboard data"
           onRetry={refetch}
         />
-      </div>
-    );
-  }
-
-  if (isManager) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 text-center h-[60vh] border rounded-lg border-dashed mt-6">
-        <h2 className="text-2xl font-bold mb-2">Manager Dashboard</h2>
-        <p className="text-muted-foreground max-w-md">
-          Welcome to the manager view. This interface is currently under development.
-          Your specific performance metrics, loan queue, and agent overview will appear here soon.
-        </p>
       </div>
     );
   }
@@ -248,6 +235,29 @@ export default function DashboardPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* ISW Wallet Balance */}
+        <Card className="relative overflow-hidden border border-violet-100 dark:border-violet-900/50 bg-gradient-to-br from-violet-50 to-purple-50 dark:from-violet-950/50 dark:to-purple-950/50 shadow-sm hover:shadow-md transition-shadow">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-violet-500/5 dark:bg-violet-400/10 rounded-full -translate-y-1/2 translate-x-1/2" />
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 relative">
+            <CardTitle className="text-sm font-medium text-slate-600 dark:text-slate-300">ISW Wallet Balance</CardTitle>
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg shadow-violet-500/25">
+              <Wallet className="h-5 w-5 text-white" />
+            </div>
+          </CardHeader>
+          <CardContent className="relative">
+            {isLoading ? (
+              <Skeleton className="h-9 w-32" />
+            ) : (
+              <>
+                <div className="text-3xl font-bold tracking-tight text-slate-800 dark:text-slate-100">
+                  {formatCurrency(stats?.isw_wallet_balance ?? 0, "UGX", true)}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Interswitch Wallet</p>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       {/* Secondary KPIs */}
@@ -283,11 +293,11 @@ export default function DashboardPage() {
             <CardTitle>Disbursement vs Collections</CardTitle>
             <CardDescription>Monthly comparison of disbursed amounts vs collections</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-[350px] min-w-0">
             {isLoading ? (
-              <Skeleton className="h-[350px]" />
+              <Skeleton className="h-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats?.disbursement_trend ?? []}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="month" className="text-xs" />
@@ -310,11 +320,11 @@ export default function DashboardPage() {
             <CardTitle>Loan Status Distribution</CardTitle>
             <CardDescription>Breakdown of loans by current status</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-[350px] min-w-0">
             {isLoading ? (
-              <Skeleton className="h-[350px]" />
+              <Skeleton className="h-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={350}>
+              <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={pieData}
@@ -347,11 +357,11 @@ export default function DashboardPage() {
             <CardTitle>Overdue Aging</CardTitle>
             <CardDescription>Distribution of overdue loans by days past due</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="h-[250px] min-w-0">
             {isLoading ? (
-              <Skeleton className="h-[250px]" />
+              <Skeleton className="h-full" />
             ) : (
-              <ResponsiveContainer width="100%" height={250}>
+              <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats?.overdue_aging ?? []} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis type="number" tickFormatter={(v) => formatCurrency(v, "UGX", true)} className="text-xs" />

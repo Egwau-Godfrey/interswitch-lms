@@ -29,13 +29,19 @@ interface RecordPaymentDialogProps {
   onOpenChange: (open: boolean) => void;
   loanId?: string;
   onSuccess?: () => void;
+  submitDisabled?: boolean;
+  submitDisabledReason?: string;
+  onWriteError?: (error: unknown) => boolean;
 }
 
 export function RecordPaymentDialog({ 
   open, 
   onOpenChange, 
   loanId, 
-  onSuccess 
+  onSuccess,
+  submitDisabled = false,
+  submitDisabledReason,
+  onWriteError,
 }: RecordPaymentDialogProps) {
   const [channel, setChannel] = React.useState<PaymentChannel>("cash");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -55,6 +61,7 @@ export function RecordPaymentDialog({
         }
       },
       onError: (err) => {
+        if (onWriteError?.(err)) return;
         console.error("Post payment error:", err);
         toast.error("Failed to record payment. Please check the Loan ID and amount.");
       },
@@ -63,6 +70,15 @@ export function RecordPaymentDialog({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (submitDisabled) {
+      toast.error("View-only access", {
+        description:
+          submitDisabledReason ||
+          "You need write access granted by a super admin to record payments.",
+      });
+      return;
+    }
+
     const formData = new FormData(e.currentTarget);
     
     const targetLoanId = (formData.get("loanId") as string) || loanId;
@@ -88,6 +104,12 @@ export function RecordPaymentDialog({
             Record a payment received outside automated channels for this loan.
           </DialogDescription>
         </DialogHeader>
+        {submitDisabled && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2">
+            {submitDisabledReason ||
+              "You can view payment details, but recording payments requires write access from a super admin."}
+          </p>
+        )}
         <form onSubmit={handleSubmit} className="grid gap-5 py-4">
           {!loanId && (
             <div className="space-y-2">
@@ -153,7 +175,8 @@ export function RecordPaymentDialog({
             <Button 
               type="submit" 
               className="bg-emerald-600 hover:bg-emerald-700" 
-              disabled={postPayment.isLoading}
+              disabled={postPayment.isLoading || submitDisabled}
+              title={submitDisabled ? submitDisabledReason : undefined}
             >
               {postPayment.isLoading ? "Recording..." : "Record Payment"}
             </Button>

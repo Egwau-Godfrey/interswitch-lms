@@ -1,12 +1,12 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { 
   Search, 
   Filter, 
   Download, 
   CreditCard,
-  Calendar,
   MoreVertical,
   CheckCircle2,
   Clock,
@@ -14,7 +14,11 @@ import {
   Plus,
   RefreshCw,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Building2,
+  Printer,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +34,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -59,8 +64,19 @@ import type { LoanPayment, PaymentChannel, PaymentStatus, PaymentCreate } from "
 import { formatCurrency } from "@/components/shared/stat-card";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { ErrorState, EmptyState } from "@/components/shared/loading-states";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
+import { useApiAuth } from "@/hooks/use-api-auth";
+import { useWritePermission } from "@/hooks/use-write-permission";
 
-// Helper function to format date
+const channelLabels: Record<PaymentChannel, string> = {
+  mobile_money: "Mobile Money",
+  bank_transfer: "Bank Transfer",
+  card: "Card",
+  auto_debit: "Auto-Debit",
+  cash: "Cash",
+  wallet: "Wallet",
+};
+
 function formatDate(dateString: string): string {
   return new Date(dateString).toLocaleString("en-US", {
     year: "numeric",
@@ -71,7 +87,6 @@ function formatDate(dateString: string): string {
   });
 }
 
-// Payment status badge component
 function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   switch (status) {
     case "posted":
@@ -103,16 +118,7 @@ function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
   }
 }
 
-// Payment channel badge component
 function PaymentChannelBadge({ channel }: { channel: PaymentChannel }) {
-  const channelLabels: Record<PaymentChannel, string> = {
-    mobile_money: "Mobile Money",
-    bank_transfer: "Bank Transfer",
-    card: "Card",
-    auto_debit: "Auto-Debit",
-    cash: "Cash",
-    wallet: "Wallet",
-  };
   return (
     <Badge variant="outline" className="font-normal uppercase text-[10px]">
       {channelLabels[channel] || channel}
@@ -120,30 +126,190 @@ function PaymentChannelBadge({ channel }: { channel: PaymentChannel }) {
   );
 }
 
+function ReceiptDialog({ payment, open, onClose }: { payment: LoanPayment | null; open: boolean; onClose: () => void }) {
+  const receiptRef = React.useRef<HTMLDivElement>(null);
+
+  const handlePrint = () => {
+    const content = receiptRef.current;
+    if (!content) return;
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Payment Receipt - ${payment?.payment_reference || payment?.id}</title>
+          <style>
+            * { box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; padding: 40px; color: #111; max-width: 600px; margin: 0 auto; }
+            .header { background: #004B91; color: white; padding: 20px 24px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0; }
+            .header .logo { font-size: 20px; font-weight: bold; }
+            .header .sub { font-size: 11px; color: #93c5fd; margin-top: 2px; }
+            .header .ref { text-align: right; }
+            .header .ref-label { font-size: 10px; color: #93c5fd; }
+            .header .ref-num { font-family: monospace; font-size: 13px; font-weight: 600; }
+            .body { border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 8px 8px; padding: 24px; }
+            .amount-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+            .amount-label { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; }
+            .amount-value { font-size: 32px; font-weight: bold; color: #059669; margin-top: 4px; }
+            .status-stamp { border: 2px solid #10b981; color: #059669; padding: 4px 14px; border-radius: 4px; font-size: 13px; font-weight: bold; letter-spacing: 2px; transform: rotate(-8deg); display: inline-block; }
+            .divider { border-top: 1px dashed #d1d5db; margin: 18px 0; }
+            .row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #f3f4f6; }
+            .row:last-child { border-bottom: none; }
+            .label { color: #6b7280; }
+            .value { font-weight: 600; font-family: monospace; }
+            .footer { text-align: center; font-size: 10px; color: #9ca3af; margin-top: 20px; line-height: 1.6; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div><div class="logo">Interswitch LMS</div><div class="sub">Loan Management System</div></div>
+            <div class="ref"><div class="ref-label">Payment Receipt</div><div class="ref-num">${payment?.payment_reference || payment?.id}</div></div>
+          </div>
+          <div class="body">
+            <div class="amount-row">
+              <div><div class="amount-label">Transaction Amount</div><div class="amount-value">UGX ${payment?.amount?.toLocaleString("en-US")}</div></div>
+              <div class="status-stamp">${(payment?.status || "").toUpperCase()}</div>
+            </div>
+            <div class="divider"></div>
+            <div class="row"><span class="label">Payment ID</span><span class="value">${payment?.id}</span></div>
+            <div class="row"><span class="label">Reference No.</span><span class="value">${payment?.payment_reference || "\u2014"}</span></div>
+            <div class="row"><span class="label">Loan ID</span><span class="value">${payment?.loan_id}</span></div>
+            <div class="row"><span class="label">Payment Channel</span><span class="value">${payment?.channel ? channelLabels[payment.channel] || payment.channel : "\u2014"}</span></div>
+            <div class="row"><span class="label">Payment Date</span><span class="value">${new Date(payment?.payment_date || "").toLocaleString("en-US", { year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span></div>
+            <div class="row"><span class="label">Recorded At</span><span class="value">${new Date(payment?.created_at || "").toLocaleString("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span></div>
+            <div class="divider"></div>
+            <div class="footer">This is an official payment receipt generated by Interswitch Loan Management System.<br/>Please retain for your records. For queries, contact your loan administrator.</div>
+          </div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+    printWindow.close();
+  };
+
+  if (!payment) return null;
+
+  const isPosted = payment.status === "posted";
+
+  return (
+    <Dialog open={open} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-[500px] p-0 overflow-hidden gap-0">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Payment Receipt — {payment.payment_reference || payment.id}</DialogTitle>
+        </DialogHeader>
+
+        <div ref={receiptRef}>
+          <div className="bg-primary text-primary-foreground px-6 py-4 flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 opacity-80" />
+                <span className="font-bold text-base tracking-tight">Interswitch LMS</span>
+              </div>
+              <p className="text-primary-foreground/60 text-[11px] mt-0.5">Loan Management System</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-primary-foreground/60 uppercase tracking-wider">Payment Receipt</p>
+              <p className="font-mono text-xs font-semibold mt-0.5">{payment.payment_reference || payment.id}</p>
+            </div>
+          </div>
+
+          <div className="px-6 pt-5 pb-3 flex items-center justify-between border-b">
+            <div>
+              <p className="text-[10px] text-muted-foreground uppercase tracking-widest font-medium">Transaction Amount</p>
+              <p className="text-2xl font-bold text-emerald-500 mt-1">
+                UGX {payment.amount.toLocaleString("en-US")}
+              </p>
+            </div>
+            <div className={`border-2 rounded px-3 py-1 text-[11px] font-bold tracking-widest rotate-[-8deg] ${
+              isPosted
+                ? "border-emerald-500 text-emerald-500"
+                : payment.status === "pending"
+                  ? "border-amber-500 text-amber-500"
+                  : "border-muted-foreground text-muted-foreground"
+            }`}>
+              {payment.status.toUpperCase()}
+            </div>
+          </div>
+
+          <div className="px-6 py-5">
+            <div className="space-y-3 text-sm">
+              {[
+                { label: "Payment ID", value: <span className="font-mono text-xs">{payment.id}</span> },
+                { label: "Reference No.", value: <span className="font-mono">{payment.payment_reference || "\u2014"}</span> },
+                { label: "Loan ID", value: <span className="font-mono text-xs">{payment.loan_id}</span> },
+                { label: "Payment Channel", value: channelLabels[payment.channel] || payment.channel },
+                {
+                  label: "Payment Date",
+                  value: new Date(payment.payment_date).toLocaleString("en-US", {
+                    year: "numeric", month: "long", day: "numeric", hour: "2-digit", minute: "2-digit"
+                  })
+                },
+                {
+                  label: "Recorded At",
+                  value: <span className="text-muted-foreground text-xs">{new Date(payment.created_at).toLocaleString("en-US", {
+                    year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit"
+                  })}</span>
+                },
+              ].map(({ label, value }) => (
+                <div key={label} className="flex justify-between items-center py-2 border-b border-dashed border-border/50 last:border-0">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className="font-medium text-right">{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <p className="text-[10px] text-muted-foreground text-center leading-relaxed mt-5 pt-4 border-t border-dashed">
+              This is an official payment receipt generated by Interswitch Loan Management System.<br />
+              Please retain for your records. For queries, contact your loan administrator.
+            </p>
+          </div>
+        </div>
+
+        <div className="px-6 pb-5 pt-2 flex gap-2 justify-end border-t bg-muted/30">
+          <Button variant="outline" onClick={onClose}>Close</Button>
+          <Button className="bg-primary hover:bg-primary/90" onClick={handlePrint}>
+            <Printer className="w-4 h-4 mr-2" />
+            Print Receipt
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function PaymentsPage() {
+  const router = useRouter();
+  const { accessToken, isReady } = useApiAuth();
+  const { canWrite, writeDisabled, writeTooltip, requireWrite } = useWritePermission("payments");
   const [searchQuery, setSearchQuery] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [channelFilter, setChannelFilter] = React.useState<string>("all");
   const [page, setPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(10);
   const [isPostOpen, setIsPostOpen] = React.useState(false);
+  const [receiptPayment, setReceiptPayment] = React.useState<LoanPayment | null>(null);
 
-  // Fetch payments from API
   const { data: paymentsData, isLoading, error, refetch, isRefetching } = useApi(
-    () => paymentsApi.list({
-      page,
-      page_size: pageSize,
-      status: statusFilter !== "all" ? statusFilter as PaymentStatus : undefined,
-    }),
-    [page, pageSize, statusFilter],
-    { cacheKey: `payments-${page}-${statusFilter}` }
+    () => {
+      if (!accessToken) {
+        throw new Error("No access token available");
+      }
+      return paymentsApi.list({
+        page,
+        page_size: pageSize,
+        status: statusFilter !== "all" ? statusFilter as PaymentStatus : undefined,
+      });
+    },
+    [page, pageSize, statusFilter, accessToken],
+    { cacheKey: `payments-${page}-${statusFilter}`, enabled: isReady }
   );
 
   const payments = paymentsData?.data ?? [];
   const totalPages = paymentsData?.total_pages ?? 1;
   const totalItems = paymentsData?.total ?? 0;
 
-  // Show error state if API failed and no data
   if (error && !payments.length) {
     return (
       <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
@@ -155,7 +321,6 @@ export default function PaymentsPage() {
     );
   }
 
-  // Post manual payment mutation
   const postPayment = useMutation(
     (data: { loan_id: string; amount: number; channel: PaymentChannel; payment_reference?: string }) =>
       paymentsApi.create(data as PaymentCreate),
@@ -165,14 +330,38 @@ export default function PaymentsPage() {
         setIsPostOpen(false);
         refetch();
       },
-      onError: (err) => {
-        console.error("Post payment error:", err);
-        toast.error("Failed to post payment");
+      onError: (err: any) => {
+        if (err?.status === 403) {
+          toast.error("Write access required", {
+            description: "Recording payments requires write access granted by a super admin.",
+          });
+        } else {
+          toast.error("Failed to post payment");
+        }
       },
     }
   );
 
-  // Filter payments by search query (client-side for now)
+  const handleReverse = async (paymentId: string) => {
+    if (!requireWrite()) return;
+    try {
+      toast.loading("Reversing payment...", { id: "reverse-loading" });
+      await paymentsApi.delete(paymentId);
+      toast.dismiss("reverse-loading");
+      toast.success("Payment reversed successfully");
+      refetch();
+    } catch (err: any) {
+      toast.dismiss("reverse-loading");
+      if (err?.status === 403) {
+        toast.error("Write access required", {
+          description: "Reversing payments requires write access granted by a super admin.",
+        });
+      } else {
+        toast.error(err?.message || "Failed to reverse payment");
+      }
+    }
+  };
+
   const filteredPayments = React.useMemo(() => {
     let result = payments;
 
@@ -192,19 +381,16 @@ export default function PaymentsPage() {
     return result;
   }, [payments, searchQuery, channelFilter]);
 
-  // Calculate pagination for filtered results
   const isFiltering = !!searchQuery || channelFilter !== "all";
   const filteredTotalItems = filteredPayments.length;
   const filteredTotalPages = isFiltering ? Math.ceil(filteredTotalItems / pageSize) || 1 : totalPages;
 
-  // Reset page to 1 when filtering changes
   React.useEffect(() => {
     if (isFiltering) {
       setPage(1);
     }
   }, [searchQuery, channelFilter]);
 
-  // Paginate the filtered results
   const paginatedPayments = React.useMemo(() => {
     if (isFiltering) {
       const startIndex = (page - 1) * pageSize;
@@ -213,7 +399,6 @@ export default function PaymentsPage() {
     return filteredPayments;
   }, [filteredPayments, page, pageSize, isFiltering]);
 
-  // Calculate summary stats
   const summaryStats = React.useMemo(() => {
     const today = new Date().toDateString();
     const todayPayments = payments.filter(
@@ -236,6 +421,7 @@ export default function PaymentsPage() {
 
   const handlePostPayment = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!requireWrite()) return;
     const formData = new FormData(e.currentTarget);
     postPayment.mutate({
       loan_id: formData.get("loan") as string,
@@ -243,15 +429,6 @@ export default function PaymentsPage() {
       channel: formData.get("channel") as PaymentChannel,
       payment_reference: formData.get("ref") as string || undefined,
     });
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handlePageSizeChange = (newPageSize: number) => {
-    setPageSize(newPageSize);
-    setPage(1);
   };
 
   const handleExport = async () => {
@@ -282,6 +459,8 @@ export default function PaymentsPage() {
 
   return (
     <div className="space-y-6">
+      {!canWrite && <WriteAccessAlert tabLabel="payment" />}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Payments & Collections</h1>
@@ -303,66 +482,78 @@ export default function PaymentsPage() {
             onClick={handleExport}
           >
             <Download className="w-4 h-4 mr-2" />
-            Export
+            Export CSV
           </Button>
-          <Dialog open={isPostOpen} onOpenChange={setIsPostOpen}>
+          <Dialog open={isPostOpen} onOpenChange={canWrite ? setIsPostOpen : undefined}>
             <DialogTrigger asChild>
-              <Button className="bg-[#10B981] hover:bg-[#059669]">
+              <Button 
+                className="bg-[#10B981] hover:bg-[#059669]"
+                disabled={writeDisabled}
+                title={writeTooltip}
+                onClick={() => {
+                  if (!canWrite) {
+                    toast.error("View-only access", {
+                      description: "Recording payments requires write access granted by a super admin.",
+                    });
+                  }
+                }}
+              >
                 <Plus className="w-4 h-4 mr-2" />
                 Post Manual Payment
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[450px]">
-              <DialogHeader>
-                <DialogTitle>Post Manual Payment</DialogTitle>
-                <DialogDescription>
-                  Record a payment that was received outside the automated channels.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handlePostPayment} className="grid gap-6 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="loan">Loan ID</Label>
-                  <Input id="loan" name="loan" placeholder="e.g. loan-001" required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Payment Amount (UGX)</Label>
-                  <Input id="amount" name="amount" type="number" placeholder="10000" required />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+            {canWrite && (
+              <DialogContent className="sm:max-w-[450px]">
+                <DialogHeader>
+                  <DialogTitle>Post Manual Payment</DialogTitle>
+                  <DialogDescription>
+                    Record a payment that was received outside the automated channels.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handlePostPayment} className="grid gap-6 py-4">
                   <div className="space-y-2">
-                    <Label htmlFor="channel">Channel</Label>
-                    <Select name="channel" defaultValue="cash">
-                      <SelectTrigger id="channel">
-                        <SelectValue placeholder="Select channel" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="cash">Cash</SelectItem>
-                        <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                        <SelectItem value="mobile_money">Mobile Money</SelectItem>
-                        <SelectItem value="card">Card</SelectItem>
-                        <SelectItem value="wallet">Wallet</SelectItem>
-                        <SelectItem value="auto_debit">Auto-Debit</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="loan">Loan ID</Label>
+                    <Input id="loan" name="loan" placeholder="e.g. loan-001" required />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="ref">Reference</Label>
-                    <Input id="ref" name="ref" placeholder="TXN-123456" />
+                    <Label htmlFor="amount">Payment Amount (UGX)</Label>
+                    <Input id="amount" name="amount" type="number" placeholder="10000" required />
                   </div>
-                </div>
-                <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsPostOpen(false)}>Cancel</Button>
-                  <Button type="submit" className="bg-[#10B981] hover:bg-[#059669]" disabled={postPayment.isLoading}>
-                    {postPayment.isLoading ? "Posting..." : "Post Payment"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="channel">Channel</Label>
+                      <Select name="channel" defaultValue="cash">
+                        <SelectTrigger id="channel">
+                          <SelectValue placeholder="Select channel" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cash">Cash</SelectItem>
+                          <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
+                          <SelectItem value="mobile_money">Mobile Money</SelectItem>
+                          <SelectItem value="card">Card</SelectItem>
+                          <SelectItem value="wallet">Wallet</SelectItem>
+                          <SelectItem value="auto_debit">Auto-Debit</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="ref">Reference</Label>
+                      <Input id="ref" name="ref" placeholder="TXN-123456" />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button type="button" variant="outline" onClick={() => setIsPostOpen(false)}>Cancel</Button>
+                    <Button type="submit" className="bg-[#10B981] hover:bg-[#059669]" disabled={postPayment.isLoading}>
+                      {postPayment.isLoading ? "Posting..." : "Post Payment"}
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            )}
           </Dialog>
         </div>
       </div>
 
-      {/* Summary Cards */}
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-3">
           {Array.from({ length: 3 }).map((_, i) => (
@@ -413,7 +604,6 @@ export default function PaymentsPage() {
         </div>
       )}
 
-      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -456,7 +646,6 @@ export default function PaymentsPage() {
         </div>
       </div>
 
-      {/* Payments Table */}
       <div className="rounded-md border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
@@ -485,8 +674,8 @@ export default function PaymentsPage() {
                   <TableCell><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                 </TableRow>
               ))
-) : paginatedPayments.length > 0 ? (
-                paginatedPayments.map((payment) => (
+            ) : paginatedPayments.length > 0 ? (
+              paginatedPayments.map((payment) => (
                 <TableRow key={payment.id}>
                   <TableCell className="font-mono text-xs font-semibold">{payment.id}</TableCell>
                   <TableCell className="font-mono text-xs">
@@ -515,20 +704,27 @@ export default function PaymentsPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Receipt</DropdownMenuItem>
-                        <DropdownMenuItem>View Loan Details</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setReceiptPayment(payment)}>
+                          <FileText className="w-4 h-4 mr-2" />
+                          View Receipt
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => router.push(`/manager/loans/${payment.loan_id}`)}>
+                          View Loan Details
+                        </DropdownMenuItem>
                         {payment.status === "posted" && (
-                          <DropdownMenuItem className="text-destructive">
-                            Reverse Transaction
-                          </DropdownMenuItem>
-                        )}
-                        {payment.status === "pending" && (
                           <>
-                            <DropdownMenuItem className="text-emerald-600">
-                              Approve Payment
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">
-                              Reject Payment
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              disabled={writeDisabled}
+                              onClick={() => handleReverse(payment.id)}
+                              title={writeTooltip}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Reverse Transaction
+                              {!canWrite && (
+                                <span className="ml-auto text-[10px] text-muted-foreground">Write required</span>
+                              )}
                             </DropdownMenuItem>
                           </>
                         )}
@@ -553,17 +749,22 @@ export default function PaymentsPage() {
         </Table>
       </div>
 
-            {/* Pagination */}
-          {!isLoading && paginatedPayments.length > 0 && (
-            <DataTablePagination
-              page={page}
-              pageSize={pageSize}
-              totalItems={isFiltering ? filteredTotalItems : totalItems}
-              totalPages={isFiltering ? filteredTotalPages : totalPages}
-              onPageChange={setPage}
-              onPageSizeChange={setPageSize}
-            />
-          )}
+      {!isLoading && paginatedPayments.length > 0 && (
+        <DataTablePagination
+          page={page}
+          pageSize={pageSize}
+          totalItems={isFiltering ? filteredTotalItems : totalItems}
+          totalPages={isFiltering ? filteredTotalPages : totalPages}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+        />
+      )}
+
+      <ReceiptDialog
+        payment={receiptPayment}
+        open={!!receiptPayment}
+        onClose={() => setReceiptPayment(null)}
+      />
     </div>
   );
 }

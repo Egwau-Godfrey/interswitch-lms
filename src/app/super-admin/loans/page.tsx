@@ -57,6 +57,7 @@ import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
 import { RecordPaymentDialog } from "@/components/shared/record-payment-dialog";
 
+const toAmount = (value: unknown): number => Number(value || 0);
 
 export default function LoansPage() {
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -112,15 +113,15 @@ export default function LoansPage() {
   );
 
   // Use global stats if available
-  const totalDisbursed = stats?.total_disbursed || 0;
+  const totalDisbursed = toAmount(stats?.total_disbursed);
 
   const totalOutstanding = stats
     ? stats.loan_status_distribution
       .filter(s => ['disbursed', 'overdue'].includes(s.status))
-      .reduce((sum, s) => sum + s.amount, 0)
+      .reduce((sum, s) => sum + toAmount(s.amount), 0)
     : 0;
 
-  const totalOverdue = stats?.total_overdue || 0;
+  const totalOverdue = toAmount(stats?.total_overdue);
   const recoveryRate = stats?.recovery_rate || 0;
 
   // Error state if API fails
@@ -151,6 +152,34 @@ export default function LoansPage() {
           <Button variant="outline" size="sm" onClick={() => refetch()}>
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
+          </Button>
+          <Button
+            variant="outline"
+            className="hidden sm:flex"
+            onClick={async () => {
+              try {
+                toast.loading("Preparing export...", { id: "export-loading" });
+                const blob = await loansApi.exportCsv({
+                  status: statusFilter !== "all" ? statusFilter as any : undefined,
+                });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `loans_export_${new Date().toISOString().split("T")[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.body.removeChild(a);
+                toast.dismiss("export-loading");
+                toast.success("Loans exported successfully");
+              } catch (err: any) {
+                toast.dismiss("export-loading");
+                toast.error(err.message || "Failed to export loans");
+              }
+            }}
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Export CSV
           </Button>
           <Link href="/super-admin/loans/new">
             <Button className="bg-[#E31C2D] hover:bg-[#C21827]">

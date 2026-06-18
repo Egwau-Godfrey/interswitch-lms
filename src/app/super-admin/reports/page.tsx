@@ -1,14 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
   Legend,
   LineChart,
   Line,
@@ -73,6 +73,12 @@ export default function ReportsPage() {
   const totalInterestEarned = stats?.total_interest_earned || 0;
   const isReady = stats && portfolioReport && collectionsReport;
 
+  const ChartSkeleton = () => (
+    <div className="flex items-center justify-center h-full">
+      <Skeleton className="h-full w-full" />
+    </div>
+  );
+
   const handleDownloadPDF = () => {
     if (!isReady) {
       toast.error("Report data is still loading. Please wait.");
@@ -103,7 +109,7 @@ export default function ReportsPage() {
             <Calendar className="w-4 h-4 mr-2" />
             Last 30 Days
           </Button>
-          <Button 
+          <Button
             className="bg-[#E31C2D] hover:bg-[#C21827]"
             onClick={handleDownloadPDF}
             disabled={!isReady}
@@ -175,26 +181,30 @@ export default function ReportsPage() {
             <CardTitle>Portfolio Status Distribution</CardTitle>
             <CardDescription>Breakdown of all active and historical loans</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={portfolioData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {portfolioData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: any) => formatCurrency(value)} />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+          <CardContent className="h-[300px] min-w-0">
+            {!isReady || isLoadingStats ? (
+              <ChartSkeleton />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={portfolioData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {portfolioData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: any) => formatCurrency(value)} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -203,18 +213,22 @@ export default function ReportsPage() {
             <CardTitle>Monthly Growth Trends</CardTitle>
             <CardDescription>Disbursements vs Collections (Millions UGX)</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyTrends}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="month" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="disbursed" name="Disbursements" stroke="#004B91" strokeWidth={2} />
-                <Line type="monotone" dataKey="collected" name="Collections" stroke="#10B981" strokeWidth={2} />
-              </LineChart>
-            </ResponsiveContainer>
+          <CardContent className="h-[300px] min-w-0">
+            {!isReady || isLoadingStats ? (
+              <ChartSkeleton />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={monthlyTrends}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="month" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="disbursed" name="Disbursements" stroke="#004B91" strokeWidth={2} />
+                  <Line type="monotone" dataKey="collected" name="Collections" stroke="#10B981" strokeWidth={2} />
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
 
@@ -223,16 +237,20 @@ export default function ReportsPage() {
             <CardTitle>Aging Analysis (Overdue Value)</CardTitle>
             <CardDescription>Value of outstanding loans categorized by days past due</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={agingData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="range" axisLine={false} tickLine={false} />
-                <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => formatCurrency(value, "UGX", true)} />
-                <Tooltip formatter={(value: any) => formatCurrency(value)} />
-                <Bar dataKey="value" fill="#F59E0B" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="h-[300px] min-w-0">
+            {!isReady || isLoadingStats ? (
+              <ChartSkeleton />
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={agingData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="range" axisLine={false} tickLine={false} />
+                  <YAxis axisLine={false} tickLine={false} tickFormatter={(value) => formatCurrency(value, "UGX", true)} />
+                  <Tooltip formatter={(value: any) => formatCurrency(value)} />
+                  <Bar dataKey="value" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </CardContent>
         </Card>
       </div>
