@@ -19,7 +19,8 @@ import {
   ChevronRight,
   Sun,
   Moon,
-  TrendingUp
+  TrendingUp,
+  ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,9 @@ export function DashboardLayout({ children, basePath = "/dashboard" }: { childre
   const { setTheme, theme } = useTheme();
   const { data: session } = useSession();
 
+  const isSuperAdmin =
+    (session?.user as any)?.role === "super_admin" || (session?.user as any)?.isAdmin;
+
   React.useEffect(() => {
     setMounted(true);
   }, []);
@@ -62,18 +66,23 @@ React.useEffect(() => {
   }
 }, [session, sessionTokenApplied]);
 
-  const sidebarLinks = React.useMemo(() => [
-    { href: basePath, label: "Overview", icon: LayoutDashboard },
-    { href: `${basePath}/agents`, label: "Agents", icon: Users },
-    { href: `${basePath}/loans`, label: "Loans", icon: Banknote },
-    { href: `${basePath}/products`, label: "Loan Products", icon: Package },
-    { href: `${basePath}/payments`, label: "Payments", icon: CreditCard },
-    { href: `${basePath}/reports`, label: "Reports", icon: BarChart3 },
-    { href: `${basePath}/scoring`, label: "Credit Scoring", icon: TrendingUp },
-    { href: `${basePath}/users`, label: "Users", icon: UserCog },
-    { href: `${basePath}/api-management`, label: "API Management", icon: Key },
-    { href: `${basePath}/settings`, label: "Settings", icon: Settings },
-  ], [basePath]);
+  const sidebarLinks = React.useMemo(() => {
+    const links = [
+      { href: basePath, label: "Overview", icon: LayoutDashboard },
+      { href: `${basePath}/agents`, label: "Agents", icon: Users },
+      { href: `${basePath}/loans`, label: "Loans", icon: Banknote },
+      { href: `${basePath}/products`, label: "Loan Products", icon: Package },
+      { href: `${basePath}/payments`, label: "Payments", icon: CreditCard },
+      { href: `${basePath}/reports`, label: "Reports", icon: BarChart3 },
+      { href: `${basePath}/scoring`, label: "Credit Scoring", icon: TrendingUp },
+      { href: `${basePath}/users`, label: "Users", icon: UserCog },
+      { href: `${basePath}/api-management`, label: "API Management", icon: Key },
+      { href: `${basePath}/permissions`, label: "Permissions", icon: ShieldCheck },
+      { href: `${basePath}/settings`, label: "Settings", icon: Settings },
+    ];
+
+    return links;
+  }, [basePath, isSuperAdmin]);
 
 
   const handleLogout = async () => {
@@ -113,8 +122,8 @@ React.useEffect(() => {
   // Get user role
   const getUserRole = () => {
     const role = session?.user?.role;
+    if (role === "user") return "User";
     if (session?.user?.isAdmin || role === "super_admin") return "Super Admin";
-    if (role === "manager") return "Manager";
     if (role === "agent") return "Agent";
     return "User";
   };

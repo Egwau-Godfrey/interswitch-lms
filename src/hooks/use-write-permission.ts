@@ -5,7 +5,7 @@ import { usePermissions } from "@/contexts/permissions-context";
 
 /**
  * Convenience hook that returns write-permission state for a given tab.
- * Used by manager pages to disable write action buttons.
+ * Used by user pages to disable write action buttons.
  */
 export function useWritePermission(tabName: string) {
   const { hasWriteAccess, isLoading, refetch } = usePermissions();

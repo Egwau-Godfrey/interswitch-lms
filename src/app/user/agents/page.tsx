@@ -419,7 +419,7 @@ export default function AgentsPage() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <Link href={`/manager/agents/${agent.agent_id}`}>
+                          <Link href={`/user/agents/${agent.agent_id}`}>
                             <DropdownMenuItem>
                               <Eye className="w-4 h-4 mr-2" /> View Details
                             </DropdownMenuItem>
@@ -427,12 +427,12 @@ export default function AgentsPage() {
                           <DropdownMenuItem
                             onClick={() => {
                               if (!requireLoansWrite()) return;
-                              window.location.href = `/manager/loans/new?agent_id=${agent.agent_id}`;
+                              window.location.href = `/user/loans/new?agent_id=${agent.agent_id}`;
                             }}
                           >
                             <Banknote className="w-4 h-4 mr-2" /> New Loan
                           </DropdownMenuItem>
-                          <Link href={`/manager/agents/${agent.agent_id}?tab=transactions`}>
+                          <Link href={`/user/agents/${agent.agent_id}?tab=transactions`}>
                             <DropdownMenuItem>
                               <Clock className="w-4 h-4 mr-2" /> History
                             </DropdownMenuItem>

@@ -10,8 +10,8 @@ import type { PermissionGrant } from "@/lib/types";
 // ============================================
 // Permissions Context
 // ============================================
-// Fetches the authenticated manager's active write grants and exposes
-// hasWriteAccess(tab) for use by all manager page components.
+// Fetches the authenticated user's active write grants and exposes
+// hasWriteAccess(tab) for use by all user page components.
 // Safe default: if grants cannot be loaded, all write access returns false.
 // Only fetches once the session is authenticated and the access token is ready.
 // ============================================

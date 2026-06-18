@@ -708,7 +708,7 @@ export default function PaymentsPage() {
                           <FileText className="w-4 h-4 mr-2" />
                           View Receipt
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => router.push(`/manager/loans/${payment.loan_id}`)}>
+                        <DropdownMenuItem onClick={() => router.push(`/user/loans/${payment.loan_id}`)}>
                           View Loan Details
                         </DropdownMenuItem>
                         {payment.status === "posted" && (

@@ -482,7 +482,7 @@ export default function LoanDetailPage() {
                   </div>
                 </div>
 
-                {/* Debug Info (Only for admins/managers) */}
+                {/* Debug Info (Only for admins/users) */}
                 {statement?.debug_info && (
                   <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-[10px] font-mono whitespace-pre-wrap">
                     DEBUG: {JSON.stringify(statement.debug_info, null, 2)}

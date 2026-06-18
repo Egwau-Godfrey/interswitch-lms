@@ -388,7 +388,7 @@ export default function DashboardPage() {
               <CardTitle>Recent Activity</CardTitle>
               <CardDescription>Latest transactions and events</CardDescription>
             </div>
-            <Link href="/manager/loans">
+            <Link href="/user/loans">
               <Button variant="ghost" size="sm">
                 View All <ExternalLink className="ml-1 h-3 w-3" />
               </Button>

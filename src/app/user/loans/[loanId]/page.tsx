@@ -195,7 +195,7 @@ export default function LoanDetailPage() {
       <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
         <ErrorState
           message="Loan not found"
-          onRetry={() => router.push("/manager/loans")}
+          onRetry={() => router.push("/user/loans")}
         />
       </div>
     );
@@ -207,7 +207,7 @@ export default function LoanDetailPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/manager/loans">
+          <Link href="/user/loans">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -434,7 +434,7 @@ export default function LoanDetailPage() {
               </div>
             </div>
             {displayAgent && (
-              <Link href={`/manager/agents/${displayAgent.agent_id}`}>
+              <Link href={`/user/agents/${displayAgent.agent_id}`}>
                 <Button variant="outline" size="sm" className="w-full">
                   View Agent Profile
                 </Button>

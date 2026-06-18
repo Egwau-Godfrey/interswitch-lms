@@ -3,7 +3,7 @@
 // ============================================
 
 // ============================================
-// User Model (Admin/Staff)
+// User Model (Super Admin/User/Agent)
 // ============================================
 export interface User {
   id: string;
@@ -15,7 +15,7 @@ export interface User {
   phone_number: string;
   is_active: boolean;
   is_admin: boolean;
-  role: 'super_admin' | 'manager' | 'agent' | string;
+  role: 'super_admin' | 'user' | 'agent' | string;
   created_at: string;
   updated_at: string;
 }
@@ -30,7 +30,7 @@ export interface UserCreate {
   password: string;
   is_admin?: boolean;
   is_active?: boolean;
-  role?: 'super_admin' | 'manager' | 'agent' | string;
+  role?: 'super_admin' | 'user' | 'agent' | string;
 }
 
 export interface UserUpdate {

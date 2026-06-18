@@ -6,7 +6,7 @@ import { PermissionsProvider } from "@/contexts/permissions-context";
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <PermissionsProvider>
-      <DashboardLayout basePath="/manager">{children}</DashboardLayout>
+      <DashboardLayout basePath="/user">{children}</DashboardLayout>
     </PermissionsProvider>
   );
 }

@@ -17,7 +17,7 @@ import { ErrorState } from "@/components/shared/loading-states";
 import { WriteAccessAlert } from "@/components/shared/write-access-alert";
 import type { ScoredAgent, RiskLevel } from "@/lib/types";
 
-// Try to load permissions context — only available when rendered under /manager layout
+// Try to load permissions context — only available when rendered under /user layout
 // Super admin pages don't wrap with PermissionsProvider so we handle the missing context gracefully
 let usePermissionsHook: (() => { hasWriteAccess: (tab: string) => boolean; isLoading: boolean; refetch: () => void }) | null = null;
 try {
@@ -30,12 +30,12 @@ try {
 export default function ScoringPage() {
   const { data: session, status: authStatus } = useSession();
   const role = (session?.user as any)?.role as string | undefined;
-  const isManager = role === "manager";
-  // For super_admin: always has write. For manager: check grants. Fallback: allow.
+  const isUser = role === "user";
+  // For super_admin: always has write. For user: check grants. Fallback: allow.
   const permCtx = usePermissionsHook ? usePermissionsHook() : null;
   const hasWriteAccess = role === "super_admin" || (session?.user as any)?.isAdmin
     ? true
-    : (permCtx ? permCtx.hasWriteAccess("scoring") : !isManager);
+    : (permCtx ? permCtx.hasWriteAccess("scoring") : !isUser);
   const permLoading = permCtx ? permCtx.isLoading : false;
   const writeDisabled = permLoading || !hasWriteAccess;
   const writeTooltip = "Write access requires a grant from a super admin";
@@ -163,7 +163,7 @@ export default function ScoringPage() {
 
   return (
     <div className="space-y-6">
-      {isManager && !hasWriteAccess && <WriteAccessAlert tabLabel="credit scoring" />}
+      {isUser && !hasWriteAccess && <WriteAccessAlert tabLabel="credit scoring" />}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Credit Scoring</h1>
@@ -204,7 +204,7 @@ export default function ScoringPage() {
         reScoringAgentId={reScoringAgentId}
         hasWriteAccess={hasWriteAccess}
         writeTooltip={writeTooltip}
-        basePath={isManager ? "/manager" : "/super-admin"}
+        basePath={isUser ? "/user" : "/super-admin"}
       />
 
       <DataTablePagination

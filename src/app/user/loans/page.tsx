@@ -194,7 +194,7 @@ export default function LoansPage() {
             title={writeTooltip}
             onClick={() => {
               if (canWriteLoans) {
-                window.location.href = "/manager/loans/new";
+                window.location.href = "/user/loans/new";
               } else {
                 toast.error("View-only access", {
                   description: "Creating loans requires write access granted by a super admin.",
@@ -335,12 +335,12 @@ export default function LoansPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-48">
-                        <Link href={`/manager/loans/${loan.id}`}>
+                        <Link href={`/user/loans/${loan.id}`}>
                           <DropdownMenuItem>
                             <Eye className="w-4 h-4 mr-2" /> View Details
                           </DropdownMenuItem>
                         </Link>
-                        <Link href={`/manager/loans/${loan.id}?tab=statement`}>
+                        <Link href={`/user/loans/${loan.id}?tab=statement`}>
                           <DropdownMenuItem>
                             <FileText className="w-4 h-4 mr-2" /> Statement
                           </DropdownMenuItem>

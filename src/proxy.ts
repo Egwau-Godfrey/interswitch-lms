@@ -30,14 +30,14 @@ export default auth((req) => {
     if (role === "super_admin" || (req.auth as any)?.user?.isAdmin) {
       return NextResponse.next();
     }
-    // manager → their own portal; agent → agent portal
-    const fallback = role === "manager" ? "/manager" : "/agent";
+    // user → their own portal; agent → agent portal
+    const fallback = role === "user" ? "/user" : "/agent";
     return NextResponse.redirect(new URL(fallback, req.url));
   }
 
-  // /manager/* — super_admin or manager
-  if (pathname.startsWith("/manager")) {
-    if (role === "super_admin" || role === "manager" || (req.auth as any)?.user?.isAdmin) {
+  // /user/* — super_admin or user
+  if (pathname.startsWith("/user")) {
+    if (role === "super_admin" || role === "user" || (req.auth as any)?.user?.isAdmin) {
       return NextResponse.next();
     }
     // agent (or unknown) → agent portal
@@ -45,7 +45,7 @@ export default auth((req) => {
   }
 
   // /agent/* — any authenticated user may access their own portal
-  // (agents are already blocked from /manager and /super-admin above)
+  // (agents are already blocked from /user and /super-admin above)
   if (pathname.startsWith("/agent")) {
     return NextResponse.next();
   }

@@ -62,7 +62,7 @@ import { permissionsApi } from "@/lib/api/permissions";
 import { usersApi } from "@/lib/api";
 import { useSession } from "next-auth/react";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
-import type { PermissionGrant } from "@/lib/types";
+import type { AuditEventType, PermissionGrant } from "@/lib/types";
 
 const ADMIN_TAB_LIST = [
   "agents",
@@ -107,7 +107,7 @@ export default function SettingsPage() {
     { cacheKey: "system-settings", enabled: mounted && status === "authenticated" }
   );
 
-  // Users list (for grant dialog — managers only)
+  // Users list (for grant dialog — users only)
   const { data: usersData } = useApi(
     () => usersApi.list({ page: 1, page_size: 100 }),
     [mounted, status === "authenticated"],
@@ -133,7 +133,7 @@ export default function SettingsPage() {
       permissionsApi.getAuditLog({
         page: auditPage,
         page_size: 20,
-        event_type: auditEventType || undefined,
+        event_type: auditEventType ? (auditEventType as AuditEventType) : undefined,
       }),
     [auditPage, auditEventType, mounted, status === "authenticated"],
     {
@@ -207,7 +207,7 @@ export default function SettingsPage() {
 
   const handleCreateGrant = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!grantUserId) { toast.error("Please select a manager"); return; }
+    if (!grantUserId) { toast.error("Please select a user"); return; }
     if (grantScope === "tab" && !grantTabName) { toast.error("Please select a tab"); return; }
     if (!grantIsPermanent && !grantExpiresAt) { toast.error("Please set an expiry date/time"); return; }
     createGrantMutation.mutate({
@@ -412,7 +412,7 @@ export default function SettingsPage() {
               <div>
                 <h2 className="text-lg font-semibold">Permission Grants</h2>
                 <p className="text-sm text-muted-foreground">
-                  Manage write-access grants for manager-role users.
+                  Manage write-access grants for user-role users.
                 </p>
               </div>
               <Button
@@ -429,7 +429,7 @@ export default function SettingsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead>Manager</TableHead>
+                    <TableHead>User</TableHead>
                     <TableHead>Scope</TableHead>
                     <TableHead>Tab</TableHead>
                     <TableHead>Duration</TableHead>
@@ -618,28 +618,28 @@ export default function SettingsPage() {
           <DialogHeader>
             <DialogTitle>Grant Write Access</DialogTitle>
             <DialogDescription>
-              Grant a manager write access to a specific tab or the entire system.
+              Grant a user write access to a specific tab or the entire system.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateGrant} className="space-y-4 py-2">
             <div className="space-y-2">
-              <Label>Manager</Label>
+              <Label>User</Label>
               <Select value={grantUserId} onValueChange={setGrantUserId}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a manager..." />
+                  <SelectValue placeholder="Select a user..." />
                 </SelectTrigger>
                 <SelectContent>
                   {(usersData?.data || [])
-                    .filter((u: any) => u.role === "manager")
+                    .filter((u: any) => u.role === "user")
                     .map((u: any) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.first_name} {u.last_name} ({u.username})
                       </SelectItem>
                     ))}
-                  {(usersData?.data || []).filter((u: any) => u.role === "manager").length ===
+                  {(usersData?.data || []).filter((u: any) => u.role === "user").length ===
                     0 && (
                     <SelectItem value="__none__" disabled>
-                      No managers found
+                      No users found
                     </SelectItem>
                   )}
                 </SelectContent>

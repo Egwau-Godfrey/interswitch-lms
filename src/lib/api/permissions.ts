@@ -14,7 +14,7 @@ import type {
 
 export const permissionsApi = {
   /**
-   * Create a new write-access grant for a manager.
+   * Create a new write-access grant for a user.
    * Super admin only.
    */
   createGrant: async (data: CreateGrantRequest): Promise<PermissionGrant> => {
@@ -43,7 +43,7 @@ export const permissionsApi = {
   },
 
   /**
-   * Get the active grants for the currently authenticated manager.
+   * Get the active grants for the currently authenticated user.
    */
   getMyGrants: async (): Promise<PermissionGrant[]> => {
     return apiClient.get<PermissionGrant[]>('/permissions/grants/mine');

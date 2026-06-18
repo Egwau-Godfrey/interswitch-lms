@@ -141,7 +141,7 @@ export default function AgentDetailPage() {
       <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
         <ErrorState
           message="Agent not found"
-          onRetry={() => router.push("/manager/agents")}
+          onRetry={() => router.push("/user/agents")}
         />
       </div>
     );
@@ -153,7 +153,7 @@ export default function AgentDetailPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/manager/agents">
+          <Link href="/user/agents">
             <Button variant="ghost" size="icon">
               <ArrowLeft className="h-5 w-5" />
             </Button>
@@ -171,7 +171,7 @@ export default function AgentDetailPage() {
             disabled={writeDisabled}
             onClick={() => {
               if (canWrite) {
-                router.push(`/manager/agents/${agentId}/edit`);
+                router.push(`/user/agents/${agentId}/edit`);
               } else {
                 toast.error("View-only access", {
                   description: "Editing agents requires write access granted by a super admin.",
@@ -188,7 +188,7 @@ export default function AgentDetailPage() {
             title={loansWriteTooltip}
             onClick={() => {
               if (requireLoansWrite()) {
-                router.push(`/manager/loans/new?agent_id=${agentId}`);
+                router.push(`/user/loans/new?agent_id=${agentId}`);
               }
             }}
           >
@@ -341,7 +341,7 @@ export default function AgentDetailPage() {
         value={activeTab}
         onValueChange={(tab) => {
           setActiveTab(tab);
-          router.replace(`/manager/agents/${agentId}?tab=${tab}`, { scroll: false });
+          router.replace(`/user/agents/${agentId}?tab=${tab}`, { scroll: false });
         }}
         className="space-y-4"
       >
@@ -386,7 +386,7 @@ export default function AgentDetailPage() {
                       {loans.map((loan) => (
                         <TableRow key={loan.id}>
                           <TableCell>
-                            <Link href={`/manager/loans/${loan.id}`} className="text-primary hover:underline">
+                            <Link href={`/user/loans/${loan.id}`} className="text-primary hover:underline">
                               {loan.id.slice(0, 8)}...
                             </Link>
                           </TableCell>

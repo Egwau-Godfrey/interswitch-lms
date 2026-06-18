@@ -49,7 +49,7 @@ export default function AgentEditPage() {
     {
       onSuccess: () => {
         toast.success("Agent updated successfully!");
-        router.push(`/manager/agents/${agentId}`);
+        router.push(`/user/agents/${agentId}`);
         router.refresh();
       },
       onError: (err: any) => {
@@ -91,7 +91,7 @@ export default function AgentEditPage() {
     <div className="space-y-6 max-w-3xl mx-auto">
       {!canWrite && <WriteAccessAlert tabLabel="agent" />}
       <div className="flex items-center gap-4">
-        <Link href={`/manager/agents/${agentId}`}>
+        <Link href={`/user/agents/${agentId}`}>
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -184,7 +184,7 @@ export default function AgentEditPage() {
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
-              <Link href={`/manager/agents/${agentId}`}>
+              <Link href={`/user/agents/${agentId}`}>
                 <Button type="button" variant="outline">
                   Cancel
                 </Button>

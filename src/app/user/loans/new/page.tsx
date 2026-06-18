@@ -180,7 +180,7 @@ export function NewLoanPageContent() {
     {
       onSuccess: (loan) => {
         toast.success("Loan application submitted successfully!");
-        router.push(`/manager/loans/${loan.id}`);
+        router.push(`/user/loans/${loan.id}`);
       },
       onError: (error: any) => {
         if (handleWriteError(error)) return;
@@ -212,7 +212,7 @@ export function NewLoanPageContent() {
     <div className="space-y-6 max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/manager/loans">
+        <Link href="/user/loans">
           <Button variant="ghost" size="icon">
             <ArrowLeft className="h-5 w-5" />
           </Button>

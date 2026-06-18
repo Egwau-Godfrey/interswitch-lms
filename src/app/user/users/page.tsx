@@ -105,7 +105,15 @@ export default function UsersPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false);
   const [deleteUser, setDeleteUser] = React.useState<User | null>(null);
   const [editUser, setEditUser] = React.useState<User | null>(null);
+  const [createRole, setCreateRole] = React.useState<User["role"]>("user");
+  const [editRole, setEditRole] = React.useState<User["role"]>("user");
   const { canWrite, writeDisabled, writeTooltip, requireWrite } = useWritePermission("users");
+
+  React.useEffect(() => {
+    if (editUser) {
+      setEditRole(editUser.role || "user");
+    }
+  }, [editUser]);
 
   // Fetch users from API
   const { data: usersData, isLoading, error, refetch } = useApi(
@@ -201,9 +209,7 @@ export default function UsersPage() {
     }
 
     if (roleFilter !== "all") {
-      result = result.filter((u) => 
-        roleFilter === "admin" ? u.is_admin : !u.is_admin
-      );
+      result = result.filter((u) => u.role === roleFilter);
     }
 
     if (statusFilter !== "all") {
@@ -219,6 +225,7 @@ export default function UsersPage() {
     e.preventDefault();
     if (!requireWrite()) return;
     const formData = new FormData(e.currentTarget);
+    const role = (formData.get("role") as User["role"]) || createRole;
     createUser.mutate({
       agent_id: formData.get("agent_id") as string,
       first_name: formData.get("fname") as string,
@@ -227,8 +234,9 @@ export default function UsersPage() {
       username: formData.get("username") as string,
       phone_number: formData.get("phone") as string,
       password: formData.get("password") as string,
-      is_admin: formData.get("is_admin") === "on",
+      is_admin: role === "super_admin",
       is_active: formData.get("is_active") === "on",
+      role,
     });
   };
 
@@ -242,9 +250,10 @@ export default function UsersPage() {
 
   const handleToggleAdmin = (user: User) => {
     if (!requireWrite()) return;
+    const isNowAdmin = user.role !== "super_admin";
     updateUser.mutate({
       id: user.id,
-      data: { is_admin: !user.is_admin },
+      data: { is_admin: isNowAdmin, role: isNowAdmin ? "super_admin" : "user" },
     });
   };
 
@@ -259,8 +268,8 @@ export default function UsersPage() {
         last_name: formData.get("lname") as string,
         email: formData.get("u_email") as string,
         phone_number: formData.get("phone") as string,
-        is_admin: formData.get("is_admin") === "on",
-        role: formData.get("is_admin") === "on" ? "super_admin" : "agent",
+        is_admin: editRole === "super_admin",
+        role: editRole,
         is_active: formData.get("is_active") === "on",
       },
     });
@@ -286,7 +295,11 @@ export default function UsersPage() {
             <RefreshCw className="w-4 h-4 mr-2" />
             Refresh
           </Button>
-          <Dialog open={canWrite && isAddOpen} onOpenChange={canWrite ? setIsAddOpen : undefined}>
+          <Dialog open={canWrite && isAddOpen} onOpenChange={(open) => {
+            if (!canWrite) return;
+            setIsAddOpen(open);
+            if (open) setCreateRole("user");
+          }}>
             <DialogTrigger asChild>
               <Button
                 className={writeDisabled ? "bg-[#004B91]/70 hover:bg-[#003B71]/70" : "bg-[#004B91] hover:bg-[#003B71]"}
@@ -301,15 +314,15 @@ export default function UsersPage() {
                 }}
               >
                 <UserPlus className="w-4 h-4 mr-2" />
-                Add Admin User
+                Add User
               </Button>
             </DialogTrigger>
             {canWrite && (
               <DialogContent className="sm:max-w-[500px]">
               <DialogHeader>
-                <DialogTitle>Create Admin User</DialogTitle>
+                <DialogTitle>Create User</DialogTitle>
                 <DialogDescription>
-                  Assign administrative privileges to a new team member.
+                  Assign a system role to a new team member.
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateUser} className="grid gap-4 py-4">
@@ -343,15 +356,22 @@ export default function UsersPage() {
                   <Label htmlFor="phone">Phone Number</Label>
                   <Input id="phone" name="phone" type="tel" placeholder="+256700123456" />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch id="is_admin" name="is_admin" />
-                    <Label htmlFor="is_admin">Super Admin</Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Switch id="is_active" name="is_active" defaultChecked />
-                    <Label htmlFor="is_active">Active Account</Label>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="role">Role</Label>
+                  <Select value={createRole} onValueChange={(value) => setCreateRole(value as User["role"])}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select role" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="super_admin">Super Admin</SelectItem>
+                      <SelectItem value="agent">Agent</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch id="is_active" name="is_active" defaultChecked />
+                  <Label htmlFor="is_active">Active Account</Label>
                 </div>
                 <DialogFooter>
                   <Button type="button" variant="outline" onClick={() => setIsAddOpen(false)}>
@@ -387,8 +407,9 @@ export default function UsersPage() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="staff">Staff</SelectItem>
+              <SelectItem value="super_admin">Super Admin</SelectItem>
+              <SelectItem value="user">User</SelectItem>
+              <SelectItem value="agent">Agent</SelectItem>
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -469,9 +490,26 @@ export default function UsersPage() {
                     {user.phone_number || "-"}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={user.is_admin ? "default" : "secondary"}>
-                      {user.is_admin && <Shield className="w-3 h-3 mr-1" />}
-                      {user.is_admin ? "Admin" : "Staff"}
+                    <Badge className={cn(
+                      "border-none",
+                      user.role === "super_admin"
+                        ? "bg-[#004B91] text-white hover:bg-[#004B91]"
+                        : user.role === "user"
+                          ? "bg-blue-100 text-blue-700 hover:bg-blue-100"
+                          : "bg-slate-100 text-slate-700 hover:bg-slate-100"
+                    )}>
+                      {user.role === "super_admin" ? (
+                        <>
+                          <Shield className="w-3 h-3 mr-1" />
+                          Super Admin
+                        </>
+                      ) : user.role === "user" ? (
+                        "User"
+                      ) : user.role === "agent" ? (
+                        "Agent"
+                      ) : (
+                        user.is_admin ? "Admin" : "Staff"
+                      )}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -517,7 +555,7 @@ export default function UsersPage() {
                           title={writeTooltip}
                         >
                           <Shield className="w-4 h-4 mr-2" />
-                          {user.is_admin ? "Remove Admin" : "Make Admin"}
+                          {user.role === "super_admin" ? "Remove Super Admin" : "Make Super Admin"}
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem
@@ -594,15 +632,22 @@ export default function UsersPage() {
                 <Label htmlFor="edit_phone">Phone Number</Label>
                 <Input id="edit_phone" name="phone" type="tel" defaultValue={editUser.phone_number} />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center space-x-2">
-                  <Switch id="edit_is_admin" name="is_admin" defaultChecked={editUser.is_admin} />
-                  <Label htmlFor="edit_is_admin">Super Admin</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch id="edit_is_active" name="is_active" defaultChecked={editUser.is_active} />
-                  <Label htmlFor="edit_is_active">Active Account</Label>
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit_role">Role</Label>
+                <Select value={editRole} onValueChange={(value) => setEditRole(value as User["role"])}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="super_admin">Super Admin</SelectItem>
+                    <SelectItem value="agent">Agent</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Switch id="edit_is_active" name="is_active" defaultChecked={editUser.is_active} />
+                <Label htmlFor="edit_is_active">Active Account</Label>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEditUser(null)}>
