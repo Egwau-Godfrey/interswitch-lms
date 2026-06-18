@@ -18,9 +18,14 @@ import {
   TabsTrigger 
 } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
+import { useWritePermission } from "@/hooks/use-write-permission";
 
 export default function SettingsPage() {
+  const { canWrite, writeDisabled, writeTooltip, requireWrite } = useWritePermission("settings");
+
   const handleSave = () => {
+    if (!requireWrite()) return;
     toast.success("Settings saved successfully!");
   };
 
@@ -85,6 +90,7 @@ export default function SettingsPage() {
               <CardTitle>Auto-Strike & Recovery Logic</CardTitle>
               <CardDescription>Configure rules for automated debt recovery from agent wallets.</CardDescription>
             </CardHeader>
+            {!canWrite && <WriteAccessAlert tabLabel="debt recovery settings" />}
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -92,16 +98,16 @@ export default function SettingsPage() {
                     <Label>Enable Auto-Strike</Label>
                     <p className="text-xs text-muted-foreground">Automatically attempt recovery for overdue loans.</p>
                   </div>
-                  <Switch defaultChecked />
+                  <Switch defaultChecked disabled={writeDisabled} title={writeTooltip} />
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label htmlFor="strike_days">Trigger After (Days Overdue)</Label>
-                    <Input id="strike_days" type="number" defaultValue="7" />
+                    <Input id="strike_days" type="number" defaultValue="7" disabled={writeDisabled} title={writeTooltip} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="strike_freq">Retry Frequency (Hours)</Label>
-                    <Input id="strike_freq" type="number" defaultValue="12" />
+                    <Input id="strike_freq" type="number" defaultValue="12" disabled={writeDisabled} title={writeTooltip} />
                   </div>
                 </div>
               </div>
@@ -115,7 +121,7 @@ export default function SettingsPage() {
               </div>
             </CardContent>
             <CardFooter className="border-t bg-muted/20 pt-4">
-              <Button onClick={handleSave}>Apply Recovery Rules</Button>
+              <Button onClick={handleSave} disabled={writeDisabled} title={writeTooltip}>Apply Recovery Rules</Button>
             </CardFooter>
           </Card>
         </TabsContent>

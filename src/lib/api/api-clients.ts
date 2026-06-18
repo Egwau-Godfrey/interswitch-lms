@@ -14,7 +14,7 @@ export const apiClientsApi = {
    * Issue a new API key
    */
   create: async (data: ApiClientCreate): Promise<ApiClientType & { api_key: string }> => {
-    return apiClient.post<ApiClientType & { api_key: string }>('/api-clients/', data);
+    return apiClient.post<ApiClientType & { api_key: string }>('/api-clients/issue-managed', data);
   },
 
   /**

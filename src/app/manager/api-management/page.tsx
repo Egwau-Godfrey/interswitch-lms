@@ -2,16 +2,13 @@
 
 import * as React from "react";
 import {
-  Key,
   Plus,
   Copy,
   RefreshCw,
   Trash2,
-  MoreVertical,
   ShieldCheck,
   Globe,
-  Clock,
-  CheckCircle2
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -38,32 +35,158 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-
-const initialKeys = [
-  { id: "1", name: "Mobile App Production", key: "sk_live_********************4a2b", created: "2024-01-15", last_used: "2 mins ago", status: "active" },
-  { id: "2", name: "Agent Web Portal", key: "sk_live_********************9f8e", created: "2024-02-20", last_used: "1 hour ago", status: "active" },
-  { id: "3", name: "Interswitch ERP Link", key: "sk_live_********************1c3d", created: "2024-03-05", last_used: "Never", status: "revoked" },
-];
+import { format } from "date-fns";
+import { useApi, useMutation } from "@/hooks/use-api";
+import { settingsApi } from "@/lib/api/settings";
+import { useApiClients, useIssueApiKey, useRevokeApiKey } from "@/hooks/use-api-clients";
+import { useApiAuth } from "@/hooks/use-api-auth";
+import { useWritePermission } from "@/hooks/use-write-permission";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
 
 export default function ApiManagementPage() {
-  const [keys, setKeys] = React.useState(initialKeys);
+  const { isReady } = useApiAuth();
+  const { canWrite, writeDisabled, writeTooltip, requireWrite } = useWritePermission("api-management");
   const [isIssueOpen, setIsIssueOpen] = React.useState(false);
+  const [newClientName, setNewClientName] = React.useState("");
+  const [newClientIps, setNewClientIps] = React.useState("");
+  const [newlyIssuedKey, setNewlyIssuedKey] = React.useState<string | null>(null);
+  const [webhookUrl, setWebhookUrl] = React.useState("");
+  const [isIpWhitelisting, setIsIpWhitelisting] = React.useState(false);
+  const [isRateLimiting, setIsRateLimiting] = React.useState(false);
+  const [savingKey, setSavingKey] = React.useState<string | null>(null);
+
+  const { data: clientsData, isLoading, refetch } = useApiClients(
+    { page: 1, page_size: 100 },
+    { enabled: isReady }
+  );
+  const { mutateAsync: issueKey, isLoading: isIssuing } = useIssueApiKey();
+  const { mutateAsync: revokeKey } = useRevokeApiKey();
+
+  const { data: settings, refetch: refetchSettings } = useApi(
+    () => settingsApi.list(),
+    [isReady],
+    {
+      cacheKey: "api-management-settings",
+      enabled: isReady,
+    }
+  );
+
+  React.useEffect(() => {
+    if (!settings) return;
+    setWebhookUrl(settings.find((setting) => setting.key === "webhook_url")?.value || "");
+    setIsIpWhitelisting(settings.find((setting) => setting.key === "ip_whitelisting_enabled")?.value === "true");
+    setIsRateLimiting(settings.find((setting) => setting.key === "rate_limiting_enabled")?.value === "true");
+  }, [settings]);
+
+  const updateSettingMutation = useMutation(
+    ({ key, value }: { key: string; value: string }) => settingsApi.update(key, value),
+    {
+      onSuccess: () => {
+        toast.success("Setting updated");
+        refetchSettings();
+        setSavingKey(null);
+      },
+      onError: () => {
+        setSavingKey(null);
+      },
+    }
+  );
+
+  const testWebhookMutation = useMutation(
+    () => settingsApi.testWebhook(),
+    {
+      onSuccess: (res) => {
+        if (res.status === "success") {
+          toast.success("Webhook test successful", { description: `Response Code: ${res.status_code}` });
+        } else {
+          toast.error("Webhook test failed", { description: res.message });
+        }
+      },
+    }
+  );
+
+  const clients = clientsData?.data ?? [];
+  const activeClients = clients.filter((client) => client.is_active).length;
+
+  const handleSaveWebhook = () => {
+    if (!requireWrite()) return;
+    setSavingKey("webhook_url");
+    updateSettingMutation.mutate({ key: "webhook_url", value: webhookUrl });
+  };
+
+  const handleIssueKey = async () => {
+    if (!requireWrite()) return;
+    if (!newClientName.trim()) {
+      toast.error("Client name is required");
+      return;
+    }
+    try {
+      const ips = newClientIps.trim() ? newClientIps.split(",").map((ip) => ip.trim()) : undefined;
+      const result = await issueKey({ name: newClientName, allowed_ips: ips });
+      setNewlyIssuedKey(result.api_key);
+      toast.success("New API Key generated!");
+      setNewClientName("");
+      setNewClientIps("");
+      refetch();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleRevokeKey = async (id: string) => {
+    if (!requireWrite()) return;
+    if (!confirm("Are you sure you want to revoke this API key? This action cannot be undone.")) return;
+    try {
+      await revokeKey(id);
+      refetch();
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success("API Key copied to clipboard");
   };
 
+  const closeDialog = () => {
+    setIsIssueOpen(false);
+    setNewlyIssuedKey(null);
+  };
+
+  const handleBooleanSetting = (
+    key: string,
+    checked: boolean,
+    setter: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    if (!requireWrite()) return;
+    setter(checked);
+    updateSettingMutation.mutate({ key, value: checked ? "true" : "false" });
+  };
+
   return (
     <div className="space-y-6">
+      {!canWrite && <WriteAccessAlert tabLabel="API management" />}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">API Management</h1>
           <p className="text-muted-foreground">Manage API clients and secure access tokens.</p>
         </div>
-        <Dialog open={isIssueOpen} onOpenChange={setIsIssueOpen}>
+        <Dialog open={canWrite && isIssueOpen} onOpenChange={canWrite ? setIsIssueOpen : undefined}>
           <DialogTrigger asChild>
-            <Button className="bg-[#004B91] hover:bg-[#003B71]">
+            <Button
+              className={writeDisabled ? "bg-[#004B91]/70 hover:bg-[#003B71]/70" : "bg-[#004B91] hover:bg-[#003B71]"}
+              aria-disabled={writeDisabled}
+              title={writeTooltip}
+              onClick={() => {
+                if (!canWrite) {
+                  toast.error("View-only access", {
+                    description: "Issuing API keys requires write access granted by a super admin.",
+                  });
+                }
+              }}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Issue New API Key
             </Button>
@@ -76,18 +199,44 @@ export default function ApiManagementPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="client_name">Client Name</Label>
-                <Input id="client_name" placeholder="e.g. Android Mobile App" />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="ips">Allowed IPs (Optional)</Label>
-                <Input id="ips" placeholder="e.g. 192.168.1.1, 10.0.0.1" />
-              </div>
+              {newlyIssuedKey ? (
+                <div className="space-y-4">
+                  <div className="p-4 bg-muted border rounded-md">
+                    <p className="text-sm font-medium mb-2">Please copy this key immediately. You will not be able to see it again.</p>
+                    <div className="flex items-center gap-2">
+                      <code className="flex-1 p-2 bg-background border rounded font-mono text-sm break-all">
+                        {newlyIssuedKey}
+                      </code>
+                      <Button variant="outline" size="icon" onClick={() => copyToClipboard(newlyIssuedKey)}>
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="client_name">Client Name</Label>
+                    <Input id="client_name" value={newClientName} onChange={(event) => setNewClientName(event.target.value)} placeholder="e.g. Android Mobile App" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ips">Allowed IPs (Optional)</Label>
+                    <Input id="ips" value={newClientIps} onChange={(event) => setNewClientIps(event.target.value)} placeholder="e.g. 192.168.1.1, 10.0.0.1" />
+                  </div>
+                </>
+              )}
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setIsIssueOpen(false)}>Cancel</Button>
-              <Button onClick={() => { toast.success("New API Key generated!"); setIsIssueOpen(false); }}>Generate Key</Button>
+              {newlyIssuedKey ? (
+                <Button type="button" onClick={closeDialog}>Close</Button>
+              ) : (
+                <>
+                  <Button type="button" variant="outline" onClick={closeDialog}>Cancel</Button>
+                  <Button onClick={handleIssueKey} disabled={isIssuing || writeDisabled}>
+                    {isIssuing ? "Generating..." : "Generate Key"}
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -99,7 +248,9 @@ export default function ApiManagementPage() {
             <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-[#004B91]">8</div>
+            <div className="text-2xl font-bold text-[#004B91]">
+              {isLoading ? "-" : activeClients}
+            </div>
           </CardContent>
         </Card>
         <Card className="bg-emerald-50/30 border-emerald-100">
@@ -122,8 +273,16 @@ export default function ApiManagementPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>API Credentials</CardTitle>
-          <CardDescription>Secret keys for authenticating with the Interswitch Loans API.</CardDescription>
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <CardTitle>API Credentials</CardTitle>
+              <CardDescription>Secret keys for authenticating with the Interswitch Loans API.</CardDescription>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isLoading}>
+              <RefreshCw className={cn("h-4 w-4 mr-2", isLoading && "animate-spin")} />
+              Refresh
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Table>
@@ -138,34 +297,51 @@ export default function ApiManagementPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {keys.map((k) => (
-                <TableRow key={k.id}>
-                  <TableCell className="font-medium">{k.name}</TableCell>
-                  <TableCell>
-                    <code className="bg-muted px-2 py-1 rounded text-xs">{k.key}</code>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{k.created}</TableCell>
-                  <TableCell className="text-xs text-muted-foreground">{k.last_used}</TableCell>
-                  <TableCell>
-                    <Badge className={cn(
-                      "border-none",
-                      k.status === "active" ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
-                    )}>
-                      {k.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyToClipboard(k.key)}>
-                        <Copy className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-rose-500">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+              {isLoading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Loading API clients...</TableCell>
                 </TableRow>
-              ))}
+              ) : clients.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No API clients found.</TableCell>
+                </TableRow>
+              ) : (
+                clients.map((client) => (
+                  <TableRow key={client.id}>
+                    <TableCell className="font-medium">{client.name}</TableCell>
+                    <TableCell>
+                      <code className="bg-muted px-2 py-1 rounded text-xs">********************{client.id.substring(client.id.length - 4)}</code>
+                    </TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{format(new Date(client.created_at), "MMM d, yyyy")}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{client.last_used_at ? format(new Date(client.last_used_at), "MMM d, yyyy") : "Never"}</TableCell>
+                    <TableCell>
+                      <Badge className={cn(
+                        "border-none",
+                        client.is_active ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                      )}>
+                        {client.is_active ? "active" : "revoked"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => copyToClipboard(client.id)}>
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-rose-500"
+                          onClick={() => handleRevokeKey(client.id)}
+                          disabled={!client.is_active || writeDisabled}
+                          title={writeTooltip}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -184,8 +360,21 @@ export default function ApiManagementPage() {
             <div className="space-y-2">
               <Label htmlFor="webhook_url">Endpoint URL</Label>
               <div className="flex gap-2">
-                <Input id="webhook_url" placeholder="https://api.yourdomain.com/webhooks/loans" defaultValue="https://callback.interswitch.com/loans" />
-                <Button variant="outline">Test</Button>
+                <Input
+                  id="webhook_url"
+                  placeholder="https://api.yourdomain.com/webhooks/loans"
+                  value={webhookUrl}
+                  onChange={(event) => setWebhookUrl(event.target.value)}
+                  disabled={writeDisabled}
+                />
+                <Button
+                  variant="outline"
+                  onClick={() => testWebhookMutation.mutate()}
+                  disabled={testWebhookMutation.isLoading || writeDisabled}
+                  title={writeTooltip}
+                >
+                  {testWebhookMutation.isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Test"}
+                </Button>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -194,7 +383,14 @@ export default function ApiManagementPage() {
             </div>
           </CardContent>
           <CardFooter className="border-t bg-muted/20 pt-4">
-            <Button size="sm">Save Webhook Settings</Button>
+            <Button
+              size="sm"
+              onClick={handleSaveWebhook}
+              disabled={updateSettingMutation.isLoading || writeDisabled}
+              title={writeTooltip}
+            >
+              {updateSettingMutation.isLoading ? "Saving..." : "Save Webhook Settings"}
+            </Button>
           </CardFooter>
         </Card>
 
@@ -212,14 +408,22 @@ export default function ApiManagementPage() {
                 <Label>IP Whitelisting</Label>
                 <p className="text-xs text-muted-foreground">Restrict API access to known IP addresses only.</p>
               </div>
-              <Switch defaultChecked />
+              <Switch
+                checked={isIpWhitelisting}
+                onCheckedChange={(checked) => handleBooleanSetting("ip_whitelisting_enabled", checked, setIsIpWhitelisting)}
+                disabled={writeDisabled}
+              />
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>Rate Limiting</Label>
                 <p className="text-xs text-muted-foreground">Prevent abuse by limiting requests per minute.</p>
               </div>
-              <Switch defaultChecked />
+              <Switch
+                checked={isRateLimiting}
+                onCheckedChange={(checked) => handleBooleanSetting("rate_limiting_enabled", checked, setIsRateLimiting)}
+                disabled={writeDisabled}
+              />
             </div>
           </CardContent>
           <CardFooter className="border-t bg-muted/20 pt-4">
