@@ -153,6 +153,9 @@ export default function AgentDetailPage() {
     }
   );
 
+  const displayAgent = agent;
+  const displayBalance = loanBalance;
+
   const scoredAgent = scoreBreakdown
     ? {
         last_credit_score: scoreBreakdown.credit_score ?? scoreBreakdown.final_score,
@@ -161,8 +164,6 @@ export default function AgentDetailPage() {
         last_scored_at: scoreBreakdown.scored_at ?? displayAgent?.last_scored_at,
       }
     : null;
-  const displayAgent = agent;
-  const displayBalance = loanBalance;
   const loans = loansData?.data || [];
   const transactions = transactionsData?.data || [];
 
@@ -286,35 +287,41 @@ export default function AgentDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {displayAgent.last_credit_score != null ? (
+            {scoreBreakdownLoading ? (
+              <div className="flex flex-col items-center justify-center py-6">
+                <Skeleton className="h-12 w-12 rounded-full mb-2" />
+                <Skeleton className="h-4 w-24 mb-1" />
+                <Skeleton className="h-3 w-32" />
+              </div>
+            ) : scoredAgent && scoredAgent.credit_score_risk_level ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className={`text-4xl font-bold ${
-                      displayAgent.credit_score_risk_level === 'low' ? 'text-green-600' :
-                      displayAgent.credit_score_risk_level === 'medium' ? 'text-amber-600' :
-                      displayAgent.credit_score_risk_level === 'rejected' ? 'text-gray-600' :
+                      scoredAgent.credit_score_risk_level === 'low' ? 'text-green-600' :
+                      scoredAgent.credit_score_risk_level === 'medium' ? 'text-amber-600' :
+                      scoredAgent.credit_score_risk_level === 'rejected' ? 'text-gray-600' :
                       'text-red-600'
                     }`}>
-                      {(displayAgent.last_credit_score * 100).toFixed(1)}%
+                      {(scoredAgent.last_credit_score * 100).toFixed(1)}%
                     </p>
                   </div>
-                  <RiskLevelBadge riskLevel={displayAgent.credit_score_risk_level ?? 'high'} />
+                  <RiskLevelBadge riskLevel={scoredAgent.credit_score_risk_level} />
                 </div>
                 <ScoreValueMeter
-                  score={displayAgent.last_credit_score}
-                  riskLevel={displayAgent.credit_score_risk_level}
+                  score={scoredAgent.last_credit_score}
+                  riskLevel={scoredAgent.credit_score_risk_level}
                   showPercent={false}
                 />
                 <div className="grid grid-cols-2 gap-3 pt-2 border-t">
                   <div>
                     <p className="text-xs text-muted-foreground">Loan Limit</p>
-                    <p className="font-semibold">{formatCurrency(displayAgent.loan_limit || 0, "UGX")}</p>
+                    <p className="font-semibold">{formatCurrency(scoredAgent.loan_limit || 0, "UGX")}</p>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground">Last Scored</p>
                     <p className="font-semibold text-sm">
-                      {displayAgent.last_scored_at ? formatDate(displayAgent.last_scored_at, "relative") : "Never"}
+                      {scoredAgent.last_scored_at ? formatDate(scoredAgent.last_scored_at, "relative") : "Never"}
                     </p>
                   </div>
                 </div>
@@ -648,7 +655,7 @@ export default function AgentDetailPage() {
         </TabsContent>
 
         <TabsContent value="credit-score">
-          {displayAgent.last_credit_score != null ? (
+          {scoredAgent != null ? (
             <div className="space-y-6">
               {/* Score Composition */}
               {scoreBreakdown && !scoreBreakdownLoading && (
