@@ -1,44 +1,29 @@
 // ============================================
-// Dashboard/Analytics API Service
+// Dashboard/Analytics API Service (redesigned)
 // ============================================
 
 import { apiClient } from './client';
 import type {
-  DashboardStats,
-  PortfolioReport,
-  CollectionsReport,
-  DisbursementReport,
+  DashboardOverviewResponse,
+  DashboardQueryParams,
+  WalletInfo,
 } from '@/lib/types';
 
 export const dashboardApi = {
   /**
-   * Get dashboard statistics (all-in-one endpoint)
-   * Returns: stats, disbursement_trend, loan_status_distribution, overdue_aging, recent_activity
+   * Get the redesigned dashboard overview.
+   * All KPIs, charts, and breakdowns adjust to the selected date range and filters.
+   * Does NOT include the ISW wallet balance (use getWalletBalance for that).
    */
-  getStats: async (params?: { months?: number }): Promise<DashboardStats> => {
-    return apiClient.get<DashboardStats>('/dashboard/stats', params);
-  },
-};
-
-export const reportsApi = {
-  /**
-   * Get portfolio report
-   */
-  getPortfolioReport: async (params?: { date_from?: string; date_to?: string }): Promise<PortfolioReport> => {
-    return apiClient.get<PortfolioReport>('/reports/portfolio', params);
+  getOverview: async (params?: DashboardQueryParams): Promise<DashboardOverviewResponse> => {
+    return apiClient.get<DashboardOverviewResponse>('/dashboard/overview', params as Record<string, string | number | boolean | undefined> | undefined);
   },
 
   /**
-   * Get collections report
+   * Get the ISW wallet balance independently (non-blocking).
+   * Uses a 5-minute in-memory cache on the backend.
    */
-  getCollectionsReport: async (params?: { period?: 'daily' | 'weekly' | 'monthly'; date_from?: string; date_to?: string }): Promise<CollectionsReport> => {
-    return apiClient.get<CollectionsReport>('/reports/collections', params);
-  },
-
-  /**
-   * Get disbursement report
-   */
-  getDisbursementReport: async (params?: { period?: 'daily' | 'weekly' | 'monthly'; date_from?: string; date_to?: string }): Promise<DisbursementReport> => {
-    return apiClient.get<DisbursementReport>('/reports/disbursements', params);
+  getWalletBalance: async (): Promise<WalletInfo> => {
+    return apiClient.get<WalletInfo>('/dashboard/wallet');
   },
 };

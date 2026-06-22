@@ -108,6 +108,19 @@ export default function AgentDetailPage() {
   const loans = loansData?.data || [];
   const transactions = transactionsData?.data || [];
 
+  const formatTxAmount = (amount: AgentTransaction["credit_amount"] | AgentTransaction["debit_amount"] | AgentTransaction["balance"]) =>
+    formatCurrency(Number(amount ?? 0), "UGX");
+
+  const formatPositiveTxAmount = (amount: AgentTransaction["credit_amount"] | AgentTransaction["debit_amount"]) => {
+    const numericAmount = Number(amount ?? 0);
+    return numericAmount > 0 ? formatCurrency(numericAmount, "UGX") : "-";
+  };
+
+  const formatTxDate = (date: string | null | undefined, includeTime = false) =>
+    date ? formatDate(date, includeTime ? "long" : "short") : "-";
+
+  const formatTxField = (value: string | null | undefined) => value || "-";
+
   if (agentError && !agent) {
     return <ErrorState message={agentError.message || "Failed to load agent details"} onRetry={() => router.refresh()} />;
   }
@@ -427,34 +440,48 @@ export default function AgentDetailPage() {
                   ))}
                 </div>
               ) : transactions.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Credit</TableHead>
-                      <TableHead>Debit</TableHead>
-                      <TableHead>Balance</TableHead>
-                      <TableHead>Reference</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {transactions.map((tx) => (
-                      <TableRow key={tx.id}>
-                        <TableCell>{formatDate(tx.transaction_date, "long")}</TableCell>
-                        <TableCell>{tx.narration}</TableCell>
-                        <TableCell className="text-green-600">
-                          {tx.credit_amount > 0 ? formatCurrency(tx.credit_amount, "UGX") : "-"}
-                        </TableCell>
-                        <TableCell className="text-red-600">
-                          {tx.debit_amount > 0 ? formatCurrency(tx.debit_amount, "UGX") : "-"}
-                        </TableCell>
-                        <TableCell>{formatCurrency(tx.balance, "UGX")}</TableCell>
-                        <TableCell className="font-mono text-xs">{tx.request_ref}</TableCell>
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead>Agent ID</TableHead>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Transaction Type</TableHead>
+                        <TableHead>Narration</TableHead>
+                        <TableHead>Credit</TableHead>
+                        <TableHead>Debit</TableHead>
+                        <TableHead>Balance</TableHead>
+                        <TableHead>Terminal</TableHead>
+                        <TableHead>Biller</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Created At</TableHead>
+                        <TableHead>Updated At</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {transactions.map((tx) => (
+                        <TableRow key={tx.id}>
+                          <TableCell className="font-mono text-xs">{tx.id}</TableCell>
+                          <TableCell className="font-mono text-xs">{tx.agent_id}</TableCell>
+                          <TableCell className="whitespace-nowrap">{formatTxDate(tx.transaction_date, true)}</TableCell>
+                          <TableCell>{formatTxField(tx.transaction_description || tx.narration)}</TableCell>
+                          <TableCell className="max-w-xs">{formatTxField(tx.narration)}</TableCell>
+                          <TableCell className="text-green-600 whitespace-nowrap">{formatPositiveTxAmount(tx.credit_amount)}</TableCell>
+                          <TableCell className="text-red-600 whitespace-nowrap">{formatPositiveTxAmount(tx.debit_amount)}</TableCell>
+                          <TableCell className="whitespace-nowrap">{formatTxAmount(tx.balance)}</TableCell>
+                          <TableCell>{formatTxField(tx.terminal)}</TableCell>
+                          <TableCell>{formatTxField(tx.biller)}</TableCell>
+                          <TableCell>{formatTxField(tx.status)}</TableCell>
+                          <TableCell className="font-mono text-xs max-w-xs">{formatTxField(tx.request_ref)}</TableCell>
+                          <TableCell className="whitespace-nowrap">{formatTxDate(tx.created_at, true)}</TableCell>
+                          <TableCell className="whitespace-nowrap">{formatTxDate(tx.updated_at, true)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   No transaction history found.

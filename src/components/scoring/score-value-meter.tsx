@@ -18,6 +18,7 @@ export function ScoreValueMeter({ score, riskLevel, showPercent = true }: ScoreV
     "[&>div]:bg-green-500": riskLevel === "low",
     "[&>div]:bg-amber-500": riskLevel === "medium",
     "[&>div]:bg-red-500":   riskLevel === "high",
+    "[&>div]:bg-gray-500":  riskLevel === "rejected",
   });
 
   return (

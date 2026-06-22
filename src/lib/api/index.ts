@@ -9,6 +9,7 @@ export { productsApi } from './products';
 export { loansApi } from './loans';
 export { paymentsApi } from './payments';
 export { apiClientsApi } from './api-clients';
-export { dashboardApi, reportsApi } from './dashboard';
+export { reportsApi } from './reports';
+export { dashboardApi } from './dashboard';
 export { scoringDashboardApi } from './scoring-dashboard';
 export { permissionsApi } from './permissions';

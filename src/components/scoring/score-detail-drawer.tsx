@@ -9,7 +9,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
@@ -18,6 +17,11 @@ import { scoringDashboardApi } from "@/lib/api/scoring-dashboard";
 import { RiskLevelBadge } from "@/components/shared/status-badges";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
 import type { ScoredAgent } from "@/lib/types";
+import { FactorBreakdownChart } from "@/components/scoring/breakdown/factor-breakdown-chart";
+import { SourceBreakdownPie } from "@/components/scoring/breakdown/source-breakdown-pie";
+import { PenaltyBreakdown } from "@/components/scoring/breakdown/penalty-breakdown";
+import { ScoreTrendChart } from "@/components/scoring/breakdown/score-trend-chart";
+import { LoanBehaviorSummary } from "@/components/scoring/breakdown/loan-behavior-summary";
 
 interface ScoreDetailDrawerProps {
   agent: ScoredAgent | null;
@@ -45,6 +49,15 @@ export function ScoreDetailDrawer({
     }
   );
 
+  const { data: breakdown, isLoading: breakdownLoading } = useApi(
+    () => scoringDashboardApi.getScoreBreakdown(agent!.agent_id),
+    [agent?.agent_id],
+    {
+      cacheKey: `score-breakdown-${agent?.agent_id}`,
+      enabled: !!agent && isOpen,
+    }
+  );
+
   const reScoreMutation = useMutation(
     () => scoringDashboardApi.triggerScore(agent!.agent_id),
     {
@@ -64,17 +77,13 @@ export function ScoreDetailDrawer({
 
   if (!agent) return null;
 
-  // Try to parse component scores from the most recent history entry
-  let componentScores: { rule_score?: number; ml_score?: number } | null = null;
-  if (history && history.length > 0 && history[0].component_scores) {
-    componentScores = history[0].component_scores;
-  }
-
   const riskColorClass =
     agent.credit_score_risk_level === "low"
       ? "text-green-600"
       : agent.credit_score_risk_level === "medium"
       ? "text-amber-600"
+      : agent.credit_score_risk_level === "rejected"
+      ? "text-gray-600"
       : "text-red-600";
 
   return (
@@ -146,44 +155,91 @@ export function ScoreDetailDrawer({
           </Button>
         </div>
 
-        {/* Component Breakdown */}
-        <div className="mb-6">
-          <h3 className="text-sm font-semibold mb-3">Component Breakdown</h3>
-          {componentScores ? (
-            <div className="space-y-2">
-              {typeof componentScores.rule_score === "number" && (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs w-32 text-muted-foreground">
-                    Rule-Based Score
-                  </span>
-                  <Progress
-                    value={componentScores.rule_score * 100}
-                    className="flex-1 h-2"
-                  />
-                  <span className="text-xs font-mono w-10 text-right">
-                    {(componentScores.rule_score * 100).toFixed(0)}%
-                  </span>
-                </div>
-              )}
-              {typeof componentScores.ml_score === "number" && (
-                <div className="flex items-center gap-3">
-                  <span className="text-xs w-32 text-muted-foreground">
-                    ML Score
-                  </span>
-                  <Progress
-                    value={componentScores.ml_score * 100}
-                    className="flex-1 h-2"
-                  />
-                  <span className="text-xs font-mono w-10 text-right">
-                    {(componentScores.ml_score * 100).toFixed(0)}%
-                  </span>
-                </div>
-              )}
+        {/* Rule vs ML vs Final Score */}
+        {breakdown && !breakdownLoading && (
+          <div className="rounded-lg border bg-card p-4 space-y-2 mb-6">
+            <h3 className="text-sm font-semibold">Score Composition</h3>
+            <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="rounded-md bg-muted/50 p-2">
+                <p className="text-xs text-muted-foreground">Rule-Based</p>
+                <p className="text-lg font-bold tabular-nums">
+                  {Math.round((breakdown.rule_score ?? 0) * 100)}%
+                </p>
+              </div>
+              <div className="rounded-md bg-muted/50 p-2">
+                <p className="text-xs text-muted-foreground">ML Model</p>
+                <p className="text-lg font-bold tabular-nums">
+                  {Math.round((breakdown.ml_score ?? 0) * 100)}%
+                </p>
+              </div>
+              <div className="rounded-md bg-primary/10 p-2">
+                <p className="text-xs text-muted-foreground">Final</p>
+                <p className="text-lg font-bold tabular-nums text-primary">
+                  {Math.round((breakdown.final_score ?? breakdown.credit_score) * 100)}%
+                </p>
+              </div>
             </div>
-          ) : (
-            <p className="text-xs text-muted-foreground italic">
-              Component breakdown available after re-scoring.
+            <p className="text-xs text-muted-foreground text-center">
+              Method: {breakdown.scoring_method} · Confidence:{" "}
+              {Math.round((breakdown.confidence ?? 0) * 100)}%
             </p>
+          </div>
+        )}
+
+        {/* Score Trend Chart */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold mb-3">Score Trend</h3>
+          <ScoreTrendChart history={history} />
+        </div>
+
+        <Separator className="mb-4" />
+
+        {/* Factor Breakdown */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold mb-3">Factor Breakdown</h3>
+          {breakdownLoading ? (
+            <Skeleton className="h-32 w-full rounded" />
+          ) : (
+            <FactorBreakdownChart factors={breakdown?.factors} />
+          )}
+        </div>
+
+        <Separator className="mb-4" />
+
+        {/* Source Breakdown */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold mb-3">Score Source Breakdown</h3>
+          {breakdownLoading ? (
+            <Skeleton className="h-32 w-full rounded" />
+          ) : (
+            <SourceBreakdownPie data={breakdown?.source_breakdown} />
+          )}
+        </div>
+
+        <Separator className="mb-4" />
+
+        {/* Penalties */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold mb-3">Penalties Applied</h3>
+          {breakdownLoading ? (
+            <Skeleton className="h-24 w-full rounded" />
+          ) : (
+            <PenaltyBreakdown
+              penalties={breakdown?.penalties}
+              penaltyTotal={breakdown?.penalty_total}
+            />
+          )}
+        </div>
+
+        <Separator className="mb-4" />
+
+        {/* Loan Behavior */}
+        <div className="mb-6">
+          <h3 className="text-sm font-semibold mb-3">Loan Repayment Behavior</h3>
+          {breakdownLoading ? (
+            <Skeleton className="h-32 w-full rounded" />
+          ) : (
+            <LoanBehaviorSummary behavior={breakdown?.behavior} />
           )}
         </div>
 

@@ -44,7 +44,11 @@ export function DateRangePicker({
   };
 
   const handleApply = () => {
-    onSelect(tempFrom, tempTo);
+    const applyTo = tempTo || (tempFrom ? new Date(tempFrom) : undefined);
+    if (applyTo) {
+      applyTo.setHours(23, 59, 59, 999);
+    }
+    onSelect(tempFrom, applyTo);
     setOpen(false);
   };
 

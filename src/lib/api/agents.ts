@@ -12,6 +12,11 @@ import type {
   PaginatedResponse,
   AgentListParams,
   EligibleProductsResponse,
+  BulkDeactivateRequest,
+  BulkDeactivateResponse,
+  BulkActivateRequest,
+  BulkActivateResponse,
+  BulkActivateResult,
 } from '@/lib/types';
 
 export const agentsApi = {
@@ -62,7 +67,16 @@ export const agentsApi = {
    */
   getTransactions: async (
     agentId: string,
-    params?: { page?: number; page_size?: number; date_from?: string; date_to?: string }
+    params?: {
+      page?: number;
+      page_size?: number;
+      date_from?: string;
+      date_to?: string;
+      status?: string;
+      terminal?: string;
+      biller?: string;
+      search?: string;
+    }
   ): Promise<PaginatedResponse<AgentTransaction>> => {
     return apiClient.get<PaginatedResponse<AgentTransaction>>(`/agents/${agentId}/transactions`, params);
   },
@@ -75,6 +89,29 @@ export const agentsApi = {
     params?: { page?: number; page_size?: number }
   ): Promise<PaginatedResponse<Loan>> => {
     return apiClient.get<PaginatedResponse<Loan>>(`/agents/${agentId}/loans`, params);
+  },
+
+  /**
+   * Bulk deactivate agents
+   */
+  bulkDeactivate: async (data: BulkDeactivateRequest): Promise<BulkDeactivateResponse> => {
+    return apiClient.post<BulkDeactivateResponse>('/agents/bulk-deactivate', data);
+  },
+
+  /**
+   * Bulk activate agents (with credit scoring)
+   */
+  bulkActivate: async (data: BulkActivateRequest): Promise<BulkActivateResponse> => {
+    return apiClient.post<BulkActivateResponse>('/agents/bulk-activate', data);
+  },
+
+  /**
+   * Activate a single agent with credit scoring
+   */
+  activateWithScoring: async (agentId: string, skipScoring = false): Promise<BulkActivateResult> => {
+    return apiClient.post<BulkActivateResult>(`/agents/${agentId}/activate`, undefined, {
+      params: { skip_scoring: skipScoring }
+    });
   },
 
   /**

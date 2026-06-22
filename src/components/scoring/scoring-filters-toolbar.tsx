@@ -16,8 +16,8 @@ import { ExportButton } from "@/components/shared/export-button";
 interface ScoringFiltersToolbarProps {
   search: string;
   onSearchChange: (v: string) => void;
-  riskLevel: "high" | "medium" | "low" | "all";
-  onRiskLevelChange: (v: "high" | "medium" | "low" | "all") => void;
+  riskLevel: "high" | "medium" | "low" | "rejected" | "all";
+  onRiskLevelChange: (v: "high" | "medium" | "low" | "rejected" | "all") => void;
   scoreMin: number | undefined;
   scoreMax: number | undefined;
   onScoreRangeChange: (min: number | undefined, max: number | undefined) => void;
@@ -58,7 +58,7 @@ export function ScoringFiltersToolbar({
       </div>
 
       {/* Risk level select */}
-      <Select value={riskLevel} onValueChange={(v) => onRiskLevelChange(v as "high" | "medium" | "low" | "all")}>
+      <Select value={riskLevel} onValueChange={(v) => onRiskLevelChange(v as "high" | "medium" | "low" | "rejected" | "all")}>
         <SelectTrigger className="w-[160px]">
           <SelectValue placeholder="All Risk Levels" />
         </SelectTrigger>
@@ -67,6 +67,7 @@ export function ScoringFiltersToolbar({
           <SelectItem value="low">Low Risk</SelectItem>
           <SelectItem value="medium">Medium Risk</SelectItem>
           <SelectItem value="high">High Risk</SelectItem>
+          <SelectItem value="rejected">Rejected</SelectItem>
         </SelectContent>
       </Select>
 

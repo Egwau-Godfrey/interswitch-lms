@@ -7,15 +7,22 @@ import type {
   LoanProduct,
   LoanProductCreate,
   LoanProductUpdate,
+  LoanType,
   PaginatedResponse,
   ListParams,
 } from '@/lib/types';
 
+export interface ProductListParams extends ListParams {
+  is_active?: boolean;
+  loan_type?: LoanType;
+  search?: string;
+}
+
 export const productsApi = {
   /**
-   * List all loan products
+   * List all loan products with optional filters
    */
-  list: async (params?: ListParams & { is_active?: boolean }): Promise<PaginatedResponse<LoanProduct>> => {
+  list: async (params?: ProductListParams): Promise<PaginatedResponse<LoanProduct>> => {
     return apiClient.get<PaginatedResponse<LoanProduct>>('/loan-products', params as Record<string, string | number | boolean | undefined>);
   },
 

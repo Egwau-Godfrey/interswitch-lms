@@ -388,6 +388,22 @@ export default function SettingsPage() {
                       )}
                     </div>
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="default_days">Default After (Days Overdue)</Label>
+                    <div className="relative">
+                      <Input
+                        id="default_days"
+                        type="number"
+                        defaultValue={getSetting("default_days") || "90"}
+                        onBlur={(e) => handleInputChange("default_days", e.target.value)}
+                        disabled={isLoading || savingKey === "default_days"}
+                      />
+                      {savingKey === "default_days" && (
+                        <Loader2 className="absolute right-3 top-3 w-4 h-4 animate-spin text-muted-foreground" />
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Official default rule used in reports and risk analytics.</p>
+                  </div>
                 </div>
               </div>
               <div className="p-4 bg-amber-50 border border-amber-100 rounded-lg flex gap-3">

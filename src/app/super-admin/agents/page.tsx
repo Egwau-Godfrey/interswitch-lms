@@ -18,7 +18,8 @@ import {
   XCircle,
   Clock,
   Banknote,
-  RefreshCw
+  RefreshCw,
+  Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,6 +67,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -78,6 +80,7 @@ import { LoadingState, ErrorState } from "@/components/shared/loading-states";
 import { ExportButton } from "@/components/shared/export-button";
 import { formatDate } from "@/components/shared/stat-card";
 import { useSession } from "next-auth/react";
+import { useAgentBulkActions } from "@/hooks/use-agent-bulk-actions";
 
 export default function AgentsPage() {
   const { data: session, status } = useSession();
@@ -90,6 +93,22 @@ export default function AgentsPage() {
   const [pageSize] = React.useState(10);
   const [sortBy] = React.useState("created_at");
   const [sortOrder] = React.useState<"asc" | "desc">("desc");
+
+  // Bulk actions
+  const {
+    selectedAgentIds,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    bulkDeactivate,
+    bulkActivate,
+    isLoading: bulkLoading,
+  } = useAgentBulkActions({ onSuccess: () => refetch() });
+
+  const [bulkDialog, setBulkDialog] = React.useState<{
+    type: "activate" | "deactivate" | "activate-all" | "deactivate-all";
+    count?: number;
+  } | null>(null);
 
   React.useEffect(() => {
     setMounted(true);
@@ -171,20 +190,64 @@ export default function AgentsPage() {
     }
   );
 
+  const activateWithScoringMutation = useMutation(
+    (agentId: string) => agentsApi.activateWithScoring(agentId),
+    {
+      onSuccess: (result) => {
+        if (result.success) {
+          toast.success("Agent activated", {
+            description: result.scored
+              ? `Credit score: ${result.credit_score?.toFixed(2)}, Risk: ${result.risk_level}, Limit: UGX ${result.loan_limit?.toLocaleString()}`
+              : result.error || "Agent activated successfully",
+          });
+        } else {
+          toast.error("Activation blocked", { description: result.error });
+        }
+        setDeletingAgent(null);
+        refetch();
+      },
+      onError: (err) => {
+        toast.error("Activation failed", { description: err.message });
+        setDeletingAgent(null);
+      },
+    }
+  );
+
   const handleToggleAgentStatus = () => {
     if (deletingAgent) {
       const isInactive = deletingAgent.status === "inactive";
       if (isInactive) {
-        // Activate agent
-        updateAgentMutation.mutate({
-          agentId: deletingAgent.agent_id,
-          data: { status: "active" as any }
-        });
+        // Activate agent with credit scoring
+        activateWithScoringMutation.mutate(deletingAgent.agent_id);
       } else {
         // Deactivate agent
         deleteAgentMutation.mutate(deletingAgent.agent_id);
       }
     }
+  };
+
+  const handleConfirmBulkAction = () => {
+    if (!bulkDialog) return;
+
+    switch (bulkDialog.type) {
+      case "activate":
+        if (selectedAgentIds.size > 0) {
+          bulkActivate.mutate({ agent_ids: Array.from(selectedAgentIds) });
+        }
+        break;
+      case "deactivate":
+        if (selectedAgentIds.size > 0) {
+          bulkDeactivate.mutate({ agent_ids: Array.from(selectedAgentIds) });
+        }
+        break;
+      case "activate-all":
+        bulkActivate.mutate({ all: true });
+        break;
+      case "deactivate-all":
+        bulkDeactivate.mutate({ all: true });
+        break;
+    }
+    setBulkDialog(null);
   };
 
   const updateAgentMutation = useMutation(
@@ -249,6 +312,22 @@ export default function AgentsPage() {
               search: searchQuery || undefined
             })}
           />
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Shield className="w-4 h-4 mr-2" />
+                Bulk Actions
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setBulkDialog({ type: "activate-all" })}>
+                <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600" /> Activate All
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setBulkDialog({ type: "deactivate-all" })}>
+                <XCircle className="w-4 h-4 mr-2 text-destructive" /> Deactivate All
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Dialog open={isRegisterOpen} onOpenChange={setIsRegisterOpen}>
             <DialogTrigger asChild>
               <Button className="bg-[#004B91] hover:bg-[#003B71]">
@@ -350,10 +429,48 @@ export default function AgentsPage() {
         </Select>
       </form>
 
+      {selectedAgentIds.size > 0 && (
+        <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border">
+          <span className="text-sm font-medium">
+            {selectedAgentIds.size} agent{selectedAgentIds.size > 1 ? "s" : ""} selected
+          </span>
+          <div className="flex-1" />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setBulkDialog({ type: "activate", count: selectedAgentIds.size })}
+          >
+            <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600" />
+            Activate Selected
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive"
+            onClick={() => setBulkDialog({ type: "deactivate", count: selectedAgentIds.size })}
+          >
+            <XCircle className="w-4 h-4 mr-2" />
+            Deactivate Selected
+          </Button>
+        </div>
+      )}
+
       <div className="rounded-md border bg-card">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              <TableHead className="w-[40px]">
+                <Checkbox
+                  checked={agents.length > 0 && selectedAgentIds.size === agents.length}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      selectAll(agents.map((a) => a.agent_id));
+                    } else {
+                      clearSelection();
+                    }
+                  }}
+                />
+              </TableHead>
               <TableHead className="w-[100px]">Agent ID</TableHead>
               <TableHead>Agent</TableHead>
               <TableHead className="hidden md:table-cell">Contact</TableHead>
@@ -367,6 +484,7 @@ export default function AgentsPage() {
               // Enhanced skeleton loading matching columns
               Array.from({ length: pageSize }).map((_, i) => (
                 <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-4" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-16" /></TableCell>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -390,6 +508,12 @@ export default function AgentsPage() {
             ) : agents.length > 0 ? (
                 agents.map((agent) => (
                   <TableRow key={agent.id}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedAgentIds.has(agent.agent_id)}
+                        onCheckedChange={() => toggleSelection(agent.agent_id)}
+                      />
+                    </TableCell>
                     <TableCell className="font-mono text-xs font-semibold">{agent.agent_id}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -469,7 +593,7 @@ export default function AgentsPage() {
                 ))
               ) : (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
                     No agents found matching your search.
                   </TableCell>
                 </TableRow>
@@ -498,8 +622,8 @@ export default function AgentsPage() {
               {deletingAgent?.status === "inactive" ? "Activate Agent" : "Deactivate Agent"}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {deletingAgent?.status === "inactive" 
-                ? `Are you sure you want to activate agent ${deletingAgent?.full_name}? They will be able to access the system again.`
+              {deletingAgent?.status === "inactive"
+                ? `Are you sure you want to activate agent ${deletingAgent?.full_name}? Credit scoring will run before activation.`
                 : `Are you sure you want to deactivate agent ${deletingAgent?.full_name}? They will lose access to the system immediately. Active loans will still need to be settled.`
               }
             </AlertDialogDescription>
@@ -508,19 +632,57 @@ export default function AgentsPage() {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleToggleAgentStatus}
-              className={deletingAgent?.status === "inactive" 
-                ? "bg-emerald-600 text-white hover:bg-emerald-700" 
+              className={deletingAgent?.status === "inactive"
+                ? "bg-emerald-600 text-white hover:bg-emerald-700"
                 : "bg-destructive text-destructive-foreground hover:bg-destructive/90"
               }
             >
-              {deleteAgentMutation.isLoading || updateAgentMutation.isLoading 
-                ? (deletingAgent?.status === "inactive" ? "Activating..." : "Deactivating...") 
+              {deleteAgentMutation.isLoading || activateWithScoringMutation.isLoading
+                ? (deletingAgent?.status === "inactive" ? "Activating..." : "Deactivating...")
                 : (deletingAgent?.status === "inactive" ? "Activate" : "Deactivate")
               }
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={!!bulkDialog} onOpenChange={() => setBulkDialog(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {bulkDialog?.type === "activate" && `Activate ${bulkDialog.count} Agents`}
+              {bulkDialog?.type === "activate-all" && "Activate All Agents"}
+              {bulkDialog?.type === "deactivate" && `Deactivate ${bulkDialog.count} Agents`}
+              {bulkDialog?.type === "deactivate-all" && "Deactivate All Agents"}
+            </DialogTitle>
+            <DialogDescription>
+              {bulkDialog?.type?.startsWith("activate") && (
+                <>
+                  Credit scoring will run for each agent before activation.
+                  Agents with <strong>rejected</strong> risk level will be skipped.
+                  This may take a moment for large batches.
+                </>
+              )}
+              {bulkDialog?.type?.startsWith("deactivate") && (
+                <>
+                  Agents with active loans will be skipped automatically.
+                  Deactivated agents cannot apply for new loans.
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkDialog(null)}>Cancel</Button>
+            <Button
+              onClick={handleConfirmBulkAction}
+              className={bulkDialog?.type?.startsWith("activate") ? "bg-emerald-600 hover:bg-emerald-700" : "bg-destructive hover:bg-destructive/90"}
+              disabled={bulkLoading}
+            >
+              {bulkLoading ? "Processing..." : "Confirm"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

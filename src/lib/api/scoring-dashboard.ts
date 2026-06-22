@@ -11,7 +11,9 @@ import type {
   ScoringStats,
   BulkScoreRequest,
   BulkScoreResponse,
+  RescoreAllResponse,
 } from '@/lib/types';
+import type { ScoreBreakdown, AgentBehavior } from '@/lib/types/scoring';
 
 export const scoringDashboardApi = {
   /**
@@ -33,6 +35,18 @@ export const scoringDashboardApi = {
     apiClient.get<CreditScoreHistoryEntry[]>(`/scoring/agents/${agentId}/history`, { limit }),
 
   /**
+   * Get detailed factor-level score breakdown for an agent
+   */
+  getScoreBreakdown: (agentId: string): Promise<ScoreBreakdown> =>
+    apiClient.get<ScoreBreakdown>(`/scoring/agents/${agentId}/breakdown`),
+
+  /**
+   * Get loan repayment behavior metrics for an agent
+   */
+  getAgentBehavior: (agentId: string): Promise<AgentBehavior> =>
+    apiClient.get<AgentBehavior>(`/scoring/agents/${agentId}/behavior`),
+
+  /**
    * Trigger a credit score calculation for a single agent
    */
   triggerScore: (agentId: string): Promise<{ success: boolean; score?: number; loan_limit?: number; risk_level?: string; message: string }> =>
@@ -43,6 +57,12 @@ export const scoringDashboardApi = {
    */
   bulkScore: (payload: BulkScoreRequest): Promise<BulkScoreResponse> =>
     apiClient.post<BulkScoreResponse>('/scoring/agents/bulk-score', payload),
+
+  /**
+   * Rescore ALL agents in the system (super admin only)
+   */
+  rescoreAll: (): Promise<RescoreAllResponse> =>
+    apiClient.post<RescoreAllResponse>('/scoring/rescore-all'),
 
   /**
    * Export scored agents list as CSV or XLSX

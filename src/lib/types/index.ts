@@ -50,7 +50,7 @@ export interface UserUpdate {
 // ============================================
 export type EmploymentStatus = 'full_time' | 'part_time' | 'contract' | 'self_employed' | 'unemployed';
 export type AgentStatus = 'pending' | 'active' | 'inactive' | 'suspended' | 'blacklisted';
-export type RiskLevel = 'high' | 'medium' | 'low';
+export type RiskLevel = 'high' | 'medium' | 'low' | 'rejected';
 
 export interface Agent {
   id: string;
@@ -101,14 +101,19 @@ export interface AgentUpdate {
 // ============================================
 // Loan Product Model
 // ============================================
+export type LoanType = 'float' | 'pay_day';
+
 export interface LoanProduct {
   id: string;
   name: string;
   description?: string;
+  loan_type: LoanType;
   min_amount?: number;
   max_amount: number;
   interest_rate: number;
   penalty_rate: number;
+  application_fee_rate?: number;
+  application_fee_fixed?: number;
   tenure_days: number;
   grace_period_days?: number;
   requires_payroll?: boolean;
@@ -121,9 +126,13 @@ export interface LoanProduct {
 export interface LoanProductCreate {
   name: string;
   description?: string;
+  loan_type: LoanType;
+  min_amount?: number;
   max_amount: number;
   interest_rate: number;
   penalty_rate?: number;
+  application_fee_rate?: number;
+  application_fee_fixed?: number;
   tenure_days: number;
   grace_period_days?: number;
   requires_payroll?: boolean;
@@ -134,9 +143,13 @@ export interface LoanProductCreate {
 export interface LoanProductUpdate {
   name?: string;
   description?: string;
+  loan_type?: LoanType;
+  min_amount?: number;
   max_amount?: number;
   interest_rate?: number;
   penalty_rate?: number;
+  application_fee_rate?: number;
+  application_fee_fixed?: number;
   tenure_days?: number;
   grace_period_days?: number;
   requires_payroll?: boolean;
@@ -219,15 +232,18 @@ export interface PaymentCreate {
 export interface AgentTransaction {
   id: string;
   agent_id: string;
-  transaction_date: string;
-  credit_amount: number;
-  debit_amount: number;
-  terminal: string;
-  biller: string;
-  narration: string;
-  balance: number;
-  status: string;
-  request_ref: string;
+  transaction_date?: string | null;
+  credit_amount?: number | string | null;
+  debit_amount?: number | string | null;
+  terminal?: string | null;
+  biller?: string | null;
+  narration?: string | null;
+  balance?: number | string | null;
+  transaction_description?: string | null;
+  status?: string | null;
+  request_ref?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 // ============================================
@@ -400,6 +416,312 @@ export interface RecentActivityItem {
 }
 
 // ============================================
+// Redesigned Dashboard Types
+// ============================================
+export interface DashboardPeriodInfo {
+  date_from: string;
+  date_to: string;
+  timezone: string;
+  granularity: string;
+}
+
+export interface DashboardKPIs {
+  total_disbursed: number;
+  disbursement_count: number;
+  total_collected: number;
+  collection_count: number;
+  active_loans_count: number;
+  total_outstanding: number;
+  overdue_loans_count: number;
+  overdue_amount: number;
+  defaulted_loans_count: number;
+  defaulted_amount: number;
+  default_rate: number;
+  recovery_rate: number;
+  collection_rate: number;
+  average_loan_size: number;
+}
+
+export interface CollectionsBreakdown {
+  total_collected: number;
+  principal_collected: number;
+  interest_collected: number;
+  penalty_collected: number;
+  application_fee_collected: number;
+  surcharge_collected: number;
+  overpayment_collected: number;
+  collection_count: number;
+  collection_rate: number;
+  recovery_rate: number;
+}
+
+export interface DashboardRevenueSplit {
+  gross_revenue: number;
+  application_fee_revenue: number;
+  interest_revenue: number;
+  penalty_revenue: number;
+  surcharge_revenue: number;
+  interswitch_share_percent: number;
+  qriscorp_share_percent: number;
+  interswitch_amount: number;
+  qriscorp_amount: number;
+  accrued_revenue: number;
+}
+
+export interface LoanStatusBreakdown {
+  status: string;
+  count: number;
+  principal_amount: number;
+  outstanding_amount: number;
+  percentage: number;
+}
+
+export interface DashboardTrendBucket {
+  bucket: string;
+  bucket_start: string;
+  disbursed: number;
+  collected: number;
+  revenue: number;
+  outstanding: number;
+  active_loans: number;
+  overdue_loans: number;
+  defaulted_loans: number;
+}
+
+export interface DashboardOverdueAgingBucket {
+  range: string;
+  count: number;
+  amount: number;
+}
+
+export interface DashboardPARMetrics {
+  par_30: number;
+  par_60: number;
+  par_90: number;
+  par_30_percent: number;
+  par_60_percent: number;
+  par_90_percent: number;
+}
+
+export interface DashboardProductPortfolio {
+  product_id: string;
+  product_name: string;
+  total_disbursed: number;
+  active_count: number;
+  overdue_count: number;
+  total_outstanding: number;
+}
+
+export interface DashboardPortfolioSummary {
+  total_portfolio: number;
+  active_loans_count: number;
+  average_loan_size: number;
+  by_product: DashboardProductPortfolio[];
+}
+
+export interface AtRiskAgent {
+  agent_id: string;
+  full_name: string;
+  phone_number: string | null;
+  risk_level: string | null;
+  overdue_loans_count: number;
+  total_outstanding: number;
+  days_overdue_max: number;
+  status: string;
+  autostrike_attempts: number;
+  autostrike_successful: number;
+  autostrike_amount_recovered: number;
+  last_autostrike_at: string | null;
+}
+
+export interface DashboardAutostrikeSummary {
+  attempts: number;
+  successful_attempts: number;
+  failed_attempts: number;
+  success_rate: number;
+  amount_requested: number;
+  amount_recovered: number;
+}
+
+export interface WalletInfo {
+  balance: number;
+  last_fetched_at: string | null;
+  is_cached: boolean;
+  error: string | null;
+}
+
+export interface DashboardOverviewResponse {
+  period: DashboardPeriodInfo;
+  kpis: DashboardKPIs;
+  collections_breakdown: CollectionsBreakdown;
+  revenue_split: DashboardRevenueSplit;
+  loan_status_distribution: LoanStatusBreakdown[];
+  disbursement_vs_collections: DashboardTrendBucket[];
+  overdue_aging: DashboardOverdueAgingBucket[];
+  par_metrics: DashboardPARMetrics;
+  portfolio: DashboardPortfolioSummary;
+  at_risk_agents: AtRiskAgent[];
+  autostrike_summary: DashboardAutostrikeSummary;
+  recent_activity: RecentActivityItem[];
+}
+
+export interface DashboardQueryParams {
+  date_from?: string;
+  date_to?: string;
+  timezone?: string;
+  granularity?: ReportGranularity;
+  agent_id?: string;
+  product_id?: string;
+  loan_type?: string;
+  status?: string;
+  channel?: string;
+  risk_level?: string;
+}
+
+// ============================================
+// Report Summary Types
+// ============================================
+export type ReportGranularity = 'hour' | 'day' | '3_day' | 'week' | 'month' | 'quarter';
+export type ReportExportFormat = 'csv' | 'xlsx' | 'pdf';
+
+export interface ReportExportRequest {
+  report_type: string;
+  export_format: ReportExportFormat;
+  date_from?: string;
+  date_to?: string;
+  timezone: string;
+  granularity: ReportGranularity;
+  filters?: Record<string, string | undefined>;
+}
+
+export interface ReportSummaryResponse {
+  period: {
+    date_from: string;
+    date_to: string;
+    timezone: string;
+    granularity: ReportGranularity;
+  };
+  metrics: {
+    total_disbursed: number;
+    disbursement_count: number;
+    total_collected: number;
+    collection_count: number;
+    total_principal_collected: number;
+    total_application_fee_collected: number;
+    total_interest_collected: number;
+    total_penalty_collected: number;
+    total_surcharge_collected: number;
+    surcharge_equivalent_collected: number;
+    total_revenue: number;
+    interswitch_share: number;
+    qriscorp_share: number;
+    total_outstanding: number;
+    active_loans_count: number;
+    overdue_loans_count: number;
+    defaulted_loans_count: number;
+    overdue_amount: number;
+    defaulted_amount: number;
+    par_30: number;
+    par_60: number;
+    par_90: number;
+    par_30_percent: number;
+    par_60_percent: number;
+    par_90_percent: number;
+    collection_rate: number;
+    recovery_rate: number;
+    default_rate: number;
+    isw_wallet_balance: number;
+  };
+  revenue_split: {
+    gross_revenue: number;
+    application_fee_revenue: number;
+    interest_revenue: number;
+    penalty_revenue: number;
+    surcharge_revenue: number;
+    surcharge_equivalent_revenue: number;
+    interswitch_share_percent: number;
+    qriscorp_share_percent: number;
+    interswitch_amount: number;
+    qriscorp_amount: number;
+    accrued_revenue: number;
+    accrued_interswitch_amount: number;
+    accrued_qriscorp_amount: number;
+  };
+  portfolio: {
+    total_portfolio: number;
+    active_loans_count: number;
+    average_loan_size: number;
+    by_product: Array<{
+      product_id: string;
+      product_name: string;
+      total_disbursed: number;
+      active_count: number;
+      overdue_count: number;
+      total_outstanding: number;
+    }>;
+  };
+  collections: {
+    total_collected: number;
+    collection_rate: number;
+    by_channel: Array<{
+      channel: string;
+      amount: number;
+      count: number;
+      percentage: number;
+    }>;
+    by_period: Array<{
+      period: string;
+      amount: number;
+      count: number;
+    }>;
+  };
+  risk: {
+    overdue_aging: Array<{
+      range: string;
+      count: number;
+      amount: number;
+    }>;
+    default_days: number;
+    defaulted_count: number;
+    defaulted_amount: number;
+    write_off_amount: number;
+    failed_autostrikes: unknown[];
+  };
+  autostrike: {
+    attempts: number;
+    successful_attempts: number;
+    failed_attempts: number;
+    amount_requested: number;
+    amount_recovered: number;
+    success_rate: number;
+    failed_attempts_detail: unknown[];
+  };
+  agents: Array<{
+    agent_id: string;
+    name: string | null;
+    email: string | null;
+    phone_number: string | null;
+    loan_count: number;
+    total_disbursed: number;
+    total_collected: number;
+    outstanding_balance: number;
+    risk_level: string | null;
+    loan_limit: number;
+  }>;
+  buckets: Array<{
+    bucket: string;
+    bucket_start: string;
+    disbursed: number;
+    collected: number;
+    revenue: number;
+    outstanding: number;
+    active_loans: number;
+    overdue_loans: number;
+    defaulted_loans: number;
+  }>;
+}
+
+// ============================================
 // Report Types
 // ============================================
 export interface PortfolioReport {
@@ -533,6 +855,7 @@ export interface ScoringStats {
   low_risk_count: number;
   medium_risk_count: number;
   high_risk_count: number;
+  rejected_count: number;
   avg_score: number;
   avg_loan_limit: number;
   total_loan_exposure: number;
@@ -564,6 +887,60 @@ export interface BulkScoreResponse {
   succeeded: number;
   failed: number;
   results: BulkScoreResult[];
+}
+
+export interface RescoreAllResponse {
+  total: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  results: BulkScoreResult[];
+}
+
+// ============================================
+// Bulk Agent Action Types
+// ============================================
+
+export interface BulkDeactivateRequest {
+  agent_ids?: string[];
+  all?: boolean;
+}
+
+export interface BulkDeactivateResult {
+  agent_id: string;
+  success: boolean;
+  error?: string;
+}
+
+export interface BulkDeactivateResponse {
+  total: number;
+  deactivated: number;
+  skipped: number;
+  results: BulkDeactivateResult[];
+}
+
+export interface BulkActivateRequest {
+  agent_ids?: string[];
+  all?: boolean;
+  skip_scoring?: boolean;
+}
+
+export interface BulkActivateResult {
+  agent_id: string;
+  success: boolean;
+  scored?: boolean;
+  credit_score?: number;
+  risk_level?: string;
+  loan_limit?: number;
+  error?: string;
+}
+
+export interface BulkActivateResponse {
+  total: number;
+  activated: number;
+  scored: number;
+  skipped: number;
+  results: BulkActivateResult[];
 }
 
 // ============================================
@@ -657,3 +1034,241 @@ export interface AuditLogParams extends ListParams {
   date_from?: string;
   date_to?: string;
 }
+
+// ============================================
+// Report Detail Types (per-tab)
+// ============================================
+
+export interface ReportPagination {
+  page: number;
+  page_size: number;
+  total: number;
+  total_pages: number;
+}
+
+export interface ReportFilters {
+  agent_id?: string;
+  product_id?: string;
+  loan_type?: string;
+  status?: string;
+  channel?: string;
+  risk_level?: string;
+  [key: string]: string | undefined;
+}
+
+export interface DisbursementDetailRow {
+  loan_id: string;
+  agent_id: string;
+  product_id: string;
+  loan_type: string;
+  principal_amount: number;
+  disbursed_amount: number;
+  application_fee: number;
+  interest_amount: number;
+  penalty_amount: number;
+  outstanding_balance: number;
+  status: string;
+  disbursed_at: string | null;
+  due_date: string | null;
+}
+
+export interface DisbursementsDetailResponse {
+  metrics: {
+    total_disbursed: number;
+    disbursement_count: number;
+    average_loan_size: number;
+  };
+  by_product: Array<{
+    product_id: string;
+    product_name: string;
+    total_disbursed: number;
+    active_count: number;
+    overdue_count: number;
+    total_outstanding: number;
+  }>;
+  buckets: Array<{
+    bucket: string;
+    bucket_start: string;
+    disbursed: number;
+    collected: number;
+    revenue: number;
+    outstanding: number;
+    active_loans: number;
+    overdue_loans: number;
+    defaulted_loans: number;
+  }>;
+  detail: DisbursementDetailRow[];
+  pagination: ReportPagination;
+}
+
+export interface CollectionDetailRow {
+  payment_id: string;
+  loan_id: string;
+  agent_id: string | null;
+  amount: number;
+  channel: string;
+  payment_reference: string;
+  payment_date: string | null;
+  principal: number;
+  application_fee: number;
+  interest: number;
+  penalty: number;
+  surcharge: number;
+}
+
+export interface CollectionsDetailResponse {
+  metrics: {
+    total_collected: number;
+    collection_count: number;
+    total_principal_collected: number;
+    total_application_fee_collected: number;
+    total_interest_collected: number;
+    total_penalty_collected: number;
+    total_surcharge_collected: number;
+    collection_rate: number;
+    recovery_rate: number;
+  };
+  by_channel: Array<{
+    channel: string;
+    amount: number;
+    count: number;
+    percentage: number;
+  }>;
+  buckets: Array<{
+    bucket: string;
+    bucket_start: string;
+    disbursed: number;
+    collected: number;
+    revenue: number;
+    outstanding: number;
+    active_loans: number;
+    overdue_loans: number;
+    defaulted_loans: number;
+  }>;
+  detail: CollectionDetailRow[];
+  pagination: ReportPagination;
+}
+
+export interface RevenueDetailRow {
+  payment_id: string;
+  loan_id: string;
+  agent_id: string;
+  payment_date: string | null;
+  application_fee: number;
+  interest: number;
+  penalty: number;
+  surcharge: number;
+  gross_revenue: number;
+  interswitch_amount: number;
+  qriscorp_amount: number;
+}
+
+export interface RevenueDetailResponse {
+  metrics: ReportSummaryResponse['revenue_split'];
+  buckets: Array<{
+    bucket: string;
+    bucket_start: string;
+    disbursed: number;
+    collected: number;
+    revenue: number;
+    outstanding: number;
+    active_loans: number;
+    overdue_loans: number;
+    defaulted_loans: number;
+  }>;
+  detail: RevenueDetailRow[];
+  pagination: ReportPagination;
+}
+
+export interface RiskDetailRow {
+  loan_id: string;
+  agent_id: string;
+  loan_type: string;
+  principal_amount: number;
+  outstanding_balance: number;
+  interest_amount: number;
+  penalty_amount: number;
+  status: string;
+  is_overdue: boolean;
+  days_overdue: number;
+  disbursed_at: string | null;
+  due_date: string | null;
+}
+
+export interface RiskDetailResponse {
+  metrics: {
+    overdue_loans_count: number;
+    overdue_amount: number;
+    defaulted_loans_count: number;
+    defaulted_amount: number;
+    par_30_percent: number;
+    par_60_percent: number;
+    par_90_percent: number;
+    default_rate: number;
+    default_days: number;
+  };
+  overdue_aging: Array<{ range: string; count: number; amount: number }>;
+  default_events: unknown[];
+  detail: RiskDetailRow[];
+  pagination: ReportPagination;
+}
+
+export interface AutostrikeDetailRow {
+  id: string;
+  loan_id: string;
+  agent_id: string;
+  request_reference: string;
+  requested_principal: number;
+  requested_surcharge: number;
+  external_response_code: string | null;
+  external_response_message: string | null;
+  payment_recorded: boolean;
+  payment_reference: string | null;
+  status: string;
+  error: string | null;
+  attempted_at: string | null;
+}
+
+export interface AutostrikeDetailResponse {
+  metrics: {
+    attempts: number;
+    successful_attempts: number;
+    failed_attempts: number;
+    amount_requested: number;
+    amount_recovered: number;
+    success_rate: number;
+  };
+  detail: AutostrikeDetailRow[];
+  pagination: ReportPagination;
+}
+
+export interface AgentsDetailResponse {
+  metrics: {
+    agent_count: number;
+    total_disbursed: number;
+    total_collected: number;
+    total_outstanding: number;
+  };
+  detail: Array<{
+    agent_id: string;
+    name: string | null;
+    email: string | null;
+    phone_number: string | null;
+    loan_count: number;
+    total_disbursed: number;
+    total_collected: number;
+    outstanding_balance: number;
+    risk_level: string | null;
+    loan_limit: number;
+  }>;
+  pagination: ReportPagination;
+}
+
+export type ReportDetailType =
+  | 'summary'
+  | 'disbursements'
+  | 'collections'
+  | 'revenue'
+  | 'risk'
+  | 'autostrike'
+  | 'agents';

@@ -76,10 +76,10 @@ export default function LoansPage() {
 
   // Fetch overview stats
   const { data: stats, isLoading: isStatsLoading } = useApi(
-    () => dashboardApi.getStats({ months: 12 }),
+    () => dashboardApi.getOverview({ granularity: "month" }),
     [mounted, status === 'authenticated'],
     {
-      cacheKey: 'dashboard-stats-loans-overview',
+      cacheKey: 'dashboard-overview-loans-page',
       enabled: mounted && status === 'authenticated'
     }
   );
@@ -113,16 +113,16 @@ export default function LoansPage() {
   );
 
   // Use global stats if available
-  const totalDisbursed = toAmount(stats?.total_disbursed);
+  const totalDisbursed = toAmount(stats?.kpis?.total_disbursed);
 
   const totalOutstanding = stats
     ? stats.loan_status_distribution
-      .filter(s => ['disbursed', 'overdue'].includes(s.status))
-      .reduce((sum, s) => sum + toAmount(s.amount), 0)
+      .filter((s) => ['disbursed', 'overdue'].includes(s.status))
+      .reduce((sum, s) => sum + toAmount(s.outstanding_amount), 0)
     : 0;
 
-  const totalOverdue = toAmount(stats?.total_overdue);
-  const recoveryRate = stats?.recovery_rate || 0;
+  const totalOverdue = toAmount(stats?.kpis?.overdue_amount);
+  const recoveryRate = stats?.kpis?.recovery_rate || 0;
 
   // Error state if API fails
   if (error && status === "authenticated") {

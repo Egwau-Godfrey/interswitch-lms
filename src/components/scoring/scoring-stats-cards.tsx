@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { TrendingUp, ShieldCheck, AlertTriangle, ShieldX } from "lucide-react";
+import { TrendingUp, ShieldCheck, AlertTriangle, ShieldX, Ban } from "lucide-react";
 import { StatCard } from "@/components/shared/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ScoringStats } from "@/lib/types";
@@ -14,8 +14,8 @@ interface ScoringStatsCardsProps {
 export function ScoringStatsCards({ stats, isLoading }: ScoringStatsCardsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {Array.from({ length: 5 }).map((_, i) => (
           <Skeleton key={i} className="h-28 w-full rounded-lg" />
         ))}
       </div>
@@ -23,7 +23,7 @@ export function ScoringStatsCards({ stats, isLoading }: ScoringStatsCardsProps) 
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
       <StatCard
         title="Total Scored"
         value={stats?.total_scored ?? "--"}
@@ -47,6 +47,12 @@ export function ScoringStatsCards({ stats, isLoading }: ScoringStatsCardsProps) 
         value={stats?.high_risk_count ?? "--"}
         icon={<ShieldX className="h-6 w-6 text-red-600 dark:text-red-400" />}
         iconClassName="bg-red-100 dark:bg-red-900/30"
+      />
+      <StatCard
+        title="Rejected"
+        value={stats?.rejected_count ?? "--"}
+        icon={<Ban className="h-6 w-6 text-gray-600 dark:text-gray-400" />}
+        iconClassName="bg-gray-100 dark:bg-gray-900/30"
       />
     </div>
   );
