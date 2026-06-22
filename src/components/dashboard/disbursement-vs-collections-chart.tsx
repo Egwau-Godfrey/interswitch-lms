@@ -62,8 +62,8 @@ export function DisbursementVsCollectionsChart({
 
   const chartData = (data || []).map((bucket) => ({
     ...bucket,
-    disbursedM: Number((bucket.disbursed / 1000000).toFixed(2)),
-    collectedM: Number((bucket.collected / 1000000).toFixed(2)),
+    disbursed: Number(bucket.disbursed),
+    collected: Number(bucket.collected),
   }));
 
   return (
@@ -79,13 +79,19 @@ export function DisbursementVsCollectionsChart({
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="bucket" className="text-xs" />
               <YAxis
-                tickFormatter={(v) => `${v}M`}
+                tickFormatter={(v) => `UGX ${(v / 1_000_000).toFixed(1)}M`}
                 className="text-xs"
+                width={80}
               />
-              <Tooltip content={<ChartTooltip />} />
+              <Tooltip
+                formatter={(value, name) => [
+                  formatCurrency(Number(value), "UGX", true),
+                  String(name),
+                ]}
+              />
               <Legend />
-              <Bar dataKey="disbursedM" name="Disbursed (M UGX)" fill="#004B91" radius={[4, 4, 0, 0]} />
-              <Bar dataKey="collectedM" name="Collected (M UGX)" fill="#10B981" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="disbursed" name="Disbursed" fill="#004B91" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="collected" name="Collected" fill="#10B981" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (

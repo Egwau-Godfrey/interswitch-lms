@@ -48,10 +48,10 @@ export function ScoringAnalyticsTab() {
     if (!stats) return [];
     const total = stats.total_scored || 1;
     return [
-      { range: "0–25%", count: stats.rejected_count, pct: (stats.rejected_count / total) * 100 },
-      { range: "25–55%", count: stats.high_risk_count, pct: (stats.high_risk_count / total) * 100 },
-      { range: "55–75%", count: stats.medium_risk_count, pct: (stats.medium_risk_count / total) * 100 },
-      { range: "75–100%", count: stats.low_risk_count, pct: (stats.low_risk_count / total) * 100 },
+      { range: "0–30%", count: stats.rejected_count, pct: (stats.rejected_count / total) * 100, color: RISK_COLORS.rejected, label: "Rejected" },
+      { range: "30–60%", count: stats.high_risk_count, pct: (stats.high_risk_count / total) * 100, color: RISK_COLORS.high, label: "High Risk" },
+      { range: "60–80%", count: stats.medium_risk_count, pct: (stats.medium_risk_count / total) * 100, color: RISK_COLORS.medium, label: "Medium Risk" },
+      { range: "80–100%", count: stats.low_risk_count, pct: (stats.low_risk_count / total) * 100, color: RISK_COLORS.low, label: "Low Risk" },
     ];
   }, [stats]);
 
@@ -123,14 +123,26 @@ export function ScoringAnalyticsTab() {
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip
                     contentStyle={{ fontSize: "12px", borderRadius: "6px" }}
-                    formatter={(val: number, _name, props) => [
-                      `${val} agents (${props.payload.pct.toFixed(1)}%)`,
-                      "Count",
+                    formatter={(val: any, _name: any, props: any) => [
+                      `${val} agents (${props?.payload?.pct?.toFixed(1)}%)`,
+                      props?.payload?.label,
                     ]}
                   />
+                  <Legend
+                    content={() => (
+                      <div style={{ display: "flex", gap: 16, justifyContent: "center", fontSize: 12, marginTop: 8 }}>
+                        {distributionData.map((d) => (
+                          <span key={d.label} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", backgroundColor: d.color }} />
+                            {d.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                    {distributionData.map((_, i) => (
-                      <Cell key={i} fill={Object.values(RISK_COLORS)[i]} />
+                    {distributionData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
                     ))}
                   </Bar>
                 </BarChart>

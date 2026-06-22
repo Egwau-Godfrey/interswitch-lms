@@ -164,9 +164,9 @@ export function ReportSummaryPage({ basePath }: ReportSummaryPageProps) {
     () =>
       (report?.buckets || []).map((bucket) => ({
         ...bucket,
-        disbursedM: Number((bucket.disbursed / 1000000).toFixed(2)),
-        collectedM: Number((bucket.collected / 1000000).toFixed(2)),
-        revenueM: Number((bucket.revenue / 1000000).toFixed(2)),
+        disbursed: Number(bucket.disbursed),
+        collected: Number(bucket.collected),
+        revenue: Number(bucket.revenue),
       })),
     [report]
   );
@@ -366,12 +366,12 @@ export function ReportSummaryPage({ basePath }: ReportSummaryPageProps) {
                     <AreaChart data={trendData}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} />
                       <XAxis dataKey="bucket" />
-                      <YAxis tickFormatter={(value) => `UGX ${value}M`} />
-                      <Tooltip formatter={(value) => formatCurrency(Number(value), "UGX")} />
-                      <Legend />
-                      <Area type="monotone" dataKey="disbursedM" name="Disbursed" stroke="#004B91" fill="#004B91" fillOpacity={0.15} />
-                      <Area type="monotone" dataKey="collectedM" name="Collected" stroke="#10B981" fill="#10B981" fillOpacity={0.15} />
-                      <Line type="monotone" dataKey="revenueM" name="Revenue" stroke="#7C3AED" strokeWidth={2} />
+                    <YAxis tickFormatter={(value) => `UGX ${(Number(value) / 1_000_000).toFixed(1)}M`} width={80} />
+                    <Tooltip formatter={(value, name) => [formatCurrency(Number(value), "UGX", true), String(name)]} />
+                    <Legend />
+                    <Area type="monotone" dataKey="disbursed" name="Disbursed" stroke="#004B91" fill="#004B91" fillOpacity={0.15} />
+                    <Area type="monotone" dataKey="collected" name="Collected" stroke="#10B981" fill="#10B981" fillOpacity={0.15} />
+                    <Line type="monotone" dataKey="revenue" name="Revenue" stroke="#7C3AED" strokeWidth={2} />
                     </AreaChart>
                   </ResponsiveContainer>
                 )}
