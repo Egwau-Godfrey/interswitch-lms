@@ -278,7 +278,7 @@ export default function AgentDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {displayAgent.last_credit_score != null && displayAgent.credit_score_risk_level ? (
+            {displayAgent.last_credit_score != null ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -291,7 +291,7 @@ export default function AgentDetailPage() {
                       {(displayAgent.last_credit_score * 100).toFixed(1)}%
                     </p>
                   </div>
-                  <RiskLevelBadge riskLevel={displayAgent.credit_score_risk_level} />
+                  <RiskLevelBadge riskLevel={displayAgent.credit_score_risk_level ?? 'high'} />
                 </div>
                 <ScoreValueMeter
                   score={displayAgent.last_credit_score}
