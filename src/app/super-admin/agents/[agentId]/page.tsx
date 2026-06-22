@@ -123,7 +123,7 @@ export default function AgentDetailPage() {
     [agentId, mounted, isReady],
     {
       cacheKey: `agent-score-breakdown-${agentId}`,
-      enabled: mounted && isReady && !!agent?.last_credit_score
+      enabled: mounted && isReady
     }
   );
 
@@ -133,7 +133,7 @@ export default function AgentDetailPage() {
     [agentId, mounted, isReady],
     {
       cacheKey: `agent-score-history-${agentId}`,
-      enabled: mounted && isReady && !!agent?.last_credit_score
+      enabled: mounted && isReady
     }
   );
 
@@ -153,6 +153,14 @@ export default function AgentDetailPage() {
     }
   );
 
+  const scoredAgent = scoreBreakdown
+    ? {
+        last_credit_score: scoreBreakdown.credit_score ?? scoreBreakdown.final_score,
+        credit_score_risk_level: scoreBreakdown.risk_level,
+        loan_limit: scoreBreakdown.loan_limit ?? displayAgent?.loan_limit,
+        last_scored_at: scoreBreakdown.scored_at ?? displayAgent?.last_scored_at,
+      }
+    : null;
   const displayAgent = agent;
   const displayBalance = loanBalance;
   const loans = loansData?.data || [];
