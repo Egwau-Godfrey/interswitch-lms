@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useApiAuth } from "@/hooks/use-api-auth";
 import Link from "next/link";
 import { ArrowLeft, Save, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import { LoadingState, ErrorState } from "@/components/shared/loading-states";
 
 export default function AgentEditPage() {
   const params = useParams();
-  const { status } = useSession();
+  const { isReady } = useApiAuth();
   const router = useRouter();
   const agentId = params.agentId as string;
   const [mounted, setMounted] = React.useState(false);
@@ -34,10 +34,10 @@ export default function AgentEditPage() {
 
   const { data: agent, isLoading, error, refetch } = useApi(
     () => agentsApi.get(agentId),
-    [agentId, mounted, status === 'authenticated'],
-    { 
+    [agentId, mounted, isReady],
+    {
       cacheKey: `agent-edit-${agentId}`,
-      enabled: mounted && status === 'authenticated'
+      enabled: mounted && isReady
     }
   );
 

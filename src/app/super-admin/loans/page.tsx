@@ -45,7 +45,7 @@ import {
   SelectValue
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { useSession } from "next-auth/react";
+import { useApiAuth } from "@/hooks/use-api-auth";
 import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -64,7 +64,7 @@ export default function LoansPage() {
   const [statusFilter, setStatusFilter] = React.useState<string>("all");
   const [page, setPage] = React.useState(1);
   const [pageSize] = React.useState(10);
-  const { data: session, status } = useSession();
+  const { session, isReady } = useApiAuth();
   const [mounted, setMounted] = React.useState(false);
   const [selectedLoanId, setSelectedLoanId] = React.useState<string | null>(null);
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = React.useState(false);
@@ -77,10 +77,10 @@ export default function LoansPage() {
   // Fetch overview stats
   const { data: stats, isLoading: isStatsLoading } = useApi(
     () => dashboardApi.getOverview({ granularity: "month" }),
-    [mounted, status === 'authenticated'],
+    [mounted, isReady],
     {
       cacheKey: 'dashboard-overview-loans-page',
-      enabled: mounted && status === 'authenticated'
+      enabled: mounted && isReady
     }
   );
 
@@ -92,10 +92,10 @@ export default function LoansPage() {
       page_size: pageSize,
       status: statusFilter !== "all" ? statusFilter as LoanStatus : undefined,
     }),
-    [page, pageSize, statusFilter, mounted, status === 'authenticated'],
+    [page, pageSize, statusFilter, mounted, isReady],
     {
       cacheKey: `loans-${page}-${statusFilter}`,
-      enabled: mounted && status === 'authenticated'
+      enabled: mounted && isReady
     }
   );
 

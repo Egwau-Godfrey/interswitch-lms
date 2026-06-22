@@ -41,13 +41,13 @@ import {
 } from "@/components/ui/dialog";
 
 import { useApiClients, useIssueApiKey, useRevokeApiKey } from "@/hooks/use-api-clients";
-import { useSession } from "next-auth/react";
+import { useApiAuth } from "@/hooks/use-api-auth";
 import { format } from "date-fns";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { settingsApi } from "@/lib/api/settings";
 
 export default function ApiManagementPage() {
-  const { status } = useSession();
+  const { isReady } = useApiAuth();
   const [isIssueOpen, setIsIssueOpen] = React.useState(false);
   const [newClientName, setNewClientName] = React.useState("");
   const [newClientIps, setNewClientIps] = React.useState("");
@@ -61,7 +61,7 @@ export default function ApiManagementPage() {
 
   const { data: clientsData, isLoading, refetch } = useApiClients(
     { page: 1, page_size: 100 },
-    { enabled: mounted && status === 'authenticated' }
+    { enabled: mounted && isReady }
   );
   const { mutateAsync: issueKey, isLoading: isIssuing } = useIssueApiKey();
   const { mutateAsync: revokeKey } = useRevokeApiKey();
@@ -74,10 +74,10 @@ export default function ApiManagementPage() {
 
   const { data: settings, isLoading: settingsLoading, refetch: refetchSettings } = useApi(
     () => settingsApi.list(),
-    [mounted, status === 'authenticated'],
-    { 
+    [mounted, isReady],
+    {
       cacheKey: "system-settings",
-      enabled: mounted && status === 'authenticated'
+      enabled: mounted && isReady
     }
   );
 

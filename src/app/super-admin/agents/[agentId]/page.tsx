@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
+import { useApiAuth } from "@/hooks/use-api-auth";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -44,7 +44,7 @@ import { DataTablePagination } from "@/components/shared/data-table-pagination";
 
 export default function AgentDetailPage() {
   const params = useParams();
-  const { status } = useSession();
+  const { isReady } = useApiAuth();
   const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
   const router = useRouter();
   const agentId = params.agentId as string;
@@ -66,40 +66,40 @@ export default function AgentDetailPage() {
   // Fetch agent data
   const { data: agent, isLoading: agentLoading, error: agentError } = useApi(
     () => agentsApi.get(agentId),
-    [agentId, mounted, status === 'authenticated'],
-    { 
+    [agentId, mounted, isReady],
+    {
       cacheKey: `agent-${agentId}`,
-      enabled: mounted && status === 'authenticated'
+      enabled: mounted && isReady
     }
   );
 
   // Fetch loan balance
   const { data: loanBalance, isLoading: balanceLoading } = useApi(
     () => loansApi.getBalance(agentId),
-    [agentId, mounted, status === 'authenticated'],
-    { 
+    [agentId, mounted, isReady],
+    {
       cacheKey: `agent-balance-${agentId}`,
-      enabled: mounted && status === 'authenticated'
+      enabled: mounted && isReady
     }
   );
 
   // Fetch loan history
   const { data: loansData, isLoading: loansLoading } = useApi(
     () => agentsApi.getLoanHistory(agentId, { page: loansPage, page_size: loansPageSize }),
-    [agentId, mounted, status === 'authenticated', loansPage, loansPageSize],
-    { 
+    [agentId, mounted, isReady, loansPage, loansPageSize],
+    {
       cacheKey: `agent-loans-${agentId}-${loansPage}-${loansPageSize}`,
-      enabled: mounted && status === 'authenticated'
+      enabled: mounted && isReady
     }
   );
 
   // Fetch transaction history
   const { data: transactionsData, isLoading: transactionsLoading } = useApi(
     () => agentsApi.getTransactions(agentId, { page: txPage, page_size: txPageSize }),
-    [agentId, mounted, status === 'authenticated', txPage, txPageSize],
-    { 
+    [agentId, mounted, isReady, txPage, txPageSize],
+    {
       cacheKey: `agent-transactions-${agentId}-${txPage}-${txPageSize}`,
-      enabled: mounted && status === 'authenticated'
+      enabled: mounted && isReady
     }
   );
 

@@ -60,7 +60,7 @@ import { useApi, useMutation } from "@/hooks/use-api";
 import { settingsApi } from "@/lib/api/settings";
 import { permissionsApi } from "@/lib/api/permissions";
 import { usersApi } from "@/lib/api";
-import { useSession } from "next-auth/react";
+import { useApiAuth } from "@/hooks/use-api-auth";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import type { AuditEventType, PermissionGrant } from "@/lib/types";
 
@@ -77,7 +77,7 @@ const ADMIN_TAB_LIST = [
 ] as const;
 
 export default function SettingsPage() {
-  const { data: session, status } = useSession();
+  const { session, isReady } = useApiAuth();
   const [mounted, setMounted] = React.useState(false);
   const [savingKey, setSavingKey] = React.useState<string | null>(null);
 
@@ -103,27 +103,27 @@ export default function SettingsPage() {
   // System settings
   const { data: settings, isLoading, refetch } = useApi(
     () => settingsApi.list(),
-    [mounted, status === "authenticated"],
-    { cacheKey: "system-settings", enabled: mounted && status === "authenticated" }
+    [mounted, isReady],
+    { cacheKey: "system-settings", enabled: mounted && isReady }
   );
 
   // Users list (for grant dialog — users only)
   const { data: usersData } = useApi(
     () => usersApi.list({ page: 1, page_size: 100 }),
-    [mounted, status === "authenticated"],
+    [mounted, isReady],
     {
       cacheKey: "all-users-grants",
-      enabled: mounted && status === "authenticated" && isSuperAdmin,
+      enabled: mounted && isReady && isSuperAdmin,
     }
   );
 
   // Grants list
   const { data: grantsData, refetch: refetchGrants } = useApi(
     () => permissionsApi.listGrants({ page: 1, page_size: 50 }),
-    [mounted, status === "authenticated"],
+    [mounted, isReady],
     {
       cacheKey: "permission-grants",
-      enabled: mounted && status === "authenticated" && isSuperAdmin,
+      enabled: mounted && isReady && isSuperAdmin,
     }
   );
 
@@ -135,10 +135,10 @@ export default function SettingsPage() {
         page_size: 20,
         event_type: auditEventType ? (auditEventType as AuditEventType) : undefined,
       }),
-    [auditPage, auditEventType, mounted, status === "authenticated"],
+    [auditPage, auditEventType, mounted, isReady],
     {
       cacheKey: `audit-log-${auditPage}-${auditEventType}`,
-      enabled: mounted && status === "authenticated" && isSuperAdmin,
+      enabled: mounted && isReady && isSuperAdmin,
     }
   );
 
