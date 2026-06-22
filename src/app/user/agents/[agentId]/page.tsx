@@ -19,7 +19,10 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle2,
-  User
+  User,
+  Gauge,
+  RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,16 +37,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useApi } from "@/hooks/use-api";
+import { useApi, useMutation } from "@/hooks/use-api";
 import { agentsApi, loansApi } from "@/lib/api";
-import type { Agent, Loan, AgentTransaction, LoanBalanceResponse } from "@/lib/types";
-import { AgentStatusBadge, LoanStatusBadge } from "@/components/shared/status-badges";
+import { scoringDashboardApi } from "@/lib/api/scoring-dashboard";
+import type { Agent, Loan, AgentTransaction, LoanBalanceResponse, RiskLevel } from "@/lib/types";
+import { AgentStatusBadge, LoanStatusBadge, RiskLevelBadge } from "@/components/shared/status-badges";
 import { LoadingState, ErrorState, EmptyState } from "@/components/shared/loading-states";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { useWritePermission } from "@/hooks/use-write-permission";
 import { WriteAccessAlert } from "@/components/shared/write-access-alert";
 import { useApiAuth } from "@/hooks/use-api-auth";
+import { ScoreValueMeter } from "@/components/scoring/score-value-meter";
+import { FactorBreakdownChart } from "@/components/scoring/breakdown/factor-breakdown-chart";
+import { SourceBreakdownPie } from "@/components/scoring/breakdown/source-breakdown-pie";
+import { PenaltyBreakdown } from "@/components/scoring/breakdown/penalty-breakdown";
+import { ScoreTrendChart } from "@/components/scoring/breakdown/score-trend-chart";
+import { LoanBehaviorSummary } from "@/components/scoring/breakdown/loan-behavior-summary";
+import { Separator } from "@/components/ui/separator";
 
 export default function AgentDetailPage() {
   const params = useParams();
@@ -109,6 +120,42 @@ export default function AgentDetailPage() {
     {
       cacheKey: `agent-transactions-${agentId}-${txPage}-${txPageSize}`,
       enabled: isReady
+    }
+  );
+
+  // Fetch score breakdown
+  const { data: scoreBreakdown, isLoading: scoreBreakdownLoading, refetch: refetchScoreBreakdown } = useApi(
+    () => scoringDashboardApi.getScoreBreakdown(agentId),
+    [agentId, accessToken],
+    {
+      cacheKey: `agent-score-breakdown-${agentId}`,
+      enabled: isReady && !!agent?.last_credit_score
+    }
+  );
+
+  // Fetch score history
+  const { data: scoreHistory, isLoading: scoreHistoryLoading } = useApi(
+    () => scoringDashboardApi.getScoreHistory(agentId, 10),
+    [agentId, accessToken],
+    {
+      cacheKey: `agent-score-history-${agentId}`,
+      enabled: isReady && !!agent?.last_credit_score
+    }
+  );
+
+  const reScoreMutation = useMutation(
+    () => scoringDashboardApi.triggerScore(agentId),
+    {
+      onSuccess: (result) => {
+        if (result?.success) {
+          toast.success("Agent re-scored successfully");
+        } else {
+          toast.error(result?.message || "Re-scoring failed");
+          return;
+        }
+        refetchScoreBreakdown();
+      },
+      onError: (e) => toast.error(e.message || "Re-scoring failed"),
     }
   );
 
@@ -212,7 +259,7 @@ export default function AgentDetailPage() {
       </div>
 
       {/* Overview Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         {/* Profile Card */}
         <Card className="md:col-span-1">
           <CardHeader>
@@ -252,6 +299,103 @@ export default function AgentDetailPage() {
                 <span>Joined {formatDate(displayAgent?.created_at ?? new Date().toISOString())}</span>
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Credit Score Card */}
+        <Card className="md:col-span-1">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Gauge className="h-5 w-5" />
+              Credit Score
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {displayAgent?.last_credit_score != null && displayAgent?.credit_score_risk_level ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className={`text-4xl font-bold ${
+                      displayAgent.credit_score_risk_level === 'low' ? 'text-green-600' :
+                      displayAgent.credit_score_risk_level === 'medium' ? 'text-amber-600' :
+                      displayAgent.credit_score_risk_level === 'rejected' ? 'text-gray-600' :
+                      'text-red-600'
+                    }`}>
+                      {(displayAgent.last_credit_score * 100).toFixed(1)}%
+                    </p>
+                  </div>
+                  <RiskLevelBadge riskLevel={displayAgent.credit_score_risk_level} />
+                </div>
+                <ScoreValueMeter
+                  score={displayAgent.last_credit_score}
+                  riskLevel={displayAgent.credit_score_risk_level}
+                  showPercent={false}
+                />
+                <div className="grid grid-cols-2 gap-3 pt-2 border-t">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Loan Limit</p>
+                    <p className="font-semibold">{formatCurrency(displayAgent.loan_limit || 0, "UGX")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Last Scored</p>
+                    <p className="font-semibold text-sm">
+                      {displayAgent.last_scored_at ? formatDate(displayAgent.last_scored_at, "relative") : "Never"}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  disabled={reScoreMutation.isLoading || writeDisabled}
+                  title={writeTooltip}
+                  onClick={() => {
+                    if (canWrite) {
+                      reScoreMutation.mutate(undefined as any);
+                    } else {
+                      toast.error("View-only access", {
+                        description: "Re-scoring requires write access granted by a super admin.",
+                      });
+                    }
+                  }}
+                >
+                  {reScoreMutation.isLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  {reScoreMutation.isLoading ? "Re-scoring..." : "Re-score"}
+                </Button>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <Gauge className="h-12 w-12 text-muted-foreground mb-2" />
+                <p className="text-sm font-medium">Not yet scored</p>
+                <p className="text-xs text-muted-foreground mb-4">No credit score available</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={reScoreMutation.isLoading || writeDisabled}
+                  title={writeTooltip}
+                  onClick={() => {
+                    if (canWrite) {
+                      reScoreMutation.mutate(undefined as any);
+                    } else {
+                      toast.error("View-only access", {
+                        description: "Scoring requires write access granted by a super admin.",
+                      });
+                    }
+                  }}
+                >
+                  {reScoreMutation.isLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  {reScoreMutation.isLoading ? "Scoring..." : "Score Agent"}
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -366,6 +510,10 @@ export default function AgentDetailPage() {
           <TabsTrigger value="transactions">
             <History className="h-4 w-4 mr-2" />
             Transaction History
+          </TabsTrigger>
+          <TabsTrigger value="credit-score">
+            <Gauge className="h-4 w-4 mr-2" />
+            Credit Score
           </TabsTrigger>
         </TabsList>
 
@@ -508,6 +656,172 @@ export default function AgentDetailPage() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="credit-score">
+          {displayAgent?.last_credit_score != null ? (
+            <div className="space-y-6">
+              {/* Score Composition */}
+              {scoreBreakdown && !scoreBreakdownLoading && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Score Composition</CardTitle>
+                    <CardDescription>
+                      Method: {scoreBreakdown.scoring_method} &middot; Confidence: {Math.round((scoreBreakdown.confidence ?? 0) * 100)}%
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div className="rounded-md bg-muted/50 p-4">
+                        <p className="text-xs text-muted-foreground">Rule-Based</p>
+                        <p className="text-2xl font-bold tabular-nums">
+                          {Math.round((scoreBreakdown.rule_score ?? 0) * 100)}%
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-muted/50 p-4">
+                        <p className="text-xs text-muted-foreground">ML Model</p>
+                        <p className="text-2xl font-bold tabular-nums">
+                          {Math.round((scoreBreakdown.ml_score ?? 0) * 100)}%
+                        </p>
+                      </div>
+                      <div className="rounded-md bg-primary/10 p-4">
+                        <p className="text-xs text-muted-foreground">Final</p>
+                        <p className="text-2xl font-bold tabular-nums text-primary">
+                          {Math.round((scoreBreakdown.final_score ?? scoreBreakdown.credit_score) * 100)}%
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Score Trend Chart */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Score Trend</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {scoreHistoryLoading ? (
+                    <Skeleton className="h-48 w-full rounded" />
+                  ) : (
+                    <ScoreTrendChart history={scoreHistory} />
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Factor Breakdown */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Factor Breakdown</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {scoreBreakdownLoading ? (
+                    <Skeleton className="h-48 w-full rounded" />
+                  ) : (
+                    <FactorBreakdownChart factors={scoreBreakdown?.factors} />
+                  )}
+                </CardContent>
+              </Card>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Source Breakdown */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Score Source</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {scoreBreakdownLoading ? (
+                      <Skeleton className="h-48 w-full rounded" />
+                    ) : (
+                      <SourceBreakdownPie data={scoreBreakdown?.source_breakdown} />
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Penalties */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Penalties Applied</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {scoreBreakdownLoading ? (
+                      <Skeleton className="h-32 w-full rounded" />
+                    ) : (
+                      <PenaltyBreakdown
+                        penalties={scoreBreakdown?.penalties}
+                        penaltyTotal={scoreBreakdown?.penalty_total}
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Loan Behavior */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Loan Repayment Behavior</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {scoreBreakdownLoading ? (
+                    <Skeleton className="h-32 w-full rounded" />
+                  ) : (
+                    <LoanBehaviorSummary behavior={scoreBreakdown?.behavior} />
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Score History */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Score History</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {scoreHistoryLoading ? (
+                    <div className="space-y-3">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <Skeleton key={i} className="h-12 w-full rounded" />
+                      ))}
+                    </div>
+                  ) : scoreHistory && scoreHistory.length > 0 ? (
+                    <div className="space-y-2">
+                      {scoreHistory.map((entry) => (
+                        <div
+                          key={entry.id}
+                          className="flex items-center justify-between rounded-md border p-3 text-sm"
+                        >
+                          <div className="flex items-center gap-2">
+                            <RiskLevelBadge
+                              riskLevel={entry.risk_level}
+                              className="text-xs px-1 py-0.5"
+                            />
+                            <span className="font-mono font-semibold">
+                              {(entry.credit_score * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="text-xs text-muted-foreground text-right space-y-0.5">
+                            <p>{formatCurrency(entry.loan_limit, "UGX")}</p>
+                            <p>{entry.scoring_method} &middot; {entry.trigger_type}</p>
+                            <p>{formatDate(entry.created_at, "relative")}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">No scoring history available.</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          ) : (
+            <Card>
+              <CardContent className="py-12">
+                <EmptyState
+                  title="No credit score"
+                  description="This agent has not been scored yet. Click 'Score Agent' in the Credit Score card above to generate a score."
+                />
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
     </div>
