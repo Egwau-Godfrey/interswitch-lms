@@ -11,9 +11,19 @@ export default auth((req) => {
     return NextResponse.next();
   }
 
-  // Public routes — always accessible
-  const publicRoutes = ["/"];
-  if (publicRoutes.includes(pathname)) {
+  // Public routes — always accessible (login page + PWA/static assets)
+  const publicRoutes = ["/", "/offline"];
+  const publicPrefixes = [
+    "/icons/",
+    "/manifest.json",
+    "/sw.js",
+    "/workbox-",
+    "/fallback-",
+  ];
+  if (
+    publicRoutes.includes(pathname) ||
+    publicPrefixes.some((p) => pathname.startsWith(p))
+  ) {
     return NextResponse.next();
   }
 
@@ -56,6 +66,6 @@ export default auth((req) => {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|json|js|webmanifest|ico)$).*)",
   ],
 };

@@ -7,7 +7,9 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
-function detectPlatform(): "ios" | "android" | "desktop" {
+export type Platform = "ios" | "android" | "desktop";
+
+function detectPlatform(): Platform {
   if (typeof window === "undefined") return "desktop";
   const ua = window.navigator.userAgent.toLowerCase();
   if (/iphone|ipad|ipod/.test(ua)) return "ios";
@@ -23,19 +25,37 @@ function isStandalone(): boolean {
   );
 }
 
+const DISMISS_KEY = "pwa-install-dismissed";
+const DISMISS_DURATION_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function isDismissed(): boolean {
+  if (typeof window === "undefined") return false;
+  const raw = window.localStorage.getItem(DISMISS_KEY);
+  if (!raw) return false;
+  const ts = Number(raw);
+  if (Number.isNaN(ts)) return false;
+  return Date.now() - ts < DISMISS_DURATION_MS;
+}
+
+function setDismissed() {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(DISMISS_KEY, String(Date.now()));
+}
+
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
+  const [platform, setPlatform] = useState<Platform>("desktop");
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     setPlatform(detectPlatform());
+    setDismissed(isDismissed());
 
-    // Check if already installed (standalone mode)
     if (isStandalone()) {
       setIsInstalled(true);
       return;
@@ -45,22 +65,15 @@ export function usePWAInstall() {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
-      console.log("[PWA] beforeinstallprompt event fired");
     };
 
     const installedHandler = () => {
-      console.log("[PWA] App installed");
       setIsInstalled(true);
       setIsInstallable(false);
     };
 
     window.addEventListener("beforeinstallprompt", handler);
     window.addEventListener("appinstalled", installedHandler);
-
-    // Check if service worker is supported (PWA requirement)
-    if ("serviceWorker" in navigator) {
-      console.log("[PWA] Service worker supported");
-    }
 
     return () => {
       window.removeEventListener("beforeinstallprompt", handler);
@@ -80,9 +93,17 @@ export function usePWAInstall() {
     return choice.outcome === "accepted";
   }, [deferredPrompt]);
 
-  // On iOS, beforeinstallprompt never fires — the user must use "Add to Home Screen"
-  // manually. We still show the button to guide them.
-  const canShowInstallButton = !isInstalled && (isInstallable || platform === "ios");
+  const dismiss = useCallback(() => {
+    setDismissed(true);
+    setDismissed();
+  }, []);
 
-  return { isInstallable, isInstalled, canShowInstallButton, platform, promptInstall };
+  return {
+    isInstallable,
+    isInstalled,
+    platform,
+    promptInstall,
+    dismissed,
+    dismiss,
+  };
 }

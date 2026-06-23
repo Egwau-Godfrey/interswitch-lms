@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s | Interswitch Loans",
   },
   description: "Advanced Loan Management System for Interswitch",
-  manifest: "/manifest.webmanifest",
+  manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
