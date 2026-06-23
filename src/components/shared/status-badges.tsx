@@ -137,7 +137,7 @@ export function AdminBadge({ isAdmin, className }: AdminBadgeProps) {
 // Risk Level Badge
 // ============================================
 interface RiskLevelBadgeProps {
-  riskLevel: 'high' | 'medium' | 'low' | 'rejected';
+  riskLevel: 'high' | 'medium' | 'low' | 'rejected' | null | undefined;
   className?: string;
 }
 
@@ -149,6 +149,7 @@ const riskLevelConfig: Record<'high' | 'medium' | 'low' | 'rejected', { label: s
 };
 
 export function RiskLevelBadge({ riskLevel, className }: RiskLevelBadgeProps) {
+  if (!riskLevel) return <span className="text-xs text-muted-foreground">—</span>;
   const config = riskLevelConfig[riskLevel] || riskLevelConfig.high;
   
   return (

@@ -17,6 +17,8 @@ import type {
   BulkActivateRequest,
   BulkActivateResponse,
   BulkActivateResult,
+  AgentLoanSummaryListResponse,
+  AgentLoanSummaryParams,
 } from '@/lib/types';
 
 export const agentsApi = {
@@ -32,6 +34,13 @@ export const agentsApi = {
    */
   list: async (params?: AgentListParams): Promise<PaginatedResponse<Agent>> => {
     return apiClient.get<PaginatedResponse<Agent>>('/agents/', params);
+  },
+
+  /**
+   * List agents with loan summary data (for tabbed agents page)
+   */
+  listWithLoanSummary: async (params?: AgentLoanSummaryParams): Promise<AgentLoanSummaryListResponse> => {
+    return apiClient.get<AgentLoanSummaryListResponse>('/agents/loan-summary', params);
   },
 
   /**

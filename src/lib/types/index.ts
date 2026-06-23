@@ -99,6 +99,72 @@ export interface AgentUpdate {
 }
 
 // ============================================
+// Agent Loan Summary (for tabbed agents page)
+// ============================================
+export type LoanStatusFilter = 'defaulted' | 'overdue' | 'active' | 'no_loan' | 'all';
+
+export interface AgentLoanSummary {
+  // Agent identity
+  id: string;
+  agent_id: string;
+  full_name: string;
+  email: string;
+  phone_number: string;
+  employer_name: string;
+  employment_status: EmploymentStatus;
+  monthly_income: number;
+  status: AgentStatus;
+  loan_limit: number | null;
+  last_credit_score: number | null;
+  credit_score_risk_level: RiskLevel | null;
+  last_scored_at: string | null;
+  created_at: string;
+  updated_at: string;
+
+  // Loan summary
+  has_active_loan: boolean;
+  active_loan_count: number;
+  total_outstanding: number;
+  total_principal: number;
+  total_interest: number;
+  total_penalty: number;
+  total_paid: number;
+  loan_status: LoanStatus | null;
+  is_overdue: boolean;
+  is_defaulted: boolean;
+  days_overdue_max: number;
+  due_date_nearest: string | null;
+  disbursed_at_earliest: string | null;
+}
+
+export interface AgentLoanSummaryTotals {
+  total_agents: number;
+  total_outstanding: number;
+  total_principal: number;
+  total_interest: number;
+  total_penalty: number;
+  total_paid: number;
+  defaulted_count: number;
+  overdue_count: number;
+  active_loan_count: number;
+  no_loan_count: number;
+}
+
+export interface AgentLoanSummaryListResponse {
+  data: AgentLoanSummary[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  summary: AgentLoanSummaryTotals | null;
+}
+
+export interface AgentLoanSummaryParams extends ListParams {
+  status?: AgentStatus;
+  loan_status_filter?: LoanStatusFilter;
+}
+
+// ============================================
 // Loan Product Model
 // ============================================
 export type LoanType = 'float' | 'pay_day';

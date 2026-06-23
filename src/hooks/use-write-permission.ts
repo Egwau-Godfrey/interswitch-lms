@@ -1,16 +1,20 @@
 "use client";
 
 import { toast } from "sonner";
+import { useSession } from "next-auth/react";
 import { usePermissions } from "@/contexts/permissions-context";
 
 /**
  * Convenience hook that returns write-permission state for a given tab.
  * Used by user pages to disable write action buttons.
+ * Super admins always have write access.
  */
 export function useWritePermission(tabName: string) {
+  const { data: session } = useSession();
   const { hasWriteAccess, isLoading, refetch } = usePermissions();
 
-  const canWrite = hasWriteAccess(tabName);
+  const isSuperAdmin = session?.user?.role === "super_admin" || (session?.user as any)?.is_admin === true;
+  const canWrite = isSuperAdmin || hasWriteAccess(tabName);
   const writeDisabled = isLoading || !canWrite;
   const writeTooltip = !canWrite
     ? "Write access requires a grant from a super admin"
