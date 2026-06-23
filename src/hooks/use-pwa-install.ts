@@ -7,20 +7,36 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
 }
 
+function detectPlatform(): "ios" | "android" | "desktop" {
+  if (typeof window === "undefined") return "desktop";
+  const ua = window.navigator.userAgent.toLowerCase();
+  if (/iphone|ipad|ipod/.test(ua)) return "ios";
+  if (/android/.test(ua)) return "android";
+  return "desktop";
+}
+
+function isStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (window.navigator as any).standalone === true
+  );
+}
+
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] =
     useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
+    setPlatform(detectPlatform());
+
     // Check if already installed (standalone mode)
-    if (
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (window.navigator as any).standalone === true
-    ) {
+    if (isStandalone()) {
       setIsInstalled(true);
       return;
     }
@@ -29,7 +45,7 @@ export function usePWAInstall() {
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
-      console.log("[PWA] Install prompt event fired");
+      console.log("[PWA] beforeinstallprompt event fired");
     };
 
     const installedHandler = () => {
@@ -38,7 +54,6 @@ export function usePWAInstall() {
       setIsInstallable(false);
     };
 
-    // Listen for install prompt event
     window.addEventListener("beforeinstallprompt", handler);
     window.addEventListener("appinstalled", installedHandler);
 
@@ -54,7 +69,7 @@ export function usePWAInstall() {
   }, []);
 
   const promptInstall = useCallback(async () => {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) return false;
     await deferredPrompt.prompt();
     const choice = await deferredPrompt.userChoice;
     if (choice.outcome === "accepted") {
@@ -62,7 +77,12 @@ export function usePWAInstall() {
     }
     setDeferredPrompt(null);
     setIsInstallable(false);
+    return choice.outcome === "accepted";
   }, [deferredPrompt]);
 
-  return { isInstallable, isInstalled, promptInstall };
+  // On iOS, beforeinstallprompt never fires — the user must use "Add to Home Screen"
+  // manually. We still show the button to guide them.
+  const canShowInstallButton = !isInstalled && (isInstallable || platform === "ios");
+
+  return { isInstallable, isInstalled, canShowInstallButton, platform, promptInstall };
 }
