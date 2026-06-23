@@ -14,6 +14,9 @@ import {
   Calculator,
   User,
   CheckCircle2,
+  ShieldCheck,
+  ShieldX,
+  AlertTriangle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -40,8 +43,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "sonner";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { useSession } from "next-auth/react";
-import { agentsApi, productsApi, loansApi, apiClient } from "@/lib/api";
-import type { Agent, LoanProduct, EligibleProductsResponse } from "@/lib/types";
+import { agentsApi, productsApi, loansApi, apiClient, whitelistApi } from "@/lib/api";
+import type { Agent, LoanProduct, EligibleProductsResponse, WhitelistStatus } from "@/lib/types";
 import { AgentStatusBadge } from "@/components/shared/status-badges";
 import { formatCurrency } from "@/components/shared/stat-card";
 
@@ -66,6 +69,7 @@ export function NewLoanPageContent() {
   const [selectedAgent, setSelectedAgent] = React.useState<Agent | null>(null);
   const [selectedProduct, setSelectedProduct] = React.useState<LoanProduct | null>(null);
   const [isSearching, setIsSearching] = React.useState(false);
+  const [whitelistStatus, setWhitelistStatus] = React.useState<WhitelistStatus | null>(null);
   const { data: session } = useSession();
 
   // Set API token when session is loaded
@@ -118,10 +122,19 @@ export function NewLoanPageContent() {
     if (!agentId.trim()) return;
 
     setIsSearching(true);
+    setWhitelistStatus(null);
     try {
       const agent = await agentsApi.get(agentId);
       setSelectedAgent(agent);
       form.setValue("agent_id", agent.agent_id);
+
+      // Fetch whitelist status
+      try {
+        const wlStatus = await whitelistApi.getStatus(agent.agent_id);
+        setWhitelistStatus(wlStatus);
+      } catch {
+        // Whitelist check is non-blocking — don't fail the agent search
+      }
       
       // Set default product if agent has one
       if (agent.default_product_id) {
@@ -132,6 +145,7 @@ export function NewLoanPageContent() {
     } catch {
       toast.error("Agent not found or error fetching agent data");
       setSelectedAgent(null);
+      setWhitelistStatus(null);
       form.setValue("agent_id", "");
       form.setValue("product_id", "");
       setSelectedProduct(null);
@@ -384,7 +398,7 @@ export function NewLoanPageContent() {
             <CardFooter>
               <Button 
                 onClick={form.handleSubmit(onSubmit)}
-                disabled={!selectedAgent || !selectedProduct || createLoan.isLoading}
+                disabled={!selectedAgent || !selectedProduct || createLoan.isLoading || (!!whitelistStatus?.whitelist_mode_enabled && !whitelistStatus?.is_whitelisted)}
                 className="w-full"
               >
                 {createLoan.isLoading ? (
@@ -460,6 +474,39 @@ export function NewLoanPageContent() {
                   <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-green-500" />
                     <span>Income verified</span>
+                  </div>
+                )}
+                {whitelistStatus && (
+                  <div className="flex items-center gap-2 border-t pt-3">
+                    {whitelistStatus.is_whitelisted ? (
+                      <>
+                        <ShieldCheck className="h-4 w-4 text-green-500" />
+                        <span>Whitelisted: Yes</span>
+                      </>
+                    ) : whitelistStatus.whitelist_mode_enabled ? (
+                      <>
+                        <ShieldX className="h-4 w-4 text-red-500" />
+                        <span className="text-red-600 font-medium">
+                          Not whitelisted — loan blocked
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldX className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-muted-foreground">
+                          Not whitelisted (mode is off)
+                        </span>
+                      </>
+                    )}
+                  </div>
+                )}
+                {whitelistStatus && !whitelistStatus.is_whitelisted && whitelistStatus.whitelist_mode_enabled && (
+                  <div className="flex items-start gap-2 p-2 bg-red-50 dark:bg-red-950/30 rounded text-xs text-red-700 dark:text-red-300">
+                    <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                    <span>
+                      Whitelist mode is ON. This agent cannot receive loans until they
+                      are added to the whitelist.
+                    </span>
                   </div>
                 )}
               </CardContent>

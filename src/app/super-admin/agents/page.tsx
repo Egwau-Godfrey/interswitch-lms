@@ -20,6 +20,7 @@ import {
   Banknote,
   RefreshCw,
   Shield,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,7 +73,7 @@ import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useApi, useMutation } from "@/hooks/use-api";
-import { agentsApi, apiClient } from "@/lib/api";
+import { agentsApi, apiClient, whitelistApi } from "@/lib/api";
 import type { Agent } from "@/lib/types";
 import { AgentStatusBadge } from "@/components/shared/status-badges";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
@@ -225,6 +226,29 @@ export default function AgentsPage() {
       }
     }
   };
+
+  // Whitelist mutations
+  const whitelistAddMutation = useMutation(
+    (agentId: string) => whitelistApi.add({ agent_id: agentId }),
+    {
+      onSuccess: () => {
+        toast.success("Agent added to whitelist");
+        refetch();
+      },
+      onError: (err) => toast.error("Failed to add to whitelist", { description: err.message }),
+    }
+  );
+
+  const whitelistRemoveMutation = useMutation(
+    (agentId: string) => whitelistApi.remove(agentId),
+    {
+      onSuccess: () => {
+        toast.success("Agent removed from whitelist");
+        refetch();
+      },
+      onError: (err) => toast.error("Failed to remove from whitelist", { description: err.message }),
+    }
+  );
 
   const handleConfirmBulkAction = () => {
     if (!bulkDialog) return;
@@ -570,6 +594,21 @@ export default function AgentsPage() {
                               <Clock className="w-4 h-4 mr-2" /> History
                             </DropdownMenuItem>
                           </Link>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-blue-600"
+                            onClick={() => whitelistAddMutation.mutate(agent.agent_id)}
+                            disabled={whitelistAddMutation.isLoading}
+                          >
+                            <ListChecks className="w-4 h-4 mr-2" /> Add to Whitelist
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-orange-600"
+                            onClick={() => whitelistRemoveMutation.mutate(agent.agent_id)}
+                            disabled={whitelistRemoveMutation.isLoading}
+                          >
+                            <XCircle className="w-4 h-4 mr-2" /> Remove from Whitelist
+                          </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           {agent.status === "inactive" ? (
                             <DropdownMenuItem 

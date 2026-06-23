@@ -13,3 +13,4 @@ export { reportsApi } from './reports';
 export { dashboardApi } from './dashboard';
 export { scoringDashboardApi } from './scoring-dashboard';
 export { permissionsApi } from './permissions';
+export { whitelistApi } from './whitelist';

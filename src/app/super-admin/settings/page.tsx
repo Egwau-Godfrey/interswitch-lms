@@ -10,6 +10,7 @@ import {
   ShieldCheck,
   ShieldX,
   Loader2,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -319,6 +320,30 @@ export default function SettingsPage() {
                       handleToggle("two_factor_auth_enabled", getSetting("two_factor_auth_enabled") || "false")
                     }
                     disabled={isLoading || savingKey === "two_factor_auth_enabled"}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between border-t pt-4">
+                <div className="flex items-center gap-3">
+                  <ListChecks className="w-5 h-5 text-blue-500" />
+                  <div className="space-y-0.5">
+                    <Label>Agent Whitelist Mode</Label>
+                    <p className="text-xs text-muted-foreground">
+                      When enabled, only whitelisted agents can apply for loans — even if they are active and scored.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  {savingKey === "whitelist_mode_enabled" && (
+                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                  )}
+                  <Switch
+                    checked={getSetting("whitelist_mode_enabled") === "true"}
+                    onCheckedChange={() =>
+                      handleToggle("whitelist_mode_enabled", getSetting("whitelist_mode_enabled") || "false")
+                    }
+                    disabled={isLoading || savingKey === "whitelist_mode_enabled"}
                   />
                 </div>
               </div>

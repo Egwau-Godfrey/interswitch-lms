@@ -21,6 +21,7 @@ import {
   Moon,
   TrendingUp,
   ShieldCheck,
+  ListChecks,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -70,6 +71,7 @@ React.useEffect(() => {
     const links = [
       { href: basePath, label: "Overview", icon: LayoutDashboard },
       { href: `${basePath}/agents`, label: "Agents", icon: Users },
+      { href: `${basePath}/whitelist`, label: "Whitelist", icon: ListChecks },
       { href: `${basePath}/loans`, label: "Loans", icon: Banknote },
       { href: `${basePath}/products`, label: "Loan Products", icon: Package },
       { href: `${basePath}/payments`, label: "Payments", icon: CreditCard },

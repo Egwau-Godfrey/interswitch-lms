@@ -1272,3 +1272,91 @@ export type ReportDetailType =
   | 'risk'
   | 'autostrike'
   | 'agents';
+
+// ============================================
+// Agent Whitelist Types
+// ============================================
+
+export interface WhitelistEntry {
+  id: string;
+  agent_id: string;
+  is_whitelisted: boolean;
+  whitelisted_by: string | null;
+  whitelisted_at: string | null;
+  revoked_by: string | null;
+  revoked_at: string | null;
+  notes: string | null;
+  full_name: string | null;
+  email: string | null;
+  phone_number: string | null;
+  status: string | null;
+  loan_limit: string | null;
+  last_credit_score: string | null;
+  credit_score_risk_level: RiskLevel | null;
+}
+
+export interface WhitelistListResponse {
+  data: WhitelistEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface NonWhitelistedAgent {
+  agent_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone_number: string | null;
+  status: string;
+  loan_limit: string;
+  last_credit_score: string | null;
+  credit_score_risk_level: RiskLevel | null;
+}
+
+export interface NonWhitelistedListResponse {
+  data: NonWhitelistedAgent[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+}
+
+export interface WhitelistStatus {
+  agent_id: string;
+  is_whitelisted: boolean;
+  whitelist_mode_enabled: boolean;
+  entry: WhitelistEntry | null;
+}
+
+export interface WhitelistAddRequest {
+  agent_id: string;
+  notes?: string;
+}
+
+export interface WhitelistBulkAddRequest {
+  agent_ids: string[];
+  notes?: string;
+}
+
+export interface WhitelistBulkRemoveRequest {
+  agent_ids: string[];
+}
+
+export interface WhitelistBulkResult {
+  agent_id: string;
+  success: boolean;
+  error?: string;
+  id?: string;
+}
+
+export interface WhitelistBulkResponse {
+  total: number;
+  succeeded: number;
+  failed: number;
+  results: WhitelistBulkResult[];
+}
+
+export interface WhitelistListParams extends ListParams {
+  // reuses search, page, page_size
+}
