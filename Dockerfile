@@ -5,11 +5,14 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
+# Install native build tools for packages that need node-gyp (e.g. bcrypt)
+RUN apk add --no-cache python3 make g++
+
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci
+# Install dependencies (skip devDependencies — canvas is only needed for icon generation)
+RUN npm ci --omit=dev
 
 # Copy source code
 COPY . .
