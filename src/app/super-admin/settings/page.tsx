@@ -63,6 +63,7 @@ import { permissionsApi } from "@/lib/api/permissions";
 import { usersApi } from "@/lib/api";
 import { useApiAuth } from "@/hooks/use-api-auth";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
+import { NotificationSettings } from "@/components/pwa";
 import type { AuditEventType, PermissionGrant } from "@/lib/types";
 
 const ADMIN_TAB_LIST = [
@@ -253,6 +254,20 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* PWA Push Notifications */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Bell className="w-5 h-5 text-purple-500" />
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium">Push Notifications</p>
+                    <p className="text-xs text-muted-foreground">
+                      Receive instant notifications about loan events and updates.
+                    </p>
+                  </div>
+                </div>
+                <NotificationSettings />
+              </div>
+
               {[
                 {
                   key: "email_alerts_enabled",

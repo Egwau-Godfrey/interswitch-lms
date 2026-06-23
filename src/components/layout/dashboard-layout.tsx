@@ -36,6 +36,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSession, signOut } from "next-auth/react";
 import { toast } from "sonner";
 import { apiClient } from "@/lib/api/client";
+import { InstallPrompt } from "@/components/pwa";
 
 // Dynamic sidebar links generated based on basePath
 
@@ -209,6 +210,7 @@ React.useEffect(() => {
           <div className="flex items-center gap-4">
             {mounted && (
               <>
+                <InstallPrompt />
                 <Button
                   variant="ghost"
                   size="icon"
