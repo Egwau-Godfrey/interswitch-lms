@@ -2,153 +2,157 @@
 
 import * as React from "react";
 import Link from "next/link";
-import {
-  Search,
-  Plus,
-  Filter,
-  Download,
-  MoreVertical,
-  Banknote,
-  Eye,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  AlertTriangle,
-  ArrowUpRight,
-  FileText,
-  RefreshCw
-} from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue
-} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Search, RefreshCw, Plus, Download } from "lucide-react";
 import { toast } from "sonner";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
-import { useApi } from "@/hooks/use-api";
-import { loansApi } from "@/lib/api";
-import type { Loan, LoanStatus } from "@/lib/types";
-import { LoanStatusBadge } from "@/components/shared/status-badges";
-import { DataTablePagination } from "@/components/shared/data-table-pagination";
-import { formatCurrency, formatDate } from "@/components/shared/stat-card";
-import { ErrorState, EmptyState } from "@/components/shared/loading-states";
-import { RecordPaymentDialog } from "@/components/shared/record-payment-dialog";
-import { WriteAccessAlert } from "@/components/shared/write-access-alert";
 import { useApiAuth } from "@/hooks/use-api-auth";
 import { useWritePermission } from "@/hooks/use-write-permission";
+import { useLoanSummary } from "@/hooks/use-loan-summary";
+import { useLoanBulkActions } from "@/hooks/use-loan-bulk-actions";
+import { LoansKpiStrip } from "@/components/loans/loans-kpi-strip";
+import { LoanSummaryTable } from "@/components/loans/loan-summary-table";
+import { LoanBulkActionsBar } from "@/components/loans/loan-bulk-actions-bar";
+import { loanTabColumnsMap } from "@/components/loans/loan-summary-columns";
+import { RecordPaymentDialog } from "@/components/shared/record-payment-dialog";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { WriteAccessAlert } from "@/components/shared/write-access-alert";
+import { loansApi } from "@/lib/api";
+import { useMutation } from "@/hooks/use-api";
+import type { LoanStatusTab, Loan, LoanSummaryTotals } from "@/lib/types";
 
-const toAmount = (value: unknown): number => Number(value || 0);
+const TABS: { value: LoanStatusTab; label: string; emptyMessage: string }[] = [
+  { value: "disbursed", label: "Active", emptyMessage: "No active loans." },
+  { value: "overdue", label: "Overdue", emptyMessage: "No overdue loans. Great news! 🎉" },
+  { value: "defaulted", label: "Defaulted", emptyMessage: "No defaulted loans." },
+  { value: "pending", label: "Pending", emptyMessage: "No pending loan applications." },
+  { value: "cleared", label: "Cleared", emptyMessage: "No cleared loans yet." },
+  { value: "all", label: "All Loans", emptyMessage: "No loans found." },
+];
+
+function countForTab(tab: LoanStatusTab, summary: LoanSummaryTotals | null): number {
+  if (!summary) return 0;
+  switch (tab) {
+    case "disbursed": return summary.disbursed_count;
+    case "overdue": return summary.overdue_count;
+    case "defaulted": return summary.defaulted_count;
+    case "pending": return summary.pending_count;
+    case "cleared": return summary.cleared_count;
+    case "all": return summary.total_loans;
+    default: return 0;
+  }
+}
 
 export default function LoansPage() {
-  const { accessToken, isReady } = useApiAuth();
-  const [searchQuery, setSearchQuery] = React.useState("");
-  const [statusFilter, setStatusFilter] = React.useState<string>("all");
-  const [page, setPage] = React.useState(1);
-  const [pageSize, setPageSize] = React.useState(10);
-  const [selectedLoanId, setSelectedLoanId] = React.useState<string | null>(null);
-  const [isRecordPaymentOpen, setIsRecordPaymentOpen] = React.useState(false);
-  const { canWrite: canWriteLoans, writeDisabled, writeTooltip } =
-    useWritePermission("loans");
+  const { isReady } = useApiAuth();
+  const { canWrite: canWriteLoans, writeDisabled, writeTooltip } = useWritePermission("loans");
   const { canWrite: canWritePayments } = useWritePermission("payments");
   const canRecordPayment = canWriteLoans || canWritePayments;
 
-  const { data: loansData, isLoading, error, refetch } = useApi(
-    () => {
-      if (!accessToken) {
-        throw new Error("No access token available");
-      }
-      return loansApi.list({
-        page,
-        page_size: pageSize,
-        status: statusFilter !== "all" ? statusFilter as LoanStatus : undefined,
-      });
-    },
-    [page, pageSize, statusFilter, accessToken],
+  const [activeTab, setActiveTab] = React.useState<LoanStatusTab>("disbursed");
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [page, setPage] = React.useState(1);
+  const [pageSize, setPageSize] = React.useState(10);
+
+  // Single-loan action dialogs
+  const [clearLoanTarget, setClearLoanTarget] = React.useState<Loan | null>(null);
+  const [writeOffTarget, setWriteOffTarget] = React.useState<Loan | null>(null);
+  const [recordPaymentLoan, setRecordPaymentLoan] = React.useState<Loan | null>(null);
+
+  // Bulk action dialog
+  const [bulkDialog, setBulkDialog] = React.useState<{ type: "clear" | "writeOff"; count: number } | null>(null);
+
+  const {
+    loans,
+    total,
+    totalPages,
+    summary,
+    isLoading,
+    error,
+    refetch,
+  } = useLoanSummary({
+    statusTab: activeTab,
+    page,
+    pageSize,
+    search: searchQuery,
+    isReady,
+  });
+
+  const {
+    selectedLoanIds,
+    toggleSelection,
+    selectAll,
+    clearSelection,
+    bulkClear,
+    bulkWriteOff,
+    isLoading: bulkLoading,
+  } = useLoanBulkActions({ onSuccess: () => refetch() });
+
+  // Single-loan clear mutation
+  const clearLoanMutation = useMutation(
+    (loanId: string) => loansApi.clearLoan(loanId),
     {
-      cacheKey: `loans-${page}-${statusFilter}`,
-      enabled: isReady,
+      onSuccess: () => {
+        toast.success("Loan marked as cleared");
+        setClearLoanTarget(null);
+        refetch();
+      },
+      onError: (err: Error) => {
+        toast.error("Failed to clear loan", { description: err.message });
+      },
     }
   );
 
-  const loans = loansData?.data ?? [];
-  const totalItems = loansData?.total ?? 0;
-  const totalPages = loansData?.total_pages ?? 1;
-
-  if (error && !loans.length) {
-    return (
-      <div className="flex flex-col items-center justify-center p-12 h-[60vh]">
-        <ErrorState
-          message="Failed to load loans"
-          onRetry={refetch}
-        />
-      </div>
-    );
-  }
-
-  const filteredLoans = loans.filter(loan =>
-    !searchQuery ||
-    loan.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    loan.agent_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    loan.disbursement_reference?.toLowerCase().includes(searchQuery.toLowerCase())
+  // Single-loan write-off mutation
+  const writeOffMutation = useMutation(
+    (loanId: string) => loansApi.writeOff(loanId),
+    {
+      onSuccess: () => {
+        toast.success("Loan written off");
+        setWriteOffTarget(null);
+        refetch();
+      },
+      onError: (err: Error) => {
+        toast.error("Failed to write off loan", { description: err.message });
+      },
+    }
   );
 
-  const totalDisbursed = loans.reduce((sum, l) => sum + toAmount(l.principal_amount), 0);
-  const totalOutstanding = loans.reduce((sum, l) => sum + toAmount(l.outstanding_balance), 0);
-  const totalOverdue = loans.filter(l => l.is_overdue).reduce((sum, l) => sum + toAmount(l.outstanding_balance), 0);
-  const clearedCount = loans.filter(l => l.status === "cleared").length;
-  const recoveryRate = loans.length > 0 ? (clearedCount / loans.length) * 100 : 0;
-
-  const handleWriteError = (err: any): boolean => {
-    if (err?.status === 403) {
-      toast.error("Write access required", {
-        description: "This action requires write access granted by a super admin.",
-      });
-      return true;
-    }
-    return false;
+  const handleTabChange = (value: string) => {
+    setActiveTab(value as LoanStatusTab);
+    setPage(1);
+    clearSelection();
   };
 
-  const requireRecordPaymentWrite = (): boolean => {
-    if (!canRecordPayment) {
-      toast.error("Write access required", {
-        description: "Recording payments requires write access on loans or payments, granted by a super admin.",
-      });
-      return false;
-    }
-    return true;
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setPage(1);
   };
 
-  const handleRecordPayment = (loanId: string) => {
-    if (!requireRecordPaymentWrite()) return;
-    setSelectedLoanId(loanId);
-    setIsRecordPaymentOpen(true);
+  const handleConfirmBulkAction = () => {
+    if (!canWriteLoans) {
+      toast.error("Write access required", {
+        description: "Bulk actions require write access on loans, granted by a super admin.",
+      });
+      return;
+    }
+    if (!bulkDialog) return;
+    const ids = Array.from(selectedLoanIds);
+    if (ids.length === 0) return;
+    if (bulkDialog.type === "clear") {
+      bulkClear.mutate(ids);
+    } else {
+      bulkWriteOff.mutate(ids);
+    }
+    setBulkDialog(null);
   };
 
   const handleExport = async () => {
     try {
       toast.loading("Preparing export...", { id: "export-loading" });
       const blob = await loansApi.exportCsv({
-        status: statusFilter !== "all" ? statusFilter as any : undefined,
+        status: activeTab !== "all" ? (activeTab as any) : undefined,
       });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -166,25 +170,24 @@ export default function LoansPage() {
     }
   };
 
+  const columns = loanTabColumnsMap[activeTab];
+  const tabConfig = TABS.find((t) => t.value === activeTab)!;
+
   return (
     <div className="space-y-6">
       {!canWriteLoans && <WriteAccessAlert tabLabel="loan" />}
 
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Loan Management</h1>
           <p className="text-muted-foreground">Monitor disbursements, repayments, and overdue balances.</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetch()}>
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Refresh
+          <Button variant="outline" size="icon" onClick={() => refetch()}>
+            <RefreshCw className="w-4 h-4" />
           </Button>
-          <Button
-            variant="outline"
-            className="hidden sm:flex"
-            onClick={handleExport}
-          >
+          <Button variant="outline" className="hidden sm:flex" onClick={handleExport}>
             <Download className="w-4 h-4 mr-2" />
             Export CSV
           </Button>
@@ -208,54 +211,11 @@ export default function LoansPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Total Disbursed</p>
-              <ArrowUpRight className="w-4 h-4 text-[#E31C2D]" />
-            </div>
-            {isLoading ? <Skeleton className="h-8 w-24 mt-1" /> : (
-              <p className="text-2xl font-bold mt-1">{formatCurrency(totalDisbursed, "UGX", true)}</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Outstanding</p>
-              <Clock className="w-4 h-4 text-[#004B91]" />
-            </div>
-            {isLoading ? <Skeleton className="h-8 w-24 mt-1" /> : (
-              <p className="text-2xl font-bold mt-1">{formatCurrency(totalOutstanding, "UGX", true)}</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Overdue</p>
-              <AlertTriangle className="w-4 h-4 text-amber-500" />
-            </div>
-            {isLoading ? <Skeleton className="h-8 w-24 mt-1" /> : (
-              <p className="text-2xl font-bold mt-1">{formatCurrency(totalOverdue, "UGX", true)}</p>
-            )}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Recovery Rate</p>
-              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            </div>
-            {isLoading ? <Skeleton className="h-8 w-24 mt-1" /> : (
-              <p className="text-2xl font-bold mt-1">{recoveryRate.toFixed(1)}%</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* KPI Strip */}
+      <LoansKpiStrip summary={summary} isLoading={isLoading} />
 
-      <div className="flex flex-col sm:flex-row gap-4">
+      {/* Search */}
+      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -265,136 +225,127 @@ export default function LoansPage() {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="approved">Approved</SelectItem>
-            <SelectItem value="disbursed">Disbursed</SelectItem>
-            <SelectItem value="overdue">Overdue</SelectItem>
-            <SelectItem value="defaulted">Defaulted</SelectItem>
-            <SelectItem value="cleared">Cleared</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      </form>
 
-      <div className="rounded-md border bg-card overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/50">
-              <TableHead className="w-[100px]">Loan ID</TableHead>
-              <TableHead>Agent ID</TableHead>
-              <TableHead className="text-right">Principal</TableHead>
-              <TableHead className="text-right">Outstanding</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Due Date</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i}>
-                  {Array.from({ length: 7 }).map((_, j) => (
-                    <TableCell key={j}><Skeleton className="h-4 w-full" /></TableCell>
-                  ))}
-                </TableRow>
-              ))
-            ) : filteredLoans.length > 0 ? (
-              filteredLoans.map((loan) => (
-                <TableRow key={loan.id}>
-                  <TableCell className="font-mono text-xs font-semibold">{loan.id}</TableCell>
-                  <TableCell className="font-mono text-xs">{loan.agent_id}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(loan.principal_amount, "UGX")}</TableCell>
-                  <TableCell className="text-right font-semibold">
-                    <span className={loan.outstanding_balance > 0 ? "text-[#E31C2D]" : "text-emerald-600"}>
-                      {formatCurrency(loan.outstanding_balance, "UGX")}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col gap-1">
-                      <LoanStatusBadge status={loan.status} />
-                      {loan.days_overdue > 0 && (
-                        <span className="text-[10px] text-rose-500 font-medium">
-                          {loan.days_overdue} days late
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {formatDate(loan.due_date)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        <Link href={`/user/loans/${loan.id}`}>
-                          <DropdownMenuItem>
-                            <Eye className="w-4 h-4 mr-2" /> View Details
-                          </DropdownMenuItem>
-                        </Link>
-                        <Link href={`/user/loans/${loan.id}?tab=statement`}>
-                          <DropdownMenuItem>
-                            <FileText className="w-4 h-4 mr-2" /> Statement
-                          </DropdownMenuItem>
-                        </Link>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onSelect={() => handleRecordPayment(loan.id)}
-                          disabled={!canRecordPayment}
-                          title={canRecordPayment ? undefined : "Write access requires a grant from a super admin"}
-                        >
-                          <Banknote className="w-4 h-4 mr-2" /> Record Payment
-                          {!canRecordPayment && (
-                            <span className="ml-auto text-[10px] text-muted-foreground">Write required</span>
-                          )}
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={7} className="h-24">
-                  <EmptyState
-                    title="No loans found"
-                    description={searchQuery || statusFilter !== "all"
-                      ? "Try adjusting your search or filters"
-                      : "Loans will appear here once they are created"}
-                  />
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      <DataTablePagination
-        page={page}
-        pageSize={pageSize}
-        totalItems={totalItems}
-        totalPages={totalPages}
-        onPageChange={setPage}
-        onPageSizeChange={setPageSize}
+      {/* Bulk Actions Bar */}
+      <LoanBulkActionsBar
+        selectedCount={selectedLoanIds.size}
+        onClearSelected={() => {
+          if (!canWriteLoans) {
+            toast.error("Write access required", {
+              description: "Bulk actions require write access on loans, granted by a super admin.",
+            });
+            return;
+          }
+          setBulkDialog({ type: "clear", count: selectedLoanIds.size });
+        }}
+        onWriteOffSelected={() => {
+          if (!canWriteLoans) {
+            toast.error("Write access required", {
+              description: "Bulk actions require write access on loans, granted by a super admin.",
+            });
+            return;
+          }
+          setBulkDialog({ type: "writeOff", count: selectedLoanIds.size });
+        }}
+        onClearSelection={clearSelection}
+        isLoading={bulkLoading}
       />
 
+      {/* Tabs + Table */}
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+        <TabsList className="flex flex-wrap h-auto gap-1">
+          {TABS.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value} className="text-sm">
+              {tab.label}
+              {summary && (
+                <span className="ml-1.5 text-xs text-muted-foreground">
+                  ({countForTab(tab.value, summary)})
+                </span>
+              )}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {TABS.map((tab) => (
+          <TabsContent key={tab.value} value={tab.value} className="space-y-4">
+            <LoanSummaryTable
+              loans={loans}
+              columns={columns}
+              isLoading={isLoading}
+              error={error}
+              page={page}
+              totalPages={totalPages}
+              totalItems={total}
+              pageSize={pageSize}
+              selectedLoanIds={selectedLoanIds}
+              onToggleSelection={toggleSelection}
+              onSelectAll={selectAll}
+              onClearSelection={clearSelection}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+              onRefetch={refetch}
+              onClearLoan={(loan) => setClearLoanTarget(loan)}
+              onWriteOffLoan={(loan) => setWriteOffTarget(loan)}
+              onRecordPayment={(loan) => setRecordPaymentLoan(loan)}
+              basePath="/user"
+              emptyMessage={tabConfig.emptyMessage}
+              canWrite={canWriteLoans}
+            />
+          </TabsContent>
+        ))}
+      </Tabs>
+
+      {/* Single-loan Clear Confirm */}
+      <ConfirmDialog
+        open={!!clearLoanTarget}
+        onOpenChange={(open) => !open && setClearLoanTarget(null)}
+        title="Mark Loan as Cleared"
+        description={`Are you sure you want to mark loan ${clearLoanTarget?.id.substring(0, 8)}... as cleared? This action will set the outstanding balance to zero.`}
+        confirmLabel="Mark Cleared"
+        variant="default"
+        isLoading={clearLoanMutation.isLoading}
+        onConfirm={() => clearLoanTarget && clearLoanMutation.mutate(clearLoanTarget.id)}
+      />
+
+      {/* Single-loan Write-Off Confirm */}
+      <ConfirmDialog
+        open={!!writeOffTarget}
+        onOpenChange={(open) => !open && setWriteOffTarget(null)}
+        title="Write Off Loan"
+        description={`Are you sure you want to write off loan ${writeOffTarget?.id.substring(0, 8)}...? This action is destructive and cannot be undone.`}
+        confirmLabel="Write Off"
+        variant="destructive"
+        isLoading={writeOffMutation.isLoading}
+        onConfirm={() => writeOffTarget && writeOffMutation.mutate(writeOffTarget.id)}
+      />
+
+      {/* Bulk Action Confirm */}
+      <ConfirmDialog
+        open={!!bulkDialog}
+        onOpenChange={(open) => !open && setBulkDialog(null)}
+        title={bulkDialog?.type === "clear" ? "Bulk Clear Loans" : "Bulk Write Off Loans"}
+        description={
+          bulkDialog?.type === "clear"
+            ? `Are you sure you want to mark ${bulkDialog?.count ?? 0} loan(s) as cleared?`
+            : `Are you sure you want to write off ${bulkDialog?.count ?? 0} loan(s)? This action is destructive and cannot be undone.`
+        }
+        confirmLabel={bulkDialog?.type === "clear" ? "Clear Selected" : "Write Off Selected"}
+        variant={bulkDialog?.type === "writeOff" ? "destructive" : "default"}
+        isLoading={bulkLoading}
+        onConfirm={handleConfirmBulkAction}
+      />
+
+      {/* Record Payment Dialog */}
       <RecordPaymentDialog
-        open={isRecordPaymentOpen}
-        onOpenChange={setIsRecordPaymentOpen}
-        loanId={selectedLoanId || undefined}
+        open={!!recordPaymentLoan}
+        onOpenChange={(open) => !open && setRecordPaymentLoan(null)}
+        loanId={recordPaymentLoan?.id}
         submitDisabled={!canRecordPayment}
         submitDisabledReason="Recording payments requires write access on loans or payments, granted by a super admin."
-        onWriteError={handleWriteError}
         onSuccess={() => refetch()}
       />
     </div>
   );
 }
+//

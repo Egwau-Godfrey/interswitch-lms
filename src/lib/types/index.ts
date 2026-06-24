@@ -415,6 +415,48 @@ export interface LoanListParams extends ListParams {
   date_to?: string;
 }
 
+// ============================================
+// Loan Summary (for tabbed loans page)
+// ============================================
+
+/** Tab filter values for the loans page */
+export type LoanStatusTab =
+  | 'pending'
+  | 'disbursed'
+  | 'overdue'
+  | 'defaulted'
+  | 'cleared'
+  | 'all';
+
+/** Summary totals returned alongside paginated loan list */
+export interface LoanSummaryTotals {
+  total_loans: number;
+  pending_count: number;
+  disbursed_count: number;
+  overdue_count: number;
+  defaulted_count: number;
+  cleared_count: number;
+  total_outstanding: number;
+  total_principal: number;
+  total_overdue_amount: number;
+}
+
+/** Extended paginated response with summary */
+export interface LoanSummaryListResponse {
+  data: Loan[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  summary: LoanSummaryTotals | null;
+}
+
+/** Params for the loan summary list endpoint */
+export interface LoanSummaryParams extends LoanListParams {
+  search?: string;
+  status_tab?: LoanStatusTab;
+}
+
 export interface AgentListParams extends ListParams {
   status?: AgentStatus;
   has_active_loan?: boolean;

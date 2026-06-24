@@ -11,6 +11,8 @@ import type {
   LoanStatementResponse,
   PaginatedResponse,
   LoanListParams,
+  LoanSummaryListResponse,
+  LoanSummaryParams,
 } from '@/lib/types';
 
 export const loansApi = {
@@ -33,6 +35,13 @@ export const loansApi = {
    */
   list: async (params?: LoanListParams): Promise<PaginatedResponse<Loan>> => {
     return apiClient.get<PaginatedResponse<Loan>>('/loans/', params);
+  },
+
+  /**
+   * List all loans with pagination, filters, and summary totals
+   */
+  listWithSummary: async (params?: LoanSummaryParams): Promise<LoanSummaryListResponse> => {
+    return apiClient.get<LoanSummaryListResponse>('/loans/', params);
   },
 
   /**
