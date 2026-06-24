@@ -252,6 +252,8 @@ export interface Loan {
   days_overdue: number;
   disbursement_reference: string | null;
   penalty_applied: boolean;
+  auto_strike_triggered: boolean;
+  auto_strike_triggered_at: string | null;
   created_at: string;
   updated_at: string;
 }

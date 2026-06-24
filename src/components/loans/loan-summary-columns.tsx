@@ -3,7 +3,8 @@
 import type { Loan, LoanStatusTab } from "@/lib/types";
 import { formatCurrency, formatDate } from "@/components/shared/stat-card";
 import { LoanStatusBadge } from "@/components/shared/status-badges";
-import { Calendar } from "lucide-react";
+import { Calendar, Zap } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 export interface LoanColumnDef {
   key: string;
@@ -189,6 +190,17 @@ export const overdueColumns: LoanColumnDef[] = [
     cell: (loan) => <span className="text-xs text-muted-foreground">{formatCurrency(loan.interest_amount)}</span>,
   },
   {
+    key: "auto_strike_triggered",
+    header: "Auto-Strike",
+    hidden: "md",
+    cell: (loan) => (
+      <Badge variant={loan.auto_strike_triggered ? "default" : "secondary"} className="text-[10px]">
+        <Zap className="w-3 h-3 mr-1" />
+        {loan.auto_strike_triggered ? "Triggered" : "Pending"}
+      </Badge>
+    ),
+  },
+  {
     key: "status",
     header: "Status",
     cell: (loan) => <LoanStatusBadge status={loan.status} />,
@@ -232,6 +244,17 @@ export const defaultedColumns: LoanColumnDef[] = [
     header: "Due Date",
     hidden: "md",
     cell: (loan) => <DueDateCell loan={loan} />,
+  },
+  {
+    key: "auto_strike_triggered",
+    header: "Auto-Strike",
+    hidden: "md",
+    cell: (loan) => (
+      <Badge variant={loan.auto_strike_triggered ? "default" : "secondary"} className="text-[10px]">
+        <Zap className="w-3 h-3 mr-1" />
+        {loan.auto_strike_triggered ? "Triggered" : "Pending"}
+      </Badge>
+    ),
   },
   {
     key: "status",

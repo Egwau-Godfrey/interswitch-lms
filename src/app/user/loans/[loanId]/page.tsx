@@ -20,6 +20,7 @@ import {
   DollarSign,
   Percent,
   Building,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -284,6 +285,22 @@ export default function LoanDetailPage() {
           <div>
             <p className="font-medium text-red-800">This loan is overdue</p>
             <p className="text-sm text-red-600">{displayLoan.days_overdue} days past due date. Penalty charges may apply.</p>
+          </div>
+        </div>
+      )}
+      {displayLoan.penalty_applied && (
+        <div className="rounded-md bg-amber-50 p-3 border border-amber-200 flex items-center gap-3">
+          <Zap className="h-5 w-5 text-amber-600" />
+          <div>
+            <p className="text-sm font-medium text-amber-800">
+              Auto-strike {displayLoan.auto_strike_triggered ? "triggered" : "pending"}
+            </p>
+            <p className="text-xs text-amber-600 mt-1">
+              {displayLoan.days_overdue} days past due date. Penalty applied.
+              {displayLoan.auto_strike_triggered_at && (
+                <> Last attempt: {formatDate(displayLoan.auto_strike_triggered_at)}</>
+              )}
+            </p>
           </div>
         </div>
       )}
