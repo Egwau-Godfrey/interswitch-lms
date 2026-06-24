@@ -88,7 +88,9 @@ export function RecentActivityFeed({
                     {getActivityIcon(activity.type)}
                   </div>
                   <div>
-                    <p className="text-sm font-medium">{activity.description}</p>
+                    <p className="text-sm font-medium">
+                      {activity.description.replace(/\bNone\b/g, activity.agent_id || "Unknown")}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       <Clock className="inline h-3 w-3 mr-1" />
                       {formatDate(activity.timestamp)}

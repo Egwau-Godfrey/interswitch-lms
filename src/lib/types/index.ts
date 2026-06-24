@@ -478,6 +478,7 @@ export interface RecentActivityItem {
   type: string;
   description: string;
   amount?: number;
+  agent_id?: string;
   timestamp: string;
 }
 
