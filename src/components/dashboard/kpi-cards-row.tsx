@@ -100,6 +100,7 @@ export function KpiCardsRow({ kpis, isLoading, walletEnabled }: KpiCardsRowProps
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <WalletCard enabled={walletEnabled} />
       <KpiCard
         title="Total Disbursed"
         value={formatCurrency(kpis.total_disbursed, "UGX", true)}
@@ -156,7 +157,6 @@ export function KpiCardsRow({ kpis, isLoading, walletEnabled }: KpiCardsRowProps
         gradient="border-green-100 dark:border-green-900/50 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/50 dark:to-emerald-950/50"
         iconBg="bg-gradient-to-br from-green-500 to-emerald-600 shadow-green-500/25"
       />
-      <WalletCard enabled={walletEnabled} />
     </div>
   );
 }
