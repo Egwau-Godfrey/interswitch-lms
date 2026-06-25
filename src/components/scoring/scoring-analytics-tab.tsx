@@ -19,6 +19,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useApi } from "@/hooks/use-api";
 import { scoringDashboardApi } from "@/lib/api/scoring-dashboard";
 import type { ScoringStats } from "@/lib/types";
+import { formatCurrency } from "@/components/shared/stat-card";
 
 const RISK_COLORS: Record<string, string> = {
   low: "#22c55e",
@@ -181,7 +182,7 @@ export function ScoringAnalyticsTab() {
               <p className="text-xs text-muted-foreground">Avg Loan Limit</p>
               <p className="text-2xl font-bold tabular-nums">
                 {stats?.avg_loan_limit != null
-                  ? `${Math.round(stats.avg_loan_limit).toLocaleString()}`
+                  ? formatCurrency(stats.avg_loan_limit, "UGX", true)
                   : "--"}
               </p>
             </div>
@@ -189,7 +190,7 @@ export function ScoringAnalyticsTab() {
               <p className="text-xs text-muted-foreground">Total Exposure</p>
               <p className="text-2xl font-bold tabular-nums">
                 {stats?.total_loan_exposure != null
-                  ? `${Math.round(stats.total_loan_exposure).toLocaleString()}`
+                  ? formatCurrency(stats.total_loan_exposure, "UGX", true)
                   : "--"}
               </p>
             </div>
