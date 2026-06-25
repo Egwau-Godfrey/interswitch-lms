@@ -20,7 +20,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { useMutation } from "@/hooks/use-api";
+import { useMutation, invalidateCache } from "@/hooks/use-api";
 import { paymentsApi } from "@/lib/api";
 import type { PaymentChannel, PaymentCreate } from "@/lib/types";
 
@@ -56,8 +56,8 @@ export function RecordPaymentDialog({
         if (onSuccess) {
           onSuccess();
         } else {
-          // Fallback to page reload if no specific success handler provided
-          window.location.reload();
+          // Clear cache so next navigation fetches fresh data
+          invalidateCache();
         }
       },
       onError: (err) => {

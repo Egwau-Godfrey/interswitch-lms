@@ -65,7 +65,6 @@ export default function LoginPage() {
           // Fallback for any unknown role — send to user as safe default
           router.push("/user");
         }
-        router.refresh();
       }
     } catch (error) {
       console.error("Login error:", error);

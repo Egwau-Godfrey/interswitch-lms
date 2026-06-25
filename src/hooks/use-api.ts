@@ -23,9 +23,57 @@ interface UseApiResult<T> {
   isRefetching: boolean;
 }
 
-// Simple cache implementation
-const cache = new Map<string, { data: unknown; timestamp: number }>();
-const CACHE_TTL = 30000; // 30 seconds
+// ── Cache implementation (in-memory + sessionStorage) ─────────────────────
+
+const CACHE_TTL = 120_000; // 2 minutes
+
+function loadCache(): Map<string, { data: unknown; timestamp: number }> {
+  if (typeof window === "undefined") return new Map();
+  try {
+    const stored = sessionStorage.getItem("__api_cache__");
+    if (stored) {
+      const entries = JSON.parse(stored) as [string, { data: unknown; timestamp: number }][];
+      const now = Date.now();
+      return new Map(entries.filter(([, v]) => now - v.timestamp < CACHE_TTL));
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return new Map();
+}
+
+const cache = loadCache();
+
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function persistCache() {
+  if (typeof window === "undefined") return;
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try {
+      sessionStorage.setItem("__api_cache__", JSON.stringify([...cache.entries()]));
+    } catch {
+      // ignore quota errors
+    }
+  }, 300);
+}
+
+/** Invalidate a specific cache key, or all keys matching a prefix (use "*"). */
+export function invalidateCache(key?: string) {
+  if (key) {
+    if (key.includes("*")) {
+      const prefix = key.replace("*", "");
+      for (const k of Array.from(cache.keys())) {
+        if (k.startsWith(prefix)) cache.delete(k);
+      }
+    } else {
+      cache.delete(key);
+    }
+  } else {
+    cache.clear();
+  }
+  persistCache();
+}
 
 export function useApi<T>(
   fetcher: () => Promise<T>,
@@ -60,6 +108,29 @@ export function useApi<T>(
     async (isRefetch = false) => {
       if (!enabled) return;
 
+      // If we have fresh cached data and this isn't an explicit refetch,
+      // show cached data immediately and do a silent background refresh.
+      if (cacheKey && !isRefetch) {
+        const cached = cache.get(cacheKey);
+        if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+          setData(cached.data as T);
+          setIsLoading(false);
+          // Silent background revalidation
+          try {
+            const result = await fetcher();
+            setData(result);
+            cache.set(cacheKey, { data: result, timestamp: Date.now() });
+            persistCache();
+            onSuccess?.(result);
+          } catch (err) {
+            // Silently ignore background refresh errors — cached data is still valid
+            console.warn(`[useApi] Background revalidation failed for ${cacheKey}:`, err);
+          }
+          return;
+        }
+      }
+
+      // No fresh cache — blocking fetch with loading state
       if (isRefetch) {
         setIsRefetching(true);
       } else {
@@ -72,6 +143,7 @@ export function useApi<T>(
         setData(result);
         if (cacheKey) {
           cache.set(cacheKey, { data: result, timestamp: Date.now() });
+          persistCache();
         }
         onSuccess?.(result);
       } catch (err) {

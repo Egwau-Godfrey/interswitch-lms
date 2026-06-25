@@ -78,7 +78,7 @@ export default function AgentDetailPage() {
   }, []);
 
   // Fetch agent data
-  const { data: agent, isLoading: agentLoading, error: agentError } = useApi(
+  const { data: agent, isLoading: agentLoading, error: agentError, refetch: refetchAgent } = useApi(
     () => agentsApi.get(agentId),
     [agentId, mounted, isReady],
     {
@@ -181,7 +181,7 @@ export default function AgentDetailPage() {
   const formatTxField = (value: string | null | undefined) => value || "-";
 
   if (agentError && !agent) {
-    return <ErrorState message={agentError.message || "Failed to load agent details"} onRetry={() => router.refresh()} />;
+    return <ErrorState message={agentError.message || "Failed to load agent details"} onRetry={refetchAgent} />;
   }
 
   if (agentLoading || !displayAgent) {

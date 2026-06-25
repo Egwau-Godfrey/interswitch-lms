@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
-import { useApi, useMutation } from "@/hooks/use-api";
+import { useApi, useMutation, invalidateCache } from "@/hooks/use-api";
 import { agentsApi } from "@/lib/api";
 import { LoadingState, ErrorState } from "@/components/shared/loading-states";
 
@@ -46,8 +46,9 @@ export default function AgentEditPage() {
     {
       onSuccess: () => {
         toast.success("Agent updated successfully!");
+        invalidateCache(`agent-edit-${agentId}`);
+        invalidateCache(`agent-detail-${agentId}`);
         router.push(`/super-admin/agents/${agentId}`);
-        router.refresh();
       },
       onError: (err) => {
         toast.error("Update failed", {
