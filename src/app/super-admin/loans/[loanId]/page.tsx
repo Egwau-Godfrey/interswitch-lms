@@ -499,13 +499,6 @@ export default function LoanDetailPage() {
                   </div>
                 </div>
 
-                {/* Debug Info (Only for admins/users) */}
-                {statement?.debug_info && (
-                  <div className="mb-4 p-2 bg-yellow-50 border border-yellow-200 rounded text-[10px] font-mono whitespace-pre-wrap">
-                    DEBUG: {JSON.stringify(statement.debug_info, null, 2)}
-                  </div>
-                )}
-
                 <div className="grid grid-cols-3 gap-4 text-center">
                   <div className="p-2 border rounded-md">
                     <p className="text-[10px] text-muted-foreground uppercase">Total Interest</p>
