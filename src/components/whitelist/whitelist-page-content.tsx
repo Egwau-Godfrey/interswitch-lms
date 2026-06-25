@@ -12,6 +12,9 @@ import {
   CheckCircle2,
   XCircle,
   Loader2,
+  MoreVertical,
+  Eye,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,6 +48,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -408,6 +419,7 @@ export function WhitelistPageContent({
                       <TableHead>Status</TableHead>
                       <TableHead>Loan Limit</TableHead>
                       <TableHead>Risk Level</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </>
                   )}
                 </TableRow>
@@ -415,7 +427,7 @@ export function WhitelistPageContent({
               <TableBody>
                 {data?.data?.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={activeTab === "whitelisted" ? 8 : 7} className="text-center py-8 text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       {activeTab === "whitelisted"
                         ? "No whitelisted agents found."
                         : "All active agents are already whitelisted."}
@@ -448,15 +460,29 @@ export function WhitelistPageContent({
                             {item.whitelisted_at ? formatDate(item.whitelisted_at, "short") : "—"}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={writeDisabled || removeMutation.isLoading}
-                              onClick={() => setRemoveEntry(item)}
-                              className="text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <Link href={`${basePath}/agents/${item.agent_id}`}>
+                                  <DropdownMenuItem>
+                                    <Eye className="w-4 h-4 mr-2" /> View Details
+                                  </DropdownMenuItem>
+                                </Link>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-destructive"
+                                  onClick={() => setRemoveEntry(item)}
+                                  disabled={writeDisabled || removeMutation.isLoading}
+                                >
+                                  <XCircle className="w-4 h-4 mr-2" /> Remove from Whitelist
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </>
                       ) : (
@@ -483,6 +509,31 @@ export function WhitelistPageContent({
                             ) : (
                               "—"
                             )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <Link href={`${basePath}/agents/${item.agent_id}`}>
+                                  <DropdownMenuItem>
+                                    <Eye className="w-4 h-4 mr-2" /> View Details
+                                  </DropdownMenuItem>
+                                </Link>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem
+                                  className="text-blue-600"
+                                  onClick={() => addMutation.mutate({ agent_id: item.agent_id })}
+                                  disabled={writeDisabled || addMutation.isLoading}
+                                >
+                                  <ListChecks className="w-4 h-4 mr-2" /> Add to Whitelist
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </TableCell>
                         </>
                       )}
