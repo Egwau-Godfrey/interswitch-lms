@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   Search,
   ShieldCheck,
@@ -82,6 +83,8 @@ export function WhitelistPageContent({
   const [bulkRemoveOpen, setBulkRemoveOpen] = React.useState(false);
   const [whitelistMode, setWhitelistMode] = React.useState(false);
   const [whitelistModeLoading, setWhitelistModeLoading] = React.useState(false);
+
+  const basePath = isUser ? "/user" : "/super-admin";
 
   // Fetch whitelisted agents
   const {
@@ -427,7 +430,14 @@ export function WhitelistPageContent({
                           onCheckedChange={() => toggleSelection(item.agent_id)}
                         />
                       </TableCell>
-                      <TableCell className="font-mono text-sm">{item.agent_id}</TableCell>
+                      <TableCell className="font-mono text-sm">
+                        <Link
+                          href={`${basePath}/agents/${item.agent_id}`}
+                          className="text-blue-600 hover:text-blue-800 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          {item.agent_id}
+                        </Link>
+                      </TableCell>
                       <TableCell className="font-medium">{item.full_name || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{item.email || "—"}</TableCell>
                       <TableCell className="text-sm text-muted-foreground">{item.phone_number || "—"}</TableCell>
