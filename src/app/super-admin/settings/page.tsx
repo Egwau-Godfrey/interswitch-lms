@@ -232,7 +232,7 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="notifications" className="space-y-6">
-        <TabsList className="bg-muted/50 p-1">
+        <TabsList className="bg-muted/50 p-1 grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="notifications">Notifications</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
           <TabsTrigger value="recovery">Debt Recovery</TabsTrigger>
@@ -481,7 +481,7 @@ export default function SettingsPage() {
             </div>
 
             {/* Grants table */}
-            <div className="rounded-md border bg-card">
+            <div className="rounded-md border bg-card overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
@@ -589,7 +589,7 @@ export default function SettingsPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="rounded-md border bg-card">
+              <div className="rounded-md border bg-card overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">

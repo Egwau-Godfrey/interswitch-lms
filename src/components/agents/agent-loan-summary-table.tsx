@@ -72,7 +72,7 @@ export function AgentLoanSummaryTable({
 
   return (
     <div className="space-y-4">
-      <div className="rounded-md border bg-card">
+      <div className="rounded-md border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">

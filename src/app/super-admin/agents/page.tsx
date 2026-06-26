@@ -261,7 +261,7 @@ export default function AgentsPage() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleRegisterAgent} className="grid gap-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="agent_id">Agent ID</Label>
                 <Input id="agent_id" name="agent_id" placeholder="e.g. AGT001" required />
@@ -271,7 +271,7 @@ export default function AgentsPage() {
                 <Input id="full_name" name="full_name" placeholder="John Doe" required />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <Input id="email" name="email" type="email" placeholder="john@example.com" required />
@@ -281,7 +281,7 @@ export default function AgentsPage() {
                 <Input id="phone" name="phone" placeholder="08012345678" required />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="national_id">National ID (NIN)</Label>
                 <Input id="national_id" name="national_id" placeholder="12345678901" required />
@@ -291,7 +291,7 @@ export default function AgentsPage() {
                 <Input id="income" name="income" type="number" placeholder="50000" required />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="employment">Employment Status</Label>
                 <Select name="employment" defaultValue="full_time">

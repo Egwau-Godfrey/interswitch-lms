@@ -95,7 +95,7 @@ export function CollectionsBreakdownCard({ breakdown, isLoading }: CollectionsBr
             color="bg-rose-500"
           />
         )}
-        <div className="flex items-center justify-between border-t pt-3 text-sm">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-t pt-3 text-sm">
           <div>
             <span className="text-muted-foreground">Collection Rate: </span>
             <span className="font-semibold">{breakdown.collection_rate.toFixed(1)}%</span>

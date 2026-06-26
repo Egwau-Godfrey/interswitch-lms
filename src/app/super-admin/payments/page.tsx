@@ -564,7 +564,7 @@ export default function PaymentsPage() {
         </div>
         <div className="flex gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]" suppressHydrationWarning>
+            <SelectTrigger className="w-full sm:w-[140px]" suppressHydrationWarning>
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -577,7 +577,7 @@ export default function PaymentsPage() {
             </SelectContent>
           </Select>
           <Select value={channelFilter} onValueChange={setChannelFilter}>
-            <SelectTrigger className="w-[150px]" suppressHydrationWarning>
+            <SelectTrigger className="w-full sm:w-[150px]" suppressHydrationWarning>
               <CreditCard className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Channel" />
             </SelectTrigger>

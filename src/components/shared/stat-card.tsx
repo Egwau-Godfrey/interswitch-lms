@@ -28,7 +28,7 @@ export function StatCard({
   valueClassName,
 }: StatCardProps) {
   return (
-    <div className={cn("relative overflow-hidden rounded-lg border bg-card p-6", className)}>
+    <div className={cn("relative overflow-hidden rounded-lg border bg-card p-4 sm:p-6", className)}>
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>

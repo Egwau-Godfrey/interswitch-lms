@@ -21,7 +21,7 @@ export function LoanBulkActionsBar({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border">
+    <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border">
       <span className="text-sm font-medium">
         {selectedCount} loan{selectedCount > 1 ? "s" : ""} selected
       </span>
@@ -35,8 +35,8 @@ export function LoanBulkActionsBar({
         onClick={onClearSelected}
         disabled={isLoading}
       >
-        <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600" />
-        Clear Selected
+        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+        <span className="hidden sm:inline ml-2">Clear Selected</span>
       </Button>
       <Button
         variant="outline"
@@ -45,8 +45,8 @@ export function LoanBulkActionsBar({
         onClick={onWriteOffSelected}
         disabled={isLoading}
       >
-        <XCircle className="w-4 h-4 mr-2" />
-        Write Off Selected
+        <XCircle className="w-4 h-4" />
+        <span className="hidden sm:inline ml-2">Write Off Selected</span>
       </Button>
     </div>
   );

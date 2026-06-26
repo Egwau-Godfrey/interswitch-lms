@@ -393,7 +393,7 @@ export default function PermissionsPage() {
       )}
 
       <Tabs defaultValue="grant" className="space-y-6">
-        <TabsList className="bg-muted/50 p-1">
+        <TabsList className="bg-muted/50 p-1 grid w-full grid-cols-2 sm:grid-cols-4">
           <TabsTrigger value="grant">Grant Access</TabsTrigger>
           <TabsTrigger value="user-permissions">User Permissions</TabsTrigger>
           <TabsTrigger value="active-grants">Active Grants</TabsTrigger>
@@ -598,7 +598,7 @@ export default function PermissionsPage() {
                     </Card>
                   </div>
 
-                  <div className="rounded-md border bg-card">
+                  <div className="rounded-md border bg-card overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
@@ -742,7 +742,7 @@ export default function PermissionsPage() {
                 </div>
               </div>
 
-              <div className="rounded-md border bg-card">
+              <div className="rounded-md border bg-card overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">
@@ -904,7 +904,7 @@ export default function PermissionsPage() {
                 </div>
               </div>
 
-              <div className="rounded-md border bg-card">
+              <div className="rounded-md border bg-card overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50">

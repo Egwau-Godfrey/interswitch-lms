@@ -270,17 +270,18 @@ export default function ApiManagementPage() {
           <CardDescription>Secret keys for authenticating with the Interswitch Loans API.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Client Name</TableHead>
-                <TableHead>API Key</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Last Used</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client Name</TableHead>
+                  <TableHead>API Key</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead>Last Used</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
@@ -319,6 +320,7 @@ export default function ApiManagementPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
 
@@ -334,7 +336,7 @@ export default function ApiManagementPage() {
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="webhook_url">Endpoint URL</Label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input 
                   id="webhook_url" 
                   placeholder="https://api.yourdomain.com/webhooks/loans" 

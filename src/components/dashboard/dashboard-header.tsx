@@ -59,12 +59,12 @@ export function DashboardHeader({
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard Overview</h1>
+        <h1 className="text-2xl lg:text-3xl font-bold tracking-tight">Dashboard Overview</h1>
         <p className="text-muted-foreground">Real-time portfolio metrics for Interswitch Loans.</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
         {/* Quick range buttons */}
-        <div className="flex items-center gap-1 rounded-md border bg-muted/40 p-1">
+        <div className="flex items-center gap-1 rounded-md border bg-muted/40 p-1 overflow-x-auto">
           {quickRanges.map((range) => (
             <button
               key={range.value}

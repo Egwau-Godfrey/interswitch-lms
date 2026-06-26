@@ -334,7 +334,7 @@ export default function UsersPage() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleCreateUser} className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="fname">First Name</Label>
                     <Input id="fname" name="fname" placeholder="John" required />
@@ -409,7 +409,7 @@ export default function UsersPage() {
         </div>
         <div className="flex gap-2">
           <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[130px]">
+            <SelectTrigger className="w-full sm:w-[130px]">
               <Shield className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Role" />
             </SelectTrigger>
@@ -421,7 +421,7 @@ export default function UsersPage() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px]">
+            <SelectTrigger className="w-full sm:w-[130px]">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Status" />
             </SelectTrigger>
@@ -435,7 +435,7 @@ export default function UsersPage() {
       </div>
 
       {/* Users Table */}
-      <div className="rounded-md border bg-card">
+      <div className="rounded-md border bg-card overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
@@ -631,7 +631,7 @@ export default function UsersPage() {
           </DialogHeader>
           {editUser && (
             <form onSubmit={handleEditUser} className="grid gap-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit_fname">First Name</Label>
                   <Input id="edit_fname" name="fname" defaultValue={editUser.first_name} required />
@@ -701,7 +701,7 @@ export default function UsersPage() {
                   <p className="text-sm text-muted-foreground">{viewUser.email}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-muted-foreground">Username</p>
                   <p className="font-medium">{viewUser.username}</p>

@@ -19,7 +19,7 @@ export function AgentBulkActionsBar({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg border">
+    <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-lg border">
       <span className="text-sm font-medium">
         {selectedCount} agent{selectedCount > 1 ? "s" : ""} selected
       </span>
@@ -32,8 +32,8 @@ export function AgentBulkActionsBar({
         size="sm"
         onClick={onActivateSelected}
       >
-        <CheckCircle2 className="w-4 h-4 mr-2 text-emerald-600" />
-        Activate Selected
+        <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+        <span className="hidden sm:inline ml-2">Activate Selected</span>
       </Button>
       <Button
         variant="outline"
@@ -41,8 +41,8 @@ export function AgentBulkActionsBar({
         className="text-destructive"
         onClick={onDeactivateSelected}
       >
-        <XCircle className="w-4 h-4 mr-2" />
-        Deactivate Selected
+        <XCircle className="w-4 h-4" />
+        <span className="hidden sm:inline ml-2">Deactivate Selected</span>
       </Button>
     </div>
   );

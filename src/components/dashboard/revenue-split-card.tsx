@@ -255,7 +255,7 @@ export function RevenueSplitCard({
                           <span className="text-muted-foreground">
                             {pct.toFixed(1)}%
                           </span>
-                          <span className="w-24 text-right font-medium tabular-nums">
+                          <span className="w-20 sm:w-24 text-right font-medium tabular-nums">
                             {formatCurrency(item.value, "UGX", true)}
                           </span>
                         </div>
