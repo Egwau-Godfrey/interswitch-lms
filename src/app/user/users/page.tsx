@@ -12,7 +12,8 @@ import {
   Trash2,
   Edit2,
   RefreshCw,
-  Filter
+  Filter,
+  Eye
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -95,6 +96,12 @@ function formatDate(dateString: string): string {
   });
 }
 
+const PROTECTED_ADMIN_EMAIL = "admin@qriscorp.com";
+
+function isProtectedUser(user: User): boolean {
+  return user.email === PROTECTED_ADMIN_EMAIL;
+}
+
 export default function UsersPage() {
   const { accessToken, isReady } = useApiAuth();
   const [searchQuery, setSearchQuery] = React.useState("");
@@ -107,6 +114,7 @@ export default function UsersPage() {
   const [editUser, setEditUser] = React.useState<User | null>(null);
   const [createRole, setCreateRole] = React.useState<User["role"]>("user");
   const [editRole, setEditRole] = React.useState<User["role"]>("user");
+  const [viewUser, setViewUser] = React.useState<User | null>(null);
   const { canWrite, writeDisabled, writeTooltip, requireWrite } = useWritePermission("users");
 
   React.useEffect(() => {
@@ -538,43 +546,52 @@ export default function UsersPage() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => handleToggleActive(user)}
-                          disabled={writeDisabled}
-                          title={writeTooltip}
-                        >
-                          {user.is_active ? (
-                            <><XCircle className="w-4 h-4 mr-2" />Deactivate</>
-                          ) : (
-                            <><CheckCircle2 className="w-4 h-4 mr-2" />Activate</>
-                          )}
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => handleToggleAdmin(user)}
-                          disabled={writeDisabled}
-                          title={writeTooltip}
-                        >
-                          <Shield className="w-4 h-4 mr-2" />
-                          {user.role === "super_admin" ? "Remove Super Admin" : "Make Super Admin"}
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setEditUser(user)}
-                          disabled={writeDisabled}
-                          title={writeTooltip}
-                        >
-                          <Edit2 className="w-4 h-4 mr-2" />
-                          Edit User
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive"
-                          onClick={() => setDeleteUser(user)}
-                          disabled={writeDisabled}
-                          title={writeTooltip}
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Delete User
-                        </DropdownMenuItem>
+                        {isProtectedUser(user) ? (
+                          <DropdownMenuItem onClick={() => setViewUser(user)}>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                        ) : (
+                          <>
+                            <DropdownMenuItem
+                              onClick={() => handleToggleActive(user)}
+                              disabled={writeDisabled}
+                              title={writeTooltip}
+                            >
+                              {user.is_active ? (
+                                <><XCircle className="w-4 h-4 mr-2" />Deactivate</>
+                              ) : (
+                                <><CheckCircle2 className="w-4 h-4 mr-2" />Activate</>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => handleToggleAdmin(user)}
+                              disabled={writeDisabled}
+                              title={writeTooltip}
+                            >
+                              <Shield className="w-4 h-4 mr-2" />
+                              {user.role === "super_admin" ? "Remove Super Admin" : "Make Super Admin"}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => setEditUser(user)}
+                              disabled={writeDisabled}
+                              title={writeTooltip}
+                            >
+                              <Edit2 className="w-4 h-4 mr-2" />
+                              Edit User
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive"
+                              onClick={() => setDeleteUser(user)}
+                              disabled={writeDisabled}
+                              title={writeTooltip}
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete User
+                            </DropdownMenuItem>
+                          </>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -658,6 +675,78 @@ export default function UsersPage() {
                 </Button>
               </DialogFooter>
             </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View User Details Dialog */}
+      <Dialog open={!!viewUser} onOpenChange={(open) => !open && setViewUser(null)}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>User Details</DialogTitle>
+            <DialogDescription>
+              Viewing details for {viewUser ? getFullName(viewUser) : "this user"}.
+            </DialogDescription>
+          </DialogHeader>
+          {viewUser && (
+            <div className="grid gap-4 py-4">
+              <div className="flex items-center gap-3">
+                <Avatar className="h-12 w-12">
+                  <AvatarFallback className="bg-[#004B91] text-white text-sm">
+                    {getInitials(viewUser)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">{getFullName(viewUser)}</p>
+                  <p className="text-sm text-muted-foreground">{viewUser.email}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Username</p>
+                  <p className="font-medium">{viewUser.username}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Agent ID</p>
+                  <p className="font-medium">{viewUser.agent_id || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Phone</p>
+                  <p className="font-medium">{viewUser.phone_number || "-"}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Created</p>
+                  <p className="font-medium">{formatDate(viewUser.created_at)}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Role</p>
+                  <Badge className={cn(
+                    "border-none mt-1",
+                    viewUser.role === "super_admin"
+                      ? "bg-[#004B91] text-white hover:bg-[#004B91]"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-100"
+                  )}>
+                    {viewUser.role === "super_admin" ? "Super Admin" : viewUser.role}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Status</p>
+                  <Badge className={cn(
+                    "border-none mt-1",
+                    viewUser.is_active
+                      ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                      : "bg-slate-100 text-slate-700 hover:bg-slate-100"
+                  )}>
+                    {viewUser.is_active ? "Active" : "Inactive"}
+                  </Badge>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setViewUser(null)}>
+                  Close
+                </Button>
+              </DialogFooter>
+            </div>
           )}
         </DialogContent>
       </Dialog>
