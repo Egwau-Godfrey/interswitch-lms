@@ -284,7 +284,7 @@ export interface LoanPayment {
   channel: PaymentChannel;
   status: PaymentStatus;
   payment_date: string;
-  created_at: string;
+  created_at?: string;
 }
 
 export interface PaymentCreate {
