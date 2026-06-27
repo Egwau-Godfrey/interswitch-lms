@@ -56,7 +56,7 @@ export default function LoanDetailPage() {
   const [activeTab, setActiveTab] = React.useState(initialTab);
   const { data: session } = useSession();
 
-  const [confirmAction, setConfirmAction] = React.useState<"clear" | "writeoff" | null>(null);
+  const [confirmAction, setConfirmAction] = React.useState<"clear" | "writeoff" | "autostrike" | null>(null);
   const [isRecordPaymentOpen, setIsRecordPaymentOpen] = React.useState(false);
 
   // Fetch loan detail
@@ -133,6 +133,25 @@ export default function LoanDetailPage() {
     }
   );
 
+  // Auto-strike mutation
+  const triggerAutostrike = useMutation(
+    () => loansApi.triggerAutostrike(loanId),
+    {
+      onSuccess: (data) => {
+        toast.success(
+          data.payment_recorded
+            ? `Auto-strike triggered. Payment of ${data.payment_amount.toLocaleString()} UGX recorded.`
+            : "Auto-strike triggered. No payment was recorded."
+        );
+        refetch();
+        setConfirmAction(null);
+      },
+      onError: (err: Error) => {
+        toast.error("Failed to trigger auto-strike", { description: err.message });
+      },
+    }
+  );
+
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -163,6 +182,11 @@ export default function LoanDetailPage() {
   const displayAgent = loanDetail.agent;
   const displayProduct = loanDetail.product;
   const displayPayments = loanDetail.payments;
+
+  const canTriggerAutostrike =
+    (displayLoan.status === "overdue" || displayLoan.status === "defaulted") &&
+    displayLoan.outstanding_balance > 0 &&
+    !displayLoan.auto_strike_triggered;
   // Handle potentially missing statement with a stable default including required IDs
   const displayStatement: LoanStatementResponse = statement || { 
     loan_id: displayLoan.id,
@@ -221,6 +245,17 @@ export default function LoanDetailPage() {
             >
               <CheckCircle2 className="h-4 w-4 mr-2" />
               Mark Cleared
+            </Button>
+          )}
+          {canTriggerAutostrike && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="border-amber-500 text-amber-700 hover:bg-amber-50"
+              onClick={() => setConfirmAction("autostrike")}
+            >
+              <Zap className="h-4 w-4 mr-2" />
+              Trigger Auto-Strike
             </Button>
           )}
         </div>
@@ -582,6 +617,16 @@ export default function LoanDetailPage() {
         variant="destructive"
         onConfirm={() => { writeOffLoan.mutate(); }}
         isLoading={writeOffLoan.isLoading}
+      />
+
+      <ConfirmDialog
+        open={confirmAction === "autostrike"}
+        onOpenChange={(open) => !open && setConfirmAction(null)}
+        title="Trigger Auto-Strike"
+        description="This will deduct funds from the agent's wallet via the Infinity API. Are you sure?"
+        confirmLabel="Trigger Auto-Strike"
+        onConfirm={() => { triggerAutostrike.mutate(); }}
+        isLoading={triggerAutostrike.isLoading}
       />
 
       <RecordPaymentDialog

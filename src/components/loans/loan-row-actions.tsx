@@ -8,6 +8,7 @@ import {
   Banknote,
   CheckCircle2,
   XCircle,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -28,6 +29,7 @@ interface LoanRowActionsProps {
   onClearLoan?: (loan: Loan) => void;
   onWriteOffLoan?: (loan: Loan) => void;
   onRecordPayment?: (loan: Loan) => void;
+  onTriggerAutostrike?: (loan: Loan) => void;
 }
 
 export function LoanRowActions({
@@ -37,6 +39,7 @@ export function LoanRowActions({
   onClearLoan,
   onWriteOffLoan,
   onRecordPayment,
+  onTriggerAutostrike,
 }: LoanRowActionsProps) {
   const canRecordPayment =
     canWrite && (loan.status === "disbursed" || loan.status === "overdue");
@@ -44,6 +47,11 @@ export function LoanRowActions({
     canWrite && (loan.status === "disbursed" || loan.status === "overdue");
   const canWriteOff =
     canWrite && (loan.status === "overdue" || loan.status === "defaulted");
+  const canTriggerAutostrike =
+    canWrite &&
+    (loan.status === "overdue" || loan.status === "defaulted") &&
+    loan.outstanding_balance > 0 &&
+    !loan.auto_strike_triggered;
 
   return (
     <DropdownMenu>
@@ -86,6 +94,14 @@ export function LoanRowActions({
                 onClick={() => onWriteOffLoan?.(loan)}
               >
                 <XCircle className="w-4 h-4 mr-2" /> Write Off
+              </DropdownMenuItem>
+            )}
+            {canTriggerAutostrike && (
+              <DropdownMenuItem
+                className="text-amber-600"
+                onClick={() => onTriggerAutostrike?.(loan)}
+              >
+                <Zap className="w-4 h-4 mr-2" /> Trigger Auto-Strike
               </DropdownMenuItem>
             )}
           </>

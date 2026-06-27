@@ -13,6 +13,7 @@ import type {
   LoanListParams,
   LoanSummaryListResponse,
   LoanSummaryParams,
+  AutoStrikeTriggerResponse,
 } from '@/lib/types';
 
 export const loansApi = {
@@ -112,6 +113,13 @@ export const loansApi = {
     }
 
     return response.blob();
+  },
+
+  /**
+   * Trigger auto-strike for an overdue/defaulted loan
+   */
+  triggerAutostrike: async (loanId: string): Promise<AutoStrikeTriggerResponse> => {
+    return apiClient.post<AutoStrikeTriggerResponse>(`/loans/auto-strike/${loanId}`, {});
   },
 
   /**

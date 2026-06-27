@@ -59,6 +59,7 @@ export default function LoansPage() {
   const [clearLoanTarget, setClearLoanTarget] = React.useState<Loan | null>(null);
   const [writeOffTarget, setWriteOffTarget] = React.useState<Loan | null>(null);
   const [recordPaymentLoan, setRecordPaymentLoan] = React.useState<Loan | null>(null);
+  const [autostrikeTarget, setAutostrikeTarget] = React.useState<Loan | null>(null);
 
   // Bulk action dialog
   const [bulkDialog, setBulkDialog] = React.useState<{ type: "clear" | "writeOff"; count: number } | null>(null);
@@ -115,6 +116,25 @@ export default function LoansPage() {
       },
       onError: (err: Error) => {
         toast.error("Failed to write off loan", { description: err.message });
+      },
+    }
+  );
+
+  // Single-loan autostrike mutation
+  const autostrikeMutation = useMutation(
+    (loanId: string) => loansApi.triggerAutostrike(loanId),
+    {
+      onSuccess: (data) => {
+        toast.success(
+          data.payment_recorded
+            ? `Auto-strike triggered. Payment of ${data.payment_amount.toLocaleString()} UGX recorded.`
+            : "Auto-strike triggered. No payment was recorded."
+        );
+        setAutostrikeTarget(null);
+        refetch();
+      },
+      onError: (err: Error) => {
+        toast.error("Failed to trigger auto-strike", { description: err.message });
       },
     }
   );
@@ -288,6 +308,7 @@ export default function LoansPage() {
               onClearLoan={(loan) => setClearLoanTarget(loan)}
               onWriteOffLoan={(loan) => setWriteOffTarget(loan)}
               onRecordPayment={(loan) => setRecordPaymentLoan(loan)}
+              onTriggerAutostrike={(loan) => setAutostrikeTarget(loan)}
               basePath="/user"
               emptyMessage={tabConfig.emptyMessage}
               canWrite={canWriteLoans}
@@ -305,7 +326,7 @@ export default function LoansPage() {
         confirmLabel="Mark Cleared"
         variant="default"
         isLoading={clearLoanMutation.isLoading}
-        onConfirm={() => clearLoanTarget && clearLoanMutation.mutate(clearLoanTarget.id)}
+        onConfirm={() => { if (clearLoanTarget) clearLoanMutation.mutate(clearLoanTarget.id); }}
       />
 
       {/* Single-loan Write-Off Confirm */}
@@ -317,7 +338,19 @@ export default function LoansPage() {
         confirmLabel="Write Off"
         variant="destructive"
         isLoading={writeOffMutation.isLoading}
-        onConfirm={() => writeOffTarget && writeOffMutation.mutate(writeOffTarget.id)}
+        onConfirm={() => { if (writeOffTarget) writeOffMutation.mutate(writeOffTarget.id); }}
+      />
+
+      {/* Single-loan Auto-Strike Confirm */}
+      <ConfirmDialog
+        open={!!autostrikeTarget}
+        onOpenChange={(open) => !open && setAutostrikeTarget(null)}
+        title="Trigger Auto-Strike"
+        description={`This will deduct funds from the agent's wallet via the Infinity API for loan ${autostrikeTarget?.id.substring(0, 8)}... Are you sure?`}
+        confirmLabel="Trigger Auto-Strike"
+        variant="default"
+        isLoading={autostrikeMutation.isLoading}
+        onConfirm={() => { if (autostrikeTarget) autostrikeMutation.mutate(autostrikeTarget.id); }}
       />
 
       {/* Bulk Action Confirm */}

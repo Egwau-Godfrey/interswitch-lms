@@ -1353,6 +1353,20 @@ export interface AutostrikeDetailResponse {
   pagination: ReportPagination;
 }
 
+export interface AutoStrikeTriggerResponse {
+  success: boolean;
+  loan_id: string;
+  agent_id: string;
+  amount_requested: number;
+  surcharge_requested: number;
+  request_reference: string;
+  payment_recorded: boolean;
+  payment_amount: number;
+  outstanding_balance: number;
+  loan_status: string;
+  response: Record<string, unknown>;
+}
+
 export interface AgentsDetailResponse {
   metrics: {
     agent_count: number;

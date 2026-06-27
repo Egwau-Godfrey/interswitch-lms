@@ -35,6 +35,7 @@ interface LoanSummaryTableProps {
   onClearLoan?: (loan: Loan) => void;
   onWriteOffLoan?: (loan: Loan) => void;
   onRecordPayment?: (loan: Loan) => void;
+  onTriggerAutostrike?: (loan: Loan) => void;
   basePath: string;
   emptyMessage?: string;
   canWrite?: boolean;
@@ -59,6 +60,7 @@ export function LoanSummaryTable({
   onClearLoan,
   onWriteOffLoan,
   onRecordPayment,
+  onTriggerAutostrike,
   basePath,
   emptyMessage = "No loans found.",
   canWrite = true,
@@ -142,6 +144,7 @@ export function LoanSummaryTable({
                       onClearLoan={onClearLoan}
                       onWriteOffLoan={onWriteOffLoan}
                       onRecordPayment={onRecordPayment}
+                      onTriggerAutostrike={onTriggerAutostrike}
                     />
                   </TableCell>
                 </TableRow>
