@@ -577,6 +577,8 @@ export interface DashboardRevenueSplit {
   interswitch_amount: number;
   qriscorp_amount: number;
   accrued_revenue: number;
+  accrued_interswitch_amount: number;
+  accrued_qriscorp_amount: number;
 }
 
 export interface LoanStatusBreakdown {

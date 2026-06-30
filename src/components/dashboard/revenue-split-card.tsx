@@ -97,17 +97,24 @@ export function RevenueSplitCard({
     );
   }
 
+  // Total earned revenue = collected + accrued
+  const totalEarnedRevenue = revenue.gross_revenue + revenue.accrued_revenue;
+  const totalInterswitch =
+    revenue.interswitch_amount + (revenue.accrued_interswitch_amount || 0);
+  const totalQriscorp =
+    revenue.qriscorp_amount + (revenue.accrued_qriscorp_amount || 0);
+
   const partnerData = [
     {
       name: "Interswitch",
-      label: "30%",
-      value: revenue.interswitch_amount,
+      label: `${revenue.interswitch_share_percent}%`,
+      value: totalInterswitch,
       color: PARTNER_COLORS.interswitch,
     },
     {
       name: "Qriscorp",
-      label: "70%",
-      value: revenue.qriscorp_amount,
+      label: `${revenue.qriscorp_share_percent}%`,
+      value: totalQriscorp,
       color: PARTNER_COLORS.qriscorp,
     },
   ];
@@ -147,7 +154,11 @@ export function RevenueSplitCard({
       <CardHeader className="pb-3">
         <CardTitle>Revenue Split</CardTitle>
         <CardDescription>
-          Gross{" "}
+          Total earned{" "}
+          <span className="font-medium text-foreground">
+            {formatCurrency(totalEarnedRevenue, "UGX", true)}
+          </span>{" "}
+          · Collected{" "}
           <span className="font-medium text-foreground">
             {formatCurrency(revenue.gross_revenue, "UGX", true)}
           </span>{" "}
@@ -163,10 +174,10 @@ export function RevenueSplitCard({
         <div className="mb-4 flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
           <span className="text-xs text-muted-foreground">Net revenue</span>
           <span className="ml-auto text-sm font-semibold">
-            {formatCurrency(revenue.qriscorp_amount, "UGX", true)}
+            {formatCurrency(totalQriscorp, "UGX", true)}
           </span>
           <span className="text-xs text-muted-foreground">
-            (your 70% share)
+            (your {revenue.qriscorp_share_percent}% share)
           </span>
         </div>
 
@@ -192,7 +203,7 @@ export function RevenueSplitCard({
                   {partnerData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
-                  
+
                   <DonutLabel total={partnerTotal} />
                 </Pie>
                 <Tooltip
