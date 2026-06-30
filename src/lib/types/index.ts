@@ -580,6 +580,7 @@ export interface DashboardRevenueSplit {
   accrued_application_fee_revenue: number;
   accrued_interest_revenue: number;
   accrued_penalty_revenue: number;
+  accrued_surcharge_revenue: number;
   accrued_interswitch_amount: number;
   accrued_qriscorp_amount: number;
 }

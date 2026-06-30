@@ -38,35 +38,25 @@ const COMPONENT_COLORS = {
   accrued: "#8B5CF6",
 };
 
-function DonutLabel({
-  viewBox,
-  total,
-}: {
-  viewBox?: { cx: number; cy: number };
+interface DonutLabelProps {
+  viewBox?: { cx?: number; cy?: number };
   total: number;
-}) {
-  const { cx = 0, cy = 0 } = viewBox ?? {};
-  const label = formatCurrency(total, "UGX", true);
+  isGross: boolean;
+  sharePercent: number;
+}
 
+function DonutLabel({ viewBox, total, isGross, sharePercent }: DonutLabelProps) {
+  const { cx = 0, cy = 0 } = viewBox ?? {};
   return (
     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
-      <tspan
-        x={cx}
-        dy="-0.6em"
-        fontSize={10}
-        fill="var(--muted-foreground, #6b7280)"
-        fontWeight={400}
-      >
-        Total
+      <tspan x={cx} dy="-0.6em" fontSize={10} fill="var(--muted-foreground)">
+        {isGross ? "Total Earned" : "Collected"}
       </tspan>
-      <tspan
-        x={cx}
-        dy="1.5em"
-        fontSize={11}
-        fill="var(--foreground, #111827)"
-        fontWeight={600}
-      >
-        {label}
+      <tspan x={cx} dy="1.2em" fontSize={14} fontWeight={700} fill="var(--foreground)">
+        {formatCurrency(total, "UGX", true)}
+      </tspan>
+      <tspan x={cx} dy="1.6em" fontSize={9} fill="var(--muted-foreground)">
+        Your share {sharePercent}%
       </tspan>
     </text>
   );
@@ -168,7 +158,7 @@ export function RevenueSplitCard({
       },
       {
         name: "Surcharge",
-        value: revenue.surcharge_revenue,
+        value: revenue.surcharge_revenue + (revenue.accrued_surcharge_revenue || 0),
         color: COMPONENT_COLORS.surcharge,
       },
     ].filter((item) => item.value > 0);
@@ -270,16 +260,11 @@ export function RevenueSplitCard({
             {isGross ? "Gross revenue" : "Net revenue"}
           </span>
           <span className="ml-auto text-sm font-semibold">
-            {formatCurrency(
-              isGross ? totalEarnedRevenue : revenue.qriscorp_amount,
-              "UGX",
-              true
-            )}
+            {formatCurrency(isGross ? totalEarnedRevenue : revenue.gross_revenue, "UGX", true)}
           </span>
           <span className="text-xs text-muted-foreground">
-            {isGross
-              ? `(your ${revenue.qriscorp_share_percent}% share = ${formatCurrency(totalQriscorp, "UGX", true)})`
-              : `(your ${revenue.qriscorp_share_percent}% share)`}
+            (your {revenue.qriscorp_share_percent}% share ={" "}
+            {formatCurrency(isGross ? totalQriscorp : revenue.qriscorp_amount, "UGX", true)})
           </span>
         </div>
 
@@ -307,7 +292,7 @@ export function RevenueSplitCard({
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
-                <DonutLabel total={partnerTotal} />
+                <DonutLabel total={partnerTotal} isGross={isGross} sharePercent={revenue.qriscorp_share_percent} />
                 <Tooltip
                   formatter={(value, name) => [
                     formatCurrency(Number(value ?? 0), "UGX", true),
