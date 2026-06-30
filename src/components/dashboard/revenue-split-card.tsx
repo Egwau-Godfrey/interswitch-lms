@@ -35,6 +35,7 @@ const COMPONENT_COLORS = {
   interest: "#10B981",
   penalty: "#F59E0B",
   surcharge: "#EF4444",
+  accrued: "#8B5CF6",
 };
 
 function DonutLabel({
@@ -75,6 +76,8 @@ export function RevenueSplitCard({
   revenue,
   isLoading,
 }: RevenueSplitCardProps) {
+  const [viewMode, setViewMode] = React.useState<"net" | "gross">("net");
+
   if (isLoading || !revenue) {
     return (
       <Card>
@@ -97,29 +100,46 @@ export function RevenueSplitCard({
     );
   }
 
-  // Total earned revenue = collected + accrued
+  const isGross = viewMode === "gross";
+
+  // Net = collected only  |  Gross = collected + accrued
   const totalEarnedRevenue = revenue.gross_revenue + revenue.accrued_revenue;
   const totalInterswitch =
     revenue.interswitch_amount + (revenue.accrued_interswitch_amount || 0);
   const totalQriscorp =
     revenue.qriscorp_amount + (revenue.accrued_qriscorp_amount || 0);
 
-  const partnerData = [
-    {
-      name: "Interswitch",
-      label: `${revenue.interswitch_share_percent}%`,
-      value: totalInterswitch,
-      color: PARTNER_COLORS.interswitch,
-    },
-    {
-      name: "Qriscorp",
-      label: `${revenue.qriscorp_share_percent}%`,
-      value: totalQriscorp,
-      color: PARTNER_COLORS.qriscorp,
-    },
-  ];
+  const partnerData = isGross
+    ? [
+        {
+          name: "Interswitch",
+          label: `${revenue.interswitch_share_percent}%`,
+          value: totalInterswitch,
+          color: PARTNER_COLORS.interswitch,
+        },
+        {
+          name: "Qriscorp",
+          label: `${revenue.qriscorp_share_percent}%`,
+          value: totalQriscorp,
+          color: PARTNER_COLORS.qriscorp,
+        },
+      ]
+    : [
+        {
+          name: "Interswitch",
+          label: `${revenue.interswitch_share_percent}%`,
+          value: revenue.interswitch_amount,
+          color: PARTNER_COLORS.interswitch,
+        },
+        {
+          name: "Qriscorp",
+          label: `${revenue.qriscorp_share_percent}%`,
+          value: revenue.qriscorp_amount,
+          color: PARTNER_COLORS.qriscorp,
+        },
+      ];
 
-  const componentData = [
+  const baseComponentData = [
     {
       name: "Application Fee",
       value: revenue.application_fee_revenue,
@@ -140,7 +160,18 @@ export function RevenueSplitCard({
       value: revenue.surcharge_revenue,
       color: COMPONENT_COLORS.surcharge,
     },
-  ].filter((item) => item.value > 0);
+  ];
+
+  const componentData = isGross
+    ? [
+        ...baseComponentData,
+        {
+          name: "Accrued (uncollected)",
+          value: revenue.accrued_revenue,
+          color: COMPONENT_COLORS.accrued,
+        },
+      ].filter((item) => item.value > 0)
+    : baseComponentData.filter((item) => item.value > 0);
 
   const totalComponentValue = componentData.reduce(
     (sum, item) => sum + item.value,
@@ -152,32 +183,80 @@ export function RevenueSplitCard({
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle>Revenue Split</CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle>Revenue Split</CardTitle>
+          {/* Net / Gross toggle */}
+          <div className="flex items-center rounded-md border bg-muted p-0.5">
+            <button
+              onClick={() => setViewMode("net")}
+              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                !isGross
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Net
+            </button>
+            <button
+              onClick={() => setViewMode("gross")}
+              className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${
+                isGross
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Gross
+            </button>
+          </div>
+        </div>
         <CardDescription>
-          Total earned{" "}
-          <span className="font-medium text-foreground">
-            {formatCurrency(totalEarnedRevenue, "UGX", true)}
-          </span>{" "}
-          · Collected{" "}
-          <span className="font-medium text-foreground">
-            {formatCurrency(revenue.gross_revenue, "UGX", true)}
-          </span>{" "}
-          · Accrued{" "}
-          <span className="font-medium text-foreground">
-            {formatCurrency(revenue.accrued_revenue, "UGX", true)}
-          </span>
+          {isGross ? (
+            <>
+              Total earned{" "}
+              <span className="font-medium text-foreground">
+                {formatCurrency(totalEarnedRevenue, "UGX", true)}
+              </span>{" "}
+              · Collected{" "}
+              <span className="font-medium text-foreground">
+                {formatCurrency(revenue.gross_revenue, "UGX", true)}
+              </span>{" "}
+              · Accrued{" "}
+              <span className="font-medium text-foreground">
+                {formatCurrency(revenue.accrued_revenue, "UGX", true)}
+              </span>
+            </>
+          ) : (
+            <>
+              Collected{" "}
+              <span className="font-medium text-foreground">
+                {formatCurrency(revenue.gross_revenue, "UGX", true)}
+              </span>{" "}
+              · Accrued{" "}
+              <span className="font-medium text-foreground">
+                {formatCurrency(revenue.accrued_revenue, "UGX", true)}
+              </span>
+            </>
+          )}
         </CardDescription>
       </CardHeader>
 
       <CardContent className="pt-0">
         {/* Summary strip */}
         <div className="mb-4 flex items-center gap-2 rounded-md bg-muted/50 px-3 py-2">
-          <span className="text-xs text-muted-foreground">Net revenue</span>
+          <span className="text-xs text-muted-foreground">
+            {isGross ? "Gross revenue" : "Net revenue"}
+          </span>
           <span className="ml-auto text-sm font-semibold">
-            {formatCurrency(totalQriscorp, "UGX", true)}
+            {formatCurrency(
+              isGross ? totalEarnedRevenue : revenue.qriscorp_amount,
+              "UGX",
+              true
+            )}
           </span>
           <span className="text-xs text-muted-foreground">
-            (your {revenue.qriscorp_share_percent}% share)
+            {isGross
+              ? `(your ${revenue.qriscorp_share_percent}% share = ${formatCurrency(totalQriscorp, "UGX", true)})`
+              : `(your ${revenue.qriscorp_share_percent}% share)`}
           </span>
         </div>
 
