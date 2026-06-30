@@ -52,8 +52,8 @@ function DonutLabel({
     <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle">
       <tspan
         x={cx}
-        dy="-0.4em"
-        fontSize={11}
+        dy="-0.6em"
+        fontSize={10}
         fill="var(--muted-foreground, #6b7280)"
         fontWeight={400}
       >
@@ -61,8 +61,8 @@ function DonutLabel({
       </tspan>
       <tspan
         x={cx}
-        dy="1.4em"
-        fontSize={12}
+        dy="1.5em"
+        fontSize={11}
         fill="var(--foreground, #111827)"
         fontWeight={600}
       >
@@ -122,7 +122,7 @@ export function RevenueSplitCard({
 
   const componentData = React.useMemo(() => {
     if (!revenue) return [];
-    const base = [
+    const collected = [
       {
         name: "Application Fee",
         value: revenue.application_fee_revenue,
@@ -145,15 +145,33 @@ export function RevenueSplitCard({
       },
     ];
 
-    if (isGross && revenue.accrued_revenue > 0) {
-      base.push({
-        name: "Accrued (uncollected)",
-        value: revenue.accrued_revenue,
-        color: COMPONENT_COLORS.accrued,
-      });
+    if (!isGross) {
+      return collected.filter((item) => item.value > 0);
     }
 
-    return base.filter((item) => item.value > 0);
+    // Gross = collected + accrued per component
+    return [
+      {
+        name: "Application Fee",
+        value: revenue.application_fee_revenue + (revenue.accrued_application_fee_revenue || 0),
+        color: COMPONENT_COLORS.applicationFee,
+      },
+      {
+        name: "Interest",
+        value: revenue.interest_revenue + (revenue.accrued_interest_revenue || 0),
+        color: COMPONENT_COLORS.interest,
+      },
+      {
+        name: "Penalty",
+        value: revenue.penalty_revenue + (revenue.accrued_penalty_revenue || 0),
+        color: COMPONENT_COLORS.penalty,
+      },
+      {
+        name: "Surcharge",
+        value: revenue.surcharge_revenue,
+        color: COMPONENT_COLORS.surcharge,
+      },
+    ].filter((item) => item.value > 0);
   }, [isGross, revenue]);
 
   if (isLoading || !revenue) {
@@ -271,7 +289,7 @@ export function RevenueSplitCard({
             <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Partner share
             </p>
-            <ResponsiveContainer width="100%" height={200}>
+            <ResponsiveContainer width="100%" height={220}>
               <PieChart key={`partner-${viewMode}`}>
                 <Pie
                   data={partnerData}
@@ -288,9 +306,8 @@ export function RevenueSplitCard({
                   {partnerData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
-
-                  <DonutLabel total={partnerTotal} />
                 </Pie>
+                <DonutLabel total={partnerTotal} />
                 <Tooltip
                   formatter={(value, name) => [
                     formatCurrency(Number(value ?? 0), "UGX", true),

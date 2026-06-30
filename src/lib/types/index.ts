@@ -577,6 +577,9 @@ export interface DashboardRevenueSplit {
   interswitch_amount: number;
   qriscorp_amount: number;
   accrued_revenue: number;
+  accrued_application_fee_revenue: number;
+  accrued_interest_revenue: number;
+  accrued_penalty_revenue: number;
   accrued_interswitch_amount: number;
   accrued_qriscorp_amount: number;
 }
@@ -757,6 +760,9 @@ export interface ReportSummaryResponse {
     interswitch_amount: number;
     qriscorp_amount: number;
     accrued_revenue: number;
+    accrued_application_fee_revenue: number;
+    accrued_interest_revenue: number;
+    accrued_penalty_revenue: number;
     accrued_interswitch_amount: number;
     accrued_qriscorp_amount: number;
   };
