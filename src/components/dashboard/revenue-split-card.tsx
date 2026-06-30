@@ -78,73 +78,50 @@ export function RevenueSplitCard({
 }: RevenueSplitCardProps) {
   const [viewMode, setViewMode] = React.useState<"net" | "gross">("net");
 
-  if (isLoading || !revenue) {
-    return (
-      <Card>
-        <CardHeader>
-          <Skeleton className="h-5 w-36" />
-          <Skeleton className="h-4 w-56 mt-1" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-6 w-full mb-4" />
-          <div className="grid gap-4 md:grid-cols-2">
-            <Skeleton className="h-50" />
-            <div className="space-y-3 pt-2">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const isGross = viewMode === "gross";
 
   // Net = collected only  |  Gross = collected + accrued
-  const totalEarnedRevenue = revenue.gross_revenue + revenue.accrued_revenue;
+  const totalEarnedRevenue = (revenue?.gross_revenue ?? 0) + (revenue?.accrued_revenue ?? 0);
   const totalInterswitch =
-    revenue.interswitch_amount + (revenue.accrued_interswitch_amount || 0);
+    (revenue?.interswitch_amount ?? 0) + (revenue?.accrued_interswitch_amount ?? 0);
   const totalQriscorp =
-    revenue.qriscorp_amount + (revenue.accrued_qriscorp_amount || 0);
+    (revenue?.qriscorp_amount ?? 0) + (revenue?.accrued_qriscorp_amount ?? 0);
 
-  const partnerData = React.useMemo(
-    () =>
-      isGross
-        ? [
-            {
-              name: "Interswitch",
-              label: `${revenue.interswitch_share_percent}%`,
-              value: totalInterswitch,
-              color: PARTNER_COLORS.interswitch,
-            },
-            {
-              name: "Qriscorp",
-              label: `${revenue.qriscorp_share_percent}%`,
-              value: totalQriscorp,
-              color: PARTNER_COLORS.qriscorp,
-            },
-          ]
-        : [
-            {
-              name: "Interswitch",
-              label: `${revenue.interswitch_share_percent}%`,
-              value: revenue.interswitch_amount,
-              color: PARTNER_COLORS.interswitch,
-            },
-            {
-              name: "Qriscorp",
-              label: `${revenue.qriscorp_share_percent}%`,
-              value: revenue.qriscorp_amount,
-              color: PARTNER_COLORS.qriscorp,
-            },
-          ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isGross, revenue]
-  );
+  const partnerData = React.useMemo(() => {
+    if (!revenue) return [];
+    return isGross
+      ? [
+          {
+            name: "Interswitch",
+            label: `${revenue.interswitch_share_percent}%`,
+            value: totalInterswitch,
+            color: PARTNER_COLORS.interswitch,
+          },
+          {
+            name: "Qriscorp",
+            label: `${revenue.qriscorp_share_percent}%`,
+            value: totalQriscorp,
+            color: PARTNER_COLORS.qriscorp,
+          },
+        ]
+      : [
+          {
+            name: "Interswitch",
+            label: `${revenue.interswitch_share_percent}%`,
+            value: revenue.interswitch_amount,
+            color: PARTNER_COLORS.interswitch,
+          },
+          {
+            name: "Qriscorp",
+            label: `${revenue.qriscorp_share_percent}%`,
+            value: revenue.qriscorp_amount,
+            color: PARTNER_COLORS.qriscorp,
+          },
+        ];
+  }, [isGross, revenue, totalInterswitch, totalQriscorp]);
 
   const componentData = React.useMemo(() => {
+    if (!revenue) return [];
     const base = [
       {
         name: "Application Fee",
@@ -178,6 +155,28 @@ export function RevenueSplitCard({
 
     return base.filter((item) => item.value > 0);
   }, [isGross, revenue]);
+
+  if (isLoading || !revenue) {
+    return (
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-5 w-36" />
+          <Skeleton className="h-4 w-56 mt-1" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-6 w-full mb-4" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <Skeleton className="h-50" />
+            <div className="space-y-3 pt-2">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Skeleton key={i} className="h-10 w-full" />
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const totalComponentValue = componentData.reduce(
     (sum, item) => sum + item.value,
