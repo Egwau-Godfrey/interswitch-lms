@@ -109,69 +109,75 @@ export function RevenueSplitCard({
   const totalQriscorp =
     revenue.qriscorp_amount + (revenue.accrued_qriscorp_amount || 0);
 
-  const partnerData = isGross
-    ? [
-        {
-          name: "Interswitch",
-          label: `${revenue.interswitch_share_percent}%`,
-          value: totalInterswitch,
-          color: PARTNER_COLORS.interswitch,
-        },
-        {
-          name: "Qriscorp",
-          label: `${revenue.qriscorp_share_percent}%`,
-          value: totalQriscorp,
-          color: PARTNER_COLORS.qriscorp,
-        },
-      ]
-    : [
-        {
-          name: "Interswitch",
-          label: `${revenue.interswitch_share_percent}%`,
-          value: revenue.interswitch_amount,
-          color: PARTNER_COLORS.interswitch,
-        },
-        {
-          name: "Qriscorp",
-          label: `${revenue.qriscorp_share_percent}%`,
-          value: revenue.qriscorp_amount,
-          color: PARTNER_COLORS.qriscorp,
-        },
-      ];
+  const partnerData = React.useMemo(
+    () =>
+      isGross
+        ? [
+            {
+              name: "Interswitch",
+              label: `${revenue.interswitch_share_percent}%`,
+              value: totalInterswitch,
+              color: PARTNER_COLORS.interswitch,
+            },
+            {
+              name: "Qriscorp",
+              label: `${revenue.qriscorp_share_percent}%`,
+              value: totalQriscorp,
+              color: PARTNER_COLORS.qriscorp,
+            },
+          ]
+        : [
+            {
+              name: "Interswitch",
+              label: `${revenue.interswitch_share_percent}%`,
+              value: revenue.interswitch_amount,
+              color: PARTNER_COLORS.interswitch,
+            },
+            {
+              name: "Qriscorp",
+              label: `${revenue.qriscorp_share_percent}%`,
+              value: revenue.qriscorp_amount,
+              color: PARTNER_COLORS.qriscorp,
+            },
+          ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isGross, revenue]
+  );
 
-  const baseComponentData = [
-    {
-      name: "Application Fee",
-      value: revenue.application_fee_revenue,
-      color: COMPONENT_COLORS.applicationFee,
-    },
-    {
-      name: "Interest",
-      value: revenue.interest_revenue,
-      color: COMPONENT_COLORS.interest,
-    },
-    {
-      name: "Penalty",
-      value: revenue.penalty_revenue,
-      color: COMPONENT_COLORS.penalty,
-    },
-    {
-      name: "Surcharge",
-      value: revenue.surcharge_revenue,
-      color: COMPONENT_COLORS.surcharge,
-    },
-  ];
+  const componentData = React.useMemo(() => {
+    const base = [
+      {
+        name: "Application Fee",
+        value: revenue.application_fee_revenue,
+        color: COMPONENT_COLORS.applicationFee,
+      },
+      {
+        name: "Interest",
+        value: revenue.interest_revenue,
+        color: COMPONENT_COLORS.interest,
+      },
+      {
+        name: "Penalty",
+        value: revenue.penalty_revenue,
+        color: COMPONENT_COLORS.penalty,
+      },
+      {
+        name: "Surcharge",
+        value: revenue.surcharge_revenue,
+        color: COMPONENT_COLORS.surcharge,
+      },
+    ];
 
-  const componentData = isGross
-    ? [
-        ...baseComponentData,
-        {
-          name: "Accrued (uncollected)",
-          value: revenue.accrued_revenue,
-          color: COMPONENT_COLORS.accrued,
-        },
-      ].filter((item) => item.value > 0)
-    : baseComponentData.filter((item) => item.value > 0);
+    if (isGross && revenue.accrued_revenue > 0) {
+      base.push({
+        name: "Accrued (uncollected)",
+        value: revenue.accrued_revenue,
+        color: COMPONENT_COLORS.accrued,
+      });
+    }
+
+    return base.filter((item) => item.value > 0);
+  }, [isGross, revenue]);
 
   const totalComponentValue = componentData.reduce(
     (sum, item) => sum + item.value,
@@ -267,7 +273,7 @@ export function RevenueSplitCard({
               Partner share
             </p>
             <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
+              <PieChart key={`partner-${viewMode}`}>
                 <Pie
                   data={partnerData}
                   cx="50%"
@@ -278,6 +284,7 @@ export function RevenueSplitCard({
                   dataKey="value"
                   labelLine={false}
                   label={false}
+                  isAnimationActive={false}
                 >
                   {partnerData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
