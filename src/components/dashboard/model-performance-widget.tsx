@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Target, TrendingUp, TrendingDown, AlertCircle } from "lucide-react";
+import { Target, TrendingUp, TrendingDown } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -53,16 +53,6 @@ export function ModelPerformanceWidget({ basePath }: ModelPerformanceWidgetProps
   }
 
   const s = data.summary;
-  const lowRiskTier = data.default_rate_by_tier.find(
-    (t) => t.risk_level === "low"
-  );
-  const lowRiskDefaultRate = lowRiskTier?.default_rate ?? 0;
-  const lowRiskIsHigh = lowRiskDefaultRate > 0.05;
-
-  // Find dominant method
-  const dominantMethod = data.method_comparison.length > 0
-    ? data.method_comparison.reduce((a, b) => (a.total > b.total ? a : b))
-    : null;
 
   return (
     <Card className="p-4">
@@ -105,40 +95,29 @@ export function ModelPerformanceWidget({ basePath }: ModelPerformanceWidgetProps
             {(s.overall_default_rate * 100).toFixed(1)}%
           </p>
           <p className="text-[10px] text-muted-foreground">
-            {s.total_defaults} of {s.total_loans_evaluated} defaulted
+            {s.total_defaults} defaulted · {s.total_recovered_via_autostrike} recovered
           </p>
         </div>
 
-        {/* Low-Risk Default Rate */}
+        {/* Overdue Rate */}
         <div className="rounded-lg border p-2.5">
-          <div className="flex items-center gap-1">
-            <p className="text-xs text-muted-foreground">Low-Risk Defaults</p>
-            {lowRiskIsHigh && (
-              <AlertCircle className="h-3 w-3 text-red-500" />
-            )}
-          </div>
-          <p
-            className={`text-lg font-bold tabular-nums ${
-              lowRiskIsHigh ? "text-red-600" : "text-green-600"
-            }`}
-          >
-            {(lowRiskDefaultRate * 100).toFixed(1)}%
+          <p className="text-xs text-muted-foreground">Overdue Rate</p>
+          <p className="text-lg font-bold tabular-nums">
+            {(s.overall_overdue_rate * 100).toFixed(1)}%
           </p>
           <p className="text-[10px] text-muted-foreground">
-            {lowRiskTier ? `${lowRiskTier.defaults}/${lowRiskTier.total} low-risk` : "N/A"}
+            {s.total_overdue} overdue · avg {s.avg_days_overdue.toFixed(0)}d
           </p>
         </div>
 
-        {/* Dominant Method */}
+        {/* Auto-Strike Recovery */}
         <div className="rounded-lg border p-2.5">
-          <p className="text-xs text-muted-foreground">Method</p>
-          <p className="text-lg font-bold capitalize">
-            {dominantMethod?.scoring_method ?? "—"}
+          <p className="text-xs text-muted-foreground">Auto-Strike</p>
+          <p className="text-lg font-bold tabular-nums text-purple-600">
+            {s.total_autostrike_successful}/{s.total_autostrike_attempts}
           </p>
           <p className="text-[10px] text-muted-foreground">
-            {dominantMethod
-              ? `${(dominantMethod.accuracy * 100).toFixed(0)}% accuracy`
-              : "N/A"}
+            {s.total_recovered_via_autostrike} loans recovered
           </p>
         </div>
       </div>

@@ -16,6 +16,8 @@ import { FactorPredictivePowerChart } from "./performance/factor-predictive-powe
 import { ScoreDriftCard } from "./performance/score-drift-card";
 import { LoanLimitAccuracyCard } from "./performance/loan-limit-accuracy-card";
 import { ConfidenceCalibrationCard } from "./performance/confidence-calibration-card";
+import { OverdueBreakdownCard } from "./performance/overdue-breakdown-card";
+import { AutostrikeRecoveryCard } from "./performance/autostrike-recovery-card";
 import { PredictionOutcomeTable } from "./performance/prediction-outcome-table";
 import { RecommendationsCard } from "./performance/recommendations-card";
 
@@ -149,6 +151,12 @@ export function ModelPerformanceTab() {
 
       {/* Confidence calibration */}
       <ConfidenceCalibrationCard data={data.confidence_calibration} />
+
+      {/* Overdue breakdown + Auto-strike recovery */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <OverdueBreakdownCard data={data.overdue_breakdown} />
+        <AutostrikeRecoveryCard data={data.autostrike_recovery} />
+      </div>
 
       {/* Agent-level table */}
       <PredictionOutcomeTable data={data.agent_level_details} />

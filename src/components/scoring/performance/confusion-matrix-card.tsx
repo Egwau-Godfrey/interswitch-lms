@@ -21,6 +21,7 @@ const OUTCOME_COLORS: Record<string, string> = {
   repaid: "bg-green-100 text-green-700",
   overdue: "bg-amber-100 text-amber-700",
   defaulted: "bg-red-100 text-red-700",
+  recovered_via_autostrike: "bg-purple-100 text-purple-700",
 };
 
 export function ConfusionMatrixCard({ matrix }: Props) {
@@ -63,6 +64,7 @@ export function ConfusionMatrixCard({ matrix }: Props) {
               <th className="text-center px-3 py-2 font-medium text-green-600">Repaid</th>
               <th className="text-center px-3 py-2 font-medium text-amber-600">Overdue</th>
               <th className="text-center px-3 py-2 font-medium text-red-600">Defaulted</th>
+              <th className="text-center px-3 py-2 font-medium text-purple-600">Recovered<br/>(Auto-Strike)</th>
               <th className="text-center px-3 py-2 font-medium">Total</th>
             </tr>
           </thead>
@@ -83,6 +85,11 @@ export function ConfusionMatrixCard({ matrix }: Props) {
                 <td className="text-center px-3 py-2">
                   <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${OUTCOME_COLORS.defaulted}`}>
                     {row.defaulted}
+                  </span>
+                </td>
+                <td className="text-center px-3 py-2">
+                  <span className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${OUTCOME_COLORS.recovered_via_autostrike}`}>
+                    {row.recovered_via_autostrike ?? 0}
                   </span>
                 </td>
                 <td className="text-center px-3 py-2 font-bold tabular-nums">{row.total}</td>

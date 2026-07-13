@@ -209,8 +209,16 @@ export interface ModelPerformanceSummary {
   total_defaults: number;
   total_repaid: number;
   total_overdue: number;
+  total_recovered_via_autostrike: number;
+  total_autostrike_attempts: number;
+  total_autostrike_successful: number;
+  total_autostrike_recovered_amount: number;
   overall_default_rate: number;
   overall_accuracy: number;
+  overall_overdue_rate: number;
+  avg_days_overdue: number;
+  overdue_with_autostrike: number;
+  overdue_without_autostrike: number;
   date_range_from: string | null;
   date_range_to: string | null;
 }
@@ -220,6 +228,7 @@ export interface ConfusionMatrixRow {
   repaid: number;
   overdue: number;
   defaulted: number;
+  recovered_via_autostrike: number;
   total: number;
 }
 
@@ -301,6 +310,10 @@ export interface AgentPredictionOutcome {
   was_overdue: boolean;
   had_default: boolean;
   had_autostrike: boolean;
+  had_successful_autostrike: boolean;
+  had_failed_autostrike: boolean;
+  autostrike_attempt_count: number;
+  autostrike_recovered_amount: number;
   correct_prediction: boolean;
 }
 
@@ -313,6 +326,35 @@ export interface RecommendationItem {
 }
 
 /** Full prediction vs outcome analytics response. */
+export interface AutostrikeRecoveryMetrics {
+  total_loans_with_autostrike: number;
+  total_autostrike_attempts: number;
+  successful_autostrikes: number;
+  failed_autostrikes: number;
+  success_rate: number;
+  total_recovered_amount: number;
+  autostrike_on_overdue: number;
+  autostrike_on_defaulted: number;
+  autostrike_on_cleared: number;
+  avg_recovery_per_successful: number;
+  recovery_rate_of_outstanding: number;
+}
+
+export interface OverdueBreakdown {
+  total_overdue: number;
+  avg_days_overdue: number;
+  max_days_overdue: number;
+  total_overdue_amount: number;
+  overdue_with_autostrike: number;
+  overdue_without_autostrike: number;
+  overdue_autostrike_successful: number;
+  overdue_autostrike_failed: number;
+  overdue_by_risk_tier: DefaultRateByTier[];
+  avg_outstanding_on_overdue: number;
+  overdue_fully_recovered: number;
+  overdue_partially_recovered: number;
+}
+
 export interface ModelPerformanceResponse {
   summary: ModelPerformanceSummary;
   confusion_matrix: Record<string, ConfusionMatrixRow>;
@@ -323,6 +365,8 @@ export interface ModelPerformanceResponse {
   score_drift: ScoreDriftMetrics;
   loan_limit_accuracy: LoanLimitAccuracy;
   confidence_calibration: ConfidenceCalibrationBucket[];
+  autostrike_recovery: AutostrikeRecoveryMetrics;
+  overdue_breakdown: OverdueBreakdown;
   agent_level_details: AgentPredictionOutcome[];
   recommendations: RecommendationItem[];
 }

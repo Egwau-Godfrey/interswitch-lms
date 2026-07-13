@@ -16,6 +16,7 @@ const OUTCOME_BADGES: Record<string, string> = {
   repaid: "bg-green-100 text-green-700",
   overdue: "bg-amber-100 text-amber-700",
   defaulted: "bg-red-100 text-red-700",
+  recovered_via_autostrike: "bg-purple-100 text-purple-700",
   in_progress: "bg-blue-100 text-blue-700",
 };
 
@@ -72,6 +73,7 @@ export function PredictionOutcomeTable({ data }: Props) {
               <th className="text-left px-3 py-2 font-medium">Method</th>
               <th className="text-left px-3 py-2 font-medium">Outcome</th>
               <th className="text-right px-3 py-2 font-medium">Loan Amount</th>
+              <th className="text-center px-3 py-2 font-medium">Auto-Strike</th>
               <th className="text-center px-3 py-2 font-medium">Correct?</th>
             </tr>
           </thead>
@@ -96,6 +98,16 @@ export function PredictionOutcomeTable({ data }: Props) {
                 </td>
                 <td className="text-right px-3 py-2 tabular-nums text-xs">
                   {p.loan_amount.toLocaleString()}
+                </td>
+                <td className="text-center px-3 py-2">
+                  {p.had_autostrike ? (
+                    <span className="text-xs">
+                      {p.had_successful_autostrike ? "✅" : "❌"}
+                      {p.autostrike_attempt_count > 0 && ` (${p.autostrike_attempt_count})`}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  )}
                 </td>
                 <td className="text-center px-3 py-2">
                   {p.correct_prediction ? (
