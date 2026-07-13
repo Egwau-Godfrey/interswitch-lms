@@ -108,15 +108,20 @@ export function useApi<T>(
     async (isRefetch = false) => {
       if (!enabled) return;
 
-      // If we have fresh cached data and this isn't an explicit refetch,
-      // show cached data immediately and do a silent background refresh.
+      // Skip background revalidation if there's no access token —
+      // avoids 401 spam when session expires or isn't loaded yet.
+      // The blocking fetch below will still run and show a proper error.
       if (cacheKey && !isRefetch) {
         const cached = cache.get(cacheKey);
         if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
           setData(cached.data as T);
           setIsLoading(false);
-          // Silent background revalidation
+          // Only do background revalidation if we have an auth token
           try {
+            const { apiClient } = await import("@/lib/api/client");
+            if (!apiClient.getAccessToken()) {
+              return;
+            }
             const result = await fetcher();
             setData(result);
             cache.set(cacheKey, { data: result, timestamp: Date.now() });

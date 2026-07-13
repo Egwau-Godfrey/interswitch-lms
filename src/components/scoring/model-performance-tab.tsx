@@ -77,13 +77,28 @@ export function ModelPerformanceTab() {
   }
 
   if (!data || data.summary.total_loans_evaluated === 0) {
+    const isFiltered = !!(dateFrom || dateTo || methodFilter);
     return (
       <div className="space-y-4">
         <Alert>
           <AlertDescription>
-            No prediction vs outcome data available yet. This section will
-            populate once loans are disbursed and their outcomes (repaid,
-            overdue, or defaulted) are recorded.
+            {isFiltered ? (
+              <>
+                No loans match the selected filters
+                {methodFilter && ` (method: ${methodFilter})`}
+                {dateFrom && ` from ${dateFrom}`}
+                {dateTo && ` to ${dateTo}`}.
+                Try selecting &quot;All Methods&quot; or widening the date range.
+                Most loans are likely scored with a different method than the
+                one selected.
+              </>
+            ) : (
+              <>
+                No prediction vs outcome data available yet. This section will
+                populate once loans are disbursed and their outcomes (repaid,
+                overdue, or defaulted) are recorded.
+              </>
+            )}
           </AlertDescription>
         </Alert>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
