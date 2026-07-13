@@ -136,6 +136,19 @@ export function useApi<T>(
       }
 
       // No fresh cache — blocking fetch with loading state
+      // Wait briefly for auth token if not yet available
+      if (!isRefetch) {
+        try {
+          const { apiClient } = await import("@/lib/api/client");
+          // Wait up to 3 seconds for the access token to be set
+          for (let i = 0; i < 30 && !apiClient.getAccessToken(); i++) {
+            await new Promise((r) => setTimeout(r, 100));
+          }
+        } catch {
+          // ignore import errors
+        }
+      }
+
       if (isRefetch) {
         setIsRefetching(true);
       } else {
