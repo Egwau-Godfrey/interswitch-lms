@@ -198,6 +198,135 @@ export const FACTOR_LABELS: Record<string, string> = {
   consistency: 'Consistency',
 };
 
+// ============================================
+// Model Performance (Prediction vs Outcome) Types
+// ============================================
+
+/** Top-level summary of prediction vs outcome analytics. */
+export interface ModelPerformanceSummary {
+  total_predictions: number;
+  total_loans_evaluated: number;
+  total_defaults: number;
+  total_repaid: number;
+  total_overdue: number;
+  overall_default_rate: number;
+  overall_accuracy: number;
+  date_range_from: string | null;
+  date_range_to: string | null;
+}
+
+/** One row of the confusion matrix (per predicted risk level). */
+export interface ConfusionMatrixRow {
+  repaid: number;
+  overdue: number;
+  defaulted: number;
+  total: number;
+}
+
+/** Default rate for a single risk tier. */
+export interface DefaultRateByTier {
+  risk_level: string;
+  total: number;
+  defaults: number;
+  default_rate: number;
+}
+
+/** Performance comparison for a single scoring method. */
+export interface MethodComparisonRow {
+  scoring_method: string;
+  total: number;
+  defaults: number;
+  default_rate: number;
+  avg_confidence: number;
+  accuracy: number;
+}
+
+/** Calibration data for a score bucket. */
+export interface CalibrationBucket {
+  score_bucket: string;
+  predicted_default_prob: number;
+  actual_default_rate: number;
+  count: number;
+}
+
+/** How well a single factor discriminates repaid vs defaulted. */
+export interface FactorPredictivePower {
+  factor: string;
+  avg_score_repaid: number;
+  avg_score_defaulted: number;
+  discriminative_power: number;
+}
+
+/** Score stability and drift metrics. */
+export interface ScoreDriftMetrics {
+  avg_score_change_30d: number;
+  score_volatility: number;
+  avg_drift_before_default: number;
+  avg_drift_before_clearance: number;
+}
+
+/** Default rate for a loan-limit tier. */
+export interface LoanLimitTierDefault {
+  tier: string;
+  default_rate: number;
+}
+
+/** Loan limit accuracy metrics. */
+export interface LoanLimitAccuracy {
+  avg_utilization_rate: number;
+  over_limit_rate: number;
+  default_rate_by_limit_tier: LoanLimitTierDefault[];
+}
+
+/** Confidence calibration data for a bucket. */
+export interface ConfidenceCalibrationBucket {
+  confidence_bucket: string;
+  count: number;
+  actual_default_rate: number;
+}
+
+/** Agent-level prediction vs outcome record. */
+export interface AgentPredictionOutcome {
+  agent_id: string;
+  predicted_risk: string;
+  predicted_score: number;
+  scoring_method: string;
+  confidence: number;
+  loan_id: string;
+  loan_status: string;
+  actual_outcome: string;
+  loan_amount: number;
+  total_paid: number;
+  days_to_repay: number | null;
+  was_overdue: boolean;
+  had_default: boolean;
+  had_autostrike: boolean;
+  correct_prediction: boolean;
+}
+
+/** Auto-generated actionable recommendation. */
+export interface RecommendationItem {
+  severity: string; // critical, warning, info
+  title: string;
+  message: string;
+  action: string;
+}
+
+/** Full prediction vs outcome analytics response. */
+export interface ModelPerformanceResponse {
+  summary: ModelPerformanceSummary;
+  confusion_matrix: Record<string, ConfusionMatrixRow>;
+  default_rate_by_tier: DefaultRateByTier[];
+  method_comparison: MethodComparisonRow[];
+  calibration: CalibrationBucket[];
+  factor_predictive_power: FactorPredictivePower[];
+  score_drift: ScoreDriftMetrics;
+  loan_limit_accuracy: LoanLimitAccuracy;
+  confidence_calibration: ConfidenceCalibrationBucket[];
+  agent_level_details: AgentPredictionOutcome[];
+  recommendations: RecommendationItem[];
+}
+
 /** Category display labels. */
 export const CONFIG_CATEGORY_LABELS: Record<string, string> = {
   weights: 'Factor Weights',

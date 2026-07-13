@@ -24,6 +24,7 @@ import { OverdueAgingChart } from "@/components/dashboard/overdue-aging-chart";
 import { ParMetricsCard } from "@/components/dashboard/par-metrics-card";
 import { AtRiskAgentsWidget } from "@/components/dashboard/at-risk-agents-widget";
 import { RecentActivityFeed } from "@/components/dashboard/recent-activity-feed";
+import { ModelPerformanceWidget } from "@/components/dashboard/model-performance-widget";
 import { useDashboardData } from "@/components/dashboard/use-dashboard-data";
 import type { ReportFilters, ReportGranularity } from "@/lib/types";
 
@@ -180,6 +181,9 @@ export function DashboardOverview({ basePath }: DashboardOverviewProps) {
 
       {/* KPI Cards (wallet loads independently) */}
       <KpiCardsRow kpis={data?.kpis} isLoading={isLoading} walletEnabled={true} />
+
+      {/* Model Performance Widget */}
+      <ModelPerformanceWidget basePath={basePath} />
 
       {/* Collections Breakdown + Revenue Split */}
       <div className="grid gap-4 md:grid-cols-2">

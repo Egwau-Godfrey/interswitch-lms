@@ -13,7 +13,7 @@ import type {
   BulkScoreResponse,
   RescoreAllResponse,
 } from '@/lib/types';
-import type { ScoreBreakdown, AgentBehavior } from '@/lib/types/scoring';
+import type { ScoreBreakdown, AgentBehavior, ModelPerformanceResponse } from '@/lib/types/scoring';
 
 export const scoringDashboardApi = {
   /**
@@ -89,4 +89,14 @@ export const scoringDashboardApi = {
     if (!response.ok) throw new Error('Failed to export scored agents');
     return response.blob();
   },
+
+  /**
+   * Get model performance analytics (prediction vs outcome)
+   */
+  getModelPerformance: (params?: {
+    date_from?: string;
+    date_to?: string;
+    scoring_method?: string;
+  }): Promise<ModelPerformanceResponse> =>
+    apiClient.get<ModelPerformanceResponse>('/scoring/model-performance', params),
 };

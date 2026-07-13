@@ -7,6 +7,7 @@ import { apiClient } from "@/lib/api/client";
 import { ScoringOverviewTab } from "@/components/scoring/scoring-overview-tab";
 import { ScoringConfigPanel } from "@/components/scoring/config/scoring-config-panel";
 import { ScoringAnalyticsTab } from "@/components/scoring/scoring-analytics-tab";
+import { ModelPerformanceTab } from "@/components/scoring/model-performance-tab";
 
 // Try to load permissions context — only available when rendered under /user layout
 let usePermissionsHook: (() => { hasWriteAccess: (tab: string) => boolean; isLoading: boolean; refetch: () => void }) | null = null;
@@ -52,9 +53,10 @@ export default function ScoringPage() {
       </div>
 
       <Tabs defaultValue="overview">
-        <TabsList className="grid w-full grid-cols-3 md:w-auto md:inline-grid">
+        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 md:w-auto md:inline-grid">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
+          <TabsTrigger value="performance">Model Performance</TabsTrigger>
           <TabsTrigger value="config">Configuration</TabsTrigger>
         </TabsList>
 
@@ -69,6 +71,10 @@ export default function ScoringPage() {
 
         <TabsContent value="analytics" className="mt-6">
           <ScoringAnalyticsTab />
+        </TabsContent>
+
+        <TabsContent value="performance" className="mt-6">
+          <ModelPerformanceTab />
         </TabsContent>
 
         <TabsContent value="config" className="mt-6">
