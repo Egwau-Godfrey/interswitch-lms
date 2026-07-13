@@ -34,10 +34,19 @@ export function ModelPerformanceTab() {
     return p;
   }, [dateFrom, dateTo, methodFilter]);
 
+  // Cache key includes params so each filter combo has its own cache entry
+  const cacheKey = React.useMemo(() => {
+    const parts = ["model-performance"];
+    if (params.date_from) parts.push(`from:${params.date_from}`);
+    if (params.date_to) parts.push(`to:${params.date_to}`);
+    if (params.scoring_method) parts.push(`method:${params.scoring_method}`);
+    return parts.join("|");
+  }, [params]);
+
   const { data, isLoading, error } = useApi(
     () => scoringDashboardApi.getModelPerformance(params),
-    ["model-performance", params],
-    { cacheKey: "model-performance" }
+    [cacheKey],
+    { cacheKey }
   );
 
   if (isLoading) {
