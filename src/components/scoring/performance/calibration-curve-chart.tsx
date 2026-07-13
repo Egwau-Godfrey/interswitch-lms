@@ -10,7 +10,6 @@ import {
   CartesianGrid,
   Tooltip as RTooltip,
   ResponsiveContainer,
-  ReferenceLine,
 } from "recharts";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -83,6 +82,12 @@ export function CalibrationCurveChart({ data }: Props) {
       gap: Math.abs(d.predicted_default_prob - d.actual_default_rate),
     };
   });
+
+  // Perfect calibration line: at score 0 → 100% default, at score 1 → 0% default
+  const perfectCalibrationData = [
+    { score_midpoint: 0, perfect: 1.0 },
+    { score_midpoint: 1, perfect: 0.0 },
+  ];
 
   const maxGap = Math.max(...chartData.map((d) => d.gap));
   const hasData = chartData.some((d) => d.count > 0);
@@ -161,12 +166,17 @@ export function CalibrationCurveChart({ data }: Props) {
             <RTooltip content={<CustomTooltip />} />
 
             {/* Perfect calibration reference line (diagonal) */}
-            <ReferenceLine
-              segment={[{ x: 0, y: 1 }, { x: 1, y: 0 }]}
+            <Line
+              data={perfectCalibrationData}
+              type="linear"
+              dataKey="perfect"
               stroke="hsl(var(--muted-foreground))"
               strokeDasharray="4 2"
               strokeWidth={1}
-              opacity={0.5}
+              dot={false}
+              activeDot={false}
+              isAnimationActive={false}
+              name="Perfect"
             />
 
             {/* Predicted default probability line */}
