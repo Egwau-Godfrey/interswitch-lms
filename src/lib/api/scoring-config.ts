@@ -7,6 +7,7 @@ import type {
   ScoringConfigEntry,
   ScoringConfigGroup,
   ScoringConfigResetResponse,
+  MLModelInfo,
 } from '@/lib/types/scoring';
 
 export const scoringConfigApi = {
@@ -35,4 +36,8 @@ export const scoringConfigApi = {
   /** Reset all config entries to system defaults. */
   reset: (): Promise<ScoringConfigResetResponse> =>
     apiClient.post<ScoringConfigResetResponse>('/scoring/config/reset'),
+
+  /** Get ML model metadata for informational display. */
+  getMLModelInfo: (): Promise<MLModelInfo> =>
+    apiClient.get<MLModelInfo>('/scoring/config/ml-model-info'),
 };

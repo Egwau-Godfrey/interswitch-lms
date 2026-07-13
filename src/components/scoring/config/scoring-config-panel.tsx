@@ -25,6 +25,10 @@ import { ScoringWeightsEditor } from "./scoring-weights-editor";
 import { RiskThresholdsEditor } from "./risk-thresholds-editor";
 import { LoanLimitConfig } from "./loan-limit-config";
 import { PenaltyRulesEditor } from "./penalty-rules-editor";
+import { FeatureExtractionEditor } from "./feature-extraction-editor";
+import { MLModelSettingsEditor } from "./ml-model-settings-editor";
+import { LoanBehaviorEditor } from "./loan-behavior-editor";
+import { PipelineInfoCard } from "./pipeline-info-card";
 
 interface ScoringConfigPanelProps {
   hasWriteAccess: boolean;
@@ -39,6 +43,12 @@ export function ScoringConfigPanel({
     () => scoringConfigApi.getAll(),
     ["scoring-config"],
     { cacheKey: "scoring-config" }
+  );
+
+  const { data: mlModelInfo, refetch: refetchMl } = useApi(
+    () => scoringConfigApi.getMLModelInfo(),
+    ["scoring-ml-model-info"],
+    { cacheKey: "scoring-ml-model-info" }
   );
 
   // Local working copy of values
@@ -69,6 +79,7 @@ export function ScoringConfigPanel({
         toast.success("Configuration saved successfully");
         setDirty(false);
         refetch();
+        refetchMl();
       },
       onError: (e) => toast.error(e.message || "Failed to save configuration"),
     }
@@ -80,6 +91,7 @@ export function ScoringConfigPanel({
       onSuccess: (res) => {
         toast.success(res.message || "Configuration reset to defaults");
         refetch();
+        refetchMl();
       },
       onError: (e) => toast.error(e.message || "Failed to reset configuration"),
     }
@@ -132,7 +144,7 @@ export function ScoringConfigPanel({
       )}
 
       <Tabs defaultValue="weights">
-        <TabsList className="grid w-full grid-cols-2 md:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-4 md:grid-cols-8">
           <TabsTrigger value="weights">
             {CONFIG_CATEGORY_LABELS.weights}
           </TabsTrigger>
@@ -145,6 +157,18 @@ export function ScoringConfigPanel({
           <TabsTrigger value="penalties">
             {CONFIG_CATEGORY_LABELS.penalties}
           </TabsTrigger>
+          <TabsTrigger value="extraction">
+            Extraction
+          </TabsTrigger>
+          <TabsTrigger value="ml">
+            ML Model
+          </TabsTrigger>
+          <TabsTrigger value="behavior">
+            Behavior
+          </TabsTrigger>
+          <TabsTrigger value="pipeline">
+            Pipeline
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="weights" className="mt-4">
@@ -152,6 +176,7 @@ export function ScoringConfigPanel({
             values={localValues}
             onChange={handleChange}
             disabled={!hasWriteAccess}
+            configEntries={configEntries}
           />
         </TabsContent>
 
@@ -160,6 +185,7 @@ export function ScoringConfigPanel({
             values={localValues}
             onChange={handleChange}
             disabled={!hasWriteAccess}
+            configEntries={configEntries}
           />
         </TabsContent>
 
@@ -168,6 +194,7 @@ export function ScoringConfigPanel({
             values={localValues}
             onChange={handleChange}
             disabled={!hasWriteAccess}
+            configEntries={configEntries}
           />
         </TabsContent>
 
@@ -176,6 +203,39 @@ export function ScoringConfigPanel({
             values={localValues}
             onChange={handleChange}
             disabled={!hasWriteAccess}
+            configEntries={configEntries}
+          />
+        </TabsContent>
+
+        <TabsContent value="extraction" className="mt-4">
+          <FeatureExtractionEditor
+            values={localValues}
+            onChange={handleChange}
+            disabled={!hasWriteAccess}
+          />
+        </TabsContent>
+
+        <TabsContent value="ml" className="mt-4">
+          <MLModelSettingsEditor
+            values={localValues}
+            onChange={handleChange}
+            disabled={!hasWriteAccess}
+            mlModelInfo={mlModelInfo}
+          />
+        </TabsContent>
+
+        <TabsContent value="behavior" className="mt-4">
+          <LoanBehaviorEditor
+            values={localValues}
+            onChange={handleChange}
+            disabled={!hasWriteAccess}
+          />
+        </TabsContent>
+
+        <TabsContent value="pipeline" className="mt-4">
+          <PipelineInfoCard
+            configValues={localValues}
+            mlModelInfo={mlModelInfo}
           />
         </TabsContent>
       </Tabs>

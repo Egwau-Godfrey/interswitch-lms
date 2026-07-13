@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { FACTOR_LABELS } from "@/lib/types/scoring";
+import type { ScoringConfigEntry } from "@/lib/types/scoring";
 
 /** Factor weight keys in the scoring config. */
 const WEIGHT_KEYS = [
@@ -25,13 +26,25 @@ interface ScoringWeightsEditorProps {
   onChange: (key: string, value: string) => void;
   /** Whether editing is disabled. */
   disabled?: boolean;
+  /** Full config entries for help text lookup. */
+  configEntries?: ScoringConfigEntry[];
 }
 
 export function ScoringWeightsEditor({
   values,
   onChange,
   disabled,
+  configEntries,
 }: ScoringWeightsEditorProps) {
+  const helpMap = React.useMemo(() => {
+    const m: Record<string, string> = {};
+    if (configEntries) {
+      for (const e of configEntries) {
+        if (e.help_text) m[e.key] = e.help_text;
+      }
+    }
+    return m;
+  }, [configEntries]);
   const parsed = React.useMemo(() => {
     const map: Record<string, number> = {};
     for (const key of WEIGHT_KEYS) {
@@ -99,6 +112,9 @@ export function ScoringWeightsEditor({
                 onValueChange={([v]) => onChange(key, v.toFixed(2))}
                 disabled={disabled}
               />
+              {helpMap[key] && (
+                <p className="text-xs text-muted-foreground">{helpMap[key]}</p>
+              )}
             </div>
           );
         })}

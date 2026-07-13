@@ -4,6 +4,7 @@ import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/components/shared/stat-card";
+import type { ScoringConfigEntry } from "@/lib/types/scoring";
 
 /** Global guardrail keys. */
 const GLOBAL_KEYS = [
@@ -45,13 +46,24 @@ interface LoanLimitConfigProps {
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
   disabled?: boolean;
+  configEntries?: ScoringConfigEntry[];
 }
 
 export function LoanLimitConfig({
   values,
   onChange,
   disabled,
+  configEntries,
 }: LoanLimitConfigProps) {
+  const helpMap = React.useMemo(() => {
+    const m: Record<string, string> = {};
+    if (configEntries) {
+      for (const e of configEntries) {
+        if (e.help_text) m[e.key] = e.help_text;
+      }
+    }
+    return m;
+  }, [configEntries]);
   const num = React.useCallback(
     (key: string, fallback = 0) => parseFloat(values[key] ?? "") || fallback,
     [values],
@@ -106,6 +118,9 @@ export function LoanLimitConfig({
                 disabled={disabled}
                 className="tabular-nums"
               />
+              {helpMap[key] && (
+                <p className="text-xs text-muted-foreground">{helpMap[key]}</p>
+              )}
             </div>
           ))}
         </div>

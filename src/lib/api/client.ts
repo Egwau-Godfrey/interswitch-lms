@@ -10,8 +10,14 @@ export const getSecureApiBaseUrl = (): string => {
     throw new Error('NEXT_PUBLIC_API_BASE_URL environment variable is not set');
   }
   
-  // Always force HTTPS in production (VERCEL_ENV is set on Vercel)
-  if (url.startsWith('http:') && (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production')) {
+  // Force HTTPS in production (VERCEL_ENV is set on Vercel),
+  // but never for localhost / 127.0.0.1 (local dev backends run on HTTP)
+  const isLocal = url.includes('localhost') || url.includes('127.0.0.1');
+  if (
+    url.startsWith('http:') &&
+    !isLocal &&
+    (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production')
+  ) {
     url = url.replace('http:', 'https:');
   }
   

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import type { ScoringConfigEntry } from "@/lib/types/scoring";
 
 const THRESHOLD_KEYS = [
   { key: "threshold_rejected", label: "Rejected (below)", color: "bg-gray-500" },
@@ -15,13 +16,24 @@ interface RiskThresholdsEditorProps {
   values: Record<string, string>;
   onChange: (key: string, value: string) => void;
   disabled?: boolean;
+  configEntries?: ScoringConfigEntry[];
 }
 
 export function RiskThresholdsEditor({
   values,
   onChange,
   disabled,
+  configEntries,
 }: RiskThresholdsEditorProps) {
+  const helpMap = React.useMemo(() => {
+    const m: Record<string, string> = {};
+    if (configEntries) {
+      for (const e of configEntries) {
+        if (e.help_text) m[e.key] = e.help_text;
+      }
+    }
+    return m;
+  }, [configEntries]);
   const parsed = React.useMemo(() => {
     const map: Record<string, number> = {};
     for (const { key } of THRESHOLD_KEYS) {
@@ -65,22 +77,27 @@ export function RiskThresholdsEditor({
 
       <div className="space-y-3">
         {THRESHOLD_KEYS.map(({ key, label }) => (
-          <div key={key} className="flex items-center gap-4">
-            <Label className="text-sm w-40 shrink-0">{label}</Label>
-            <Input
-              type="number"
-              min={0}
-              max={1}
-              step={0.01}
-              value={parsed[key].toFixed(2)}
-              onChange={(e) => onChange(key, e.target.value)}
-              disabled={disabled}
-              className="w-24 h-8 tabular-nums"
-            />
-            <Progress value={parsed[key] * 100} className="flex-1 h-2" />
-            <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">
-              {Math.round(parsed[key] * 100)}%
-            </span>
+          <div key={key} className="space-y-1">
+            <div className="flex items-center gap-4">
+              <Label className="text-sm w-40 shrink-0">{label}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={1}
+                step={0.01}
+                value={parsed[key].toFixed(2)}
+                onChange={(e) => onChange(key, e.target.value)}
+                disabled={disabled}
+                className="w-24 h-8 tabular-nums"
+              />
+              <Progress value={parsed[key] * 100} className="flex-1 h-2" />
+              <span className="text-xs text-muted-foreground w-10 text-right tabular-nums">
+                {Math.round(parsed[key] * 100)}%
+              </span>
+            </div>
+            {helpMap[key] && (
+              <p className="text-xs text-muted-foreground pl-44">{helpMap[key]}</p>
+            )}
           </div>
         ))}
       </div>
