@@ -1,13 +1,59 @@
 "use client";
 
 import * as React from "react";
+import {
+  ComposedChart,
+  Line,
+  Scatter,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RTooltip,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
 import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
 import type { CalibrationBucket } from "@/lib/types/scoring";
 
 interface Props {
   data: CalibrationBucket[];
+}
+
+interface ChartPoint {
+  score_midpoint: number;
+  score_bucket: string;
+  predicted_default_prob: number;
+  actual_default_rate: number;
+  count: number;
+  gap: number;
+}
+
+function CustomTooltip({ active, payload }: any) {
+  if (!active || !payload || payload.length === 0) return null;
+  const p = payload[0].payload as ChartPoint;
+  return (
+    <div className="rounded-lg border bg-background p-3 shadow-md text-xs space-y-1">
+      <p className="font-medium">{p.score_bucket}</p>
+      <p className="text-muted-foreground">
+        Score midpoint: <span className="font-mono">{(p.score_midpoint * 100).toFixed(0)}%</span>
+      </p>
+      <p className="text-blue-600">
+        Predicted default: <span className="font-mono">{(p.predicted_default_prob * 100).toFixed(0)}%</span>
+      </p>
+      <p className="text-primary">
+        Actual default: <span className="font-mono">{(p.actual_default_rate * 100).toFixed(1)}%</span>
+      </p>
+      <p className="text-muted-foreground">
+        Gap: <span className={`font-mono ${p.gap > 0.15 ? "text-amber-600" : "text-green-600"}`}>
+          {(p.gap * 100).toFixed(0)}%
+        </span>
+      </p>
+      <p className="text-muted-foreground">{p.count} loans in bucket</p>
+    </div>
+  );
 }
 
 export function CalibrationCurveChart({ data }: Props) {
@@ -19,96 +65,179 @@ export function CalibrationCurveChart({ data }: Props) {
     );
   }
 
-  const width = 100;
-  const height = 100;
-
-  // Build points for actual default rate
-  const points = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - (d.actual_default_rate * height);
-    return { x, y, ...d };
+  // Parse bucket ranges to compute midpoints for the x-axis
+  const chartData: ChartPoint[] = data.map((d) => {
+    const match = d.score_bucket.match(/([\d.]+)-([\d.]+)/);
+    let lo = 0, hi = 1;
+    if (match) {
+      lo = parseFloat(match[1]);
+      hi = parseFloat(match[2]);
+    }
+    const midpoint = (lo + Math.min(hi, 1.0)) / 2;
+    return {
+      score_midpoint: midpoint,
+      score_bucket: d.score_bucket,
+      predicted_default_prob: d.predicted_default_prob,
+      actual_default_rate: d.actual_default_rate,
+      count: d.count,
+      gap: Math.abs(d.predicted_default_prob - d.actual_default_rate),
+    };
   });
 
-  // Perfect calibration line (diagonal)
-  const linePath = `M 0,${height} L ${width},0`;
-  // Actual curve
-  const actualPath = points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x},${p.y}`)
-    .join(" ");
-
-  const maxGap = Math.max(
-    ...data.map((d) => Math.abs(d.predicted_default_prob - d.actual_default_rate))
-  );
+  const maxGap = Math.max(...chartData.map((d) => d.gap));
+  const hasData = chartData.some((d) => d.count > 0);
 
   return (
     <Card className="p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <h4 className="text-sm font-medium">Calibration Curve</h4>
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent className="max-w-sm">
-              <p className="text-xs">
-                Compares the model&apos;s predicted default probability against
-                the actual default rate in each score bucket. A well-calibrated
-                model has points close to the diagonal line. Large gaps indicate
-                the model over- or under-predicts risk in certain score ranges.
-              </p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      </div>
-
-      <div className="relative w-full" style={{ paddingBottom: "100%" }}>
-        <svg
-          viewBox={`0 0 ${width} ${height}`}
-          className="absolute inset-0 w-full h-full"
-          preserveAspectRatio="none"
-        >
-          {/* Grid lines */}
-          <line x1="0" y1={height * 0.5} x2={width} y2={height * 0.5} stroke="hsl(var(--muted))" strokeWidth="0.3" strokeDasharray="2" />
-          <line x1={width * 0.5} y1="0" x2={width * 0.5} y2={height} stroke="hsl(var(--muted))" strokeWidth="0.3" strokeDasharray="2" />
-
-          {/* Perfect calibration line */}
-          <path d={linePath} fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.5" strokeDasharray="2,1" />
-
-          {/* Actual curve */}
-          <path d={actualPath} fill="none" stroke="hsl(var(--primary))" strokeWidth="1" />
-
-          {/* Data points */}
-          {points.map((p, i) => (
-            <circle key={i} cx={p.x} cy={p.y} r="1.5" fill="hsl(var(--primary))" />
-          ))}
-        </svg>
-      </div>
-
-      <div className="flex items-center justify-between mt-2 text-xs">
-        <div className="flex items-center gap-3">
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-0.5 bg-primary" /> Actual
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-block w-3 h-0.5 border-t border-dashed border-muted-foreground" /> Perfect
-          </span>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <h4 className="text-sm font-medium">Calibration Curve</h4>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                <p className="text-xs">
+                  Compares the model&apos;s predicted default probability
+                  (blue line) against the actual default rate (dots) in each
+                  score bucket. The x-axis is the credit score — higher scores
+                  should have lower default rates. A well-calibrated model has
+                  dots close to the line. Large gaps mean the model over- or
+                  under-predicts risk in certain score ranges.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
-        <span className={`tabular-nums ${maxGap > 0.15 ? "text-amber-600" : "text-green-600"}`}>
+        <Badge
+          variant="secondary"
+          className={maxGap > 0.15 ? "bg-amber-100 text-amber-700" : "bg-green-100 text-green-700"}
+        >
           Max gap: {(maxGap * 100).toFixed(0)}%
+        </Badge>
+      </div>
+
+      {!hasData ? (
+        <p className="text-sm text-muted-foreground py-8 text-center">
+          No loans with outcomes in any score bucket yet.
+        </p>
+      ) : (
+        <ResponsiveContainer width="100%" height={280}>
+          <ComposedChart
+            data={chartData}
+            margin={{ top: 10, right: 20, bottom: 30, left: 10 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted))" opacity={0.4} />
+            <XAxis
+              dataKey="score_midpoint"
+              type="number"
+              domain={[0, 1]}
+              ticks={[0, 0.25, 0.5, 0.75, 1.0]}
+              tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={11}
+              label={{
+                value: "Credit Score",
+                position: "insideBottom",
+                offset: -15,
+                style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" },
+              }}
+            />
+            <YAxis
+              domain={[0, 1]}
+              ticks={[0, 0.25, 0.5, 0.75, 1.0]}
+              tickFormatter={(v) => `${(v * 100).toFixed(0)}%`}
+              stroke="hsl(var(--muted-foreground))"
+              fontSize={11}
+              label={{
+                value: "Default Rate",
+                angle: -90,
+                position: "insideLeft",
+                offset: 0,
+                style: { fontSize: 11, fill: "hsl(var(--muted-foreground))" },
+              }}
+            />
+            <RTooltip content={<CustomTooltip />} />
+
+            {/* Perfect calibration reference line (diagonal) */}
+            <ReferenceLine
+              segment={[{ x: 0, y: 1 }, { x: 1, y: 0 }]}
+              stroke="hsl(var(--muted-foreground))"
+              strokeDasharray="4 2"
+              strokeWidth={1}
+              opacity={0.5}
+            />
+
+            {/* Predicted default probability line */}
+            <Line
+              type="monotone"
+              dataKey="predicted_default_prob"
+              stroke="#3b82f6"
+              strokeWidth={2}
+              dot={{ r: 3, fill: "#3b82f6" }}
+              activeDot={{ r: 5 }}
+              name="Predicted"
+            />
+
+            {/* Actual default rate as scatter dots */}
+            <Scatter
+              dataKey="actual_default_rate"
+              fill="hsl(var(--primary))"
+              name="Actual"
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      )}
+
+      {/* Legend */}
+      <div className="flex items-center justify-center gap-4 mt-2 text-xs">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-0.5 bg-blue-500" />
+          Predicted default probability
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-2.5 h-2.5 rounded-full bg-primary" />
+          Actual default rate
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block w-4 h-0 border-t-2 border-dashed border-muted-foreground opacity-50" />
+          Perfect calibration
         </span>
       </div>
 
-      {/* Bucket details */}
-      <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
-        {data.map((b) => (
-          <div key={b.score_bucket} className="rounded border p-1.5 text-center">
-            <p className="text-[10px] text-muted-foreground">{b.score_bucket}</p>
-            <p className="text-xs font-medium tabular-nums">
-              {(b.actual_default_rate * 100).toFixed(0)}%
-            </p>
-            <p className="text-[10px] text-muted-foreground">{b.count} loans</p>
-          </div>
-        ))}
+      {/* Bucket details table */}
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full text-xs">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="text-left px-2 py-1.5 font-medium">Score Bucket</th>
+              <th className="text-right px-2 py-1.5 font-medium">Predicted</th>
+              <th className="text-right px-2 py-1.5 font-medium">Actual</th>
+              <th className="text-right px-2 py-1.5 font-medium">Gap</th>
+              <th className="text-right px-2 py-1.5 font-medium">Loans</th>
+            </tr>
+          </thead>
+          <tbody>
+            {chartData.map((b) => (
+              <tr key={b.score_bucket} className="border-t">
+                <td className="px-2 py-1.5 font-medium">{b.score_bucket}</td>
+                <td className="text-right px-2 py-1.5 tabular-nums text-blue-600">
+                  {(b.predicted_default_prob * 100).toFixed(0)}%
+                </td>
+                <td className="text-right px-2 py-1.5 tabular-nums">
+                  {b.count > 0 ? `${(b.actual_default_rate * 100).toFixed(1)}%` : "—"}
+                </td>
+                <td className={`text-right px-2 py-1.5 tabular-nums ${b.gap > 0.15 ? "text-amber-600" : "text-green-600"}`}>
+                  {b.count > 0 ? `${(b.gap * 100).toFixed(0)}%` : "—"}
+                </td>
+                <td className="text-right px-2 py-1.5 tabular-nums text-muted-foreground">
+                  {b.count}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </Card>
   );
