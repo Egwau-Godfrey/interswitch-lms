@@ -219,6 +219,9 @@ export interface ModelPerformanceSummary {
   avg_days_overdue: number;
   overdue_with_autostrike: number;
   overdue_without_autostrike: number;
+  precision: number;
+  recall: number;
+  f1_score: number;
   date_range_from: string | null;
   date_range_to: string | null;
 }

@@ -4,8 +4,24 @@ import * as React from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import { RiskLevelBadge } from "@/components/shared/status-badges";
-import { CheckCircle2, XCircle, Search } from "lucide-react";
+import { CheckCircle2, XCircle, Search, ArrowUpDown } from "lucide-react";
 import type { AgentPredictionOutcome } from "@/lib/types/scoring";
 
 interface Props {
@@ -20,9 +36,17 @@ const OUTCOME_BADGES: Record<string, string> = {
   in_progress: "bg-blue-100 text-blue-700",
 };
 
+type SortField = "predicted_score" | "loan_amount" | "days_to_repay" | "agent_id";
+type SortDir = "asc" | "desc";
+
+const PAGE_SIZE = 10;
+
 export function PredictionOutcomeTable({ data }: Props) {
   const [search, setSearch] = React.useState("");
   const [outcomeFilter, setOutcomeFilter] = React.useState<string>("all");
+  const [page, setPage] = React.useState(1);
+  const [sortField, setSortField] = React.useState<SortField>("agent_id");
+  const [sortDir, setSortDir] = React.useState<SortDir>("asc");
 
   const filtered = React.useMemo(() => {
     let result = data;
@@ -33,8 +57,41 @@ export function PredictionOutcomeTable({ data }: Props) {
     if (outcomeFilter !== "all") {
       result = result.filter((p) => p.actual_outcome === outcomeFilter);
     }
+    // Sort
+    result = [...result].sort((a, b) => {
+      let cmp = 0;
+      if (sortField === "agent_id") {
+        cmp = a.agent_id.localeCompare(b.agent_id);
+      } else if (sortField === "predicted_score") {
+        cmp = a.predicted_score - b.predicted_score;
+      } else if (sortField === "loan_amount") {
+        cmp = a.loan_amount - b.loan_amount;
+      } else if (sortField === "days_to_repay") {
+        cmp = (a.days_to_repay ?? 0) - (b.days_to_repay ?? 0);
+      }
+      return sortDir === "asc" ? cmp : -cmp;
+    });
     return result;
-  }, [data, search, outcomeFilter]);
+  }, [data, search, outcomeFilter, sortField, sortDir]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageData = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDir(sortDir === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDir("asc");
+    }
+  };
+
+  // Reset to page 1 when filters change
+  React.useEffect(() => { setPage(1); }, [search, outcomeFilter]);
 
   return (
     <Card className="p-4">
@@ -50,16 +107,18 @@ export function PredictionOutcomeTable({ data }: Props) {
               className="h-8 w-40 pl-8 text-xs"
             />
           </div>
-          <select
-            value={outcomeFilter}
-            onChange={(e) => setOutcomeFilter(e.target.value)}
-            className="h-8 rounded-md border bg-background px-2 text-xs"
-          >
-            <option value="all">All Outcomes</option>
-            <option value="repaid">Repaid</option>
-            <option value="overdue">Overdue</option>
-            <option value="defaulted">Defaulted</option>
-          </select>
+          <Select value={outcomeFilter} onValueChange={setOutcomeFilter}>
+            <SelectTrigger className="h-8 w-40 text-xs">
+              <SelectValue placeholder="All Outcomes" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Outcomes</SelectItem>
+              <SelectItem value="repaid">Repaid</SelectItem>
+              <SelectItem value="overdue">Overdue</SelectItem>
+              <SelectItem value="defaulted">Defaulted</SelectItem>
+              <SelectItem value="recovered_via_autostrike">Recovered (Auto-Strike)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -67,19 +126,31 @@ export function PredictionOutcomeTable({ data }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-muted/50">
             <tr>
-              <th className="text-left px-3 py-2 font-medium">Agent</th>
+              <th className="text-left px-3 py-2 font-medium">
+                <button onClick={() => toggleSort("agent_id")} className="flex items-center gap-1 hover:text-foreground">
+                  Agent <ArrowUpDown className="h-3 w-3" />
+                </button>
+              </th>
               <th className="text-left px-3 py-2 font-medium">Predicted</th>
-              <th className="text-right px-3 py-2 font-medium">Score</th>
+              <th className="text-right px-3 py-2 font-medium">
+                <button onClick={() => toggleSort("predicted_score")} className="flex items-center gap-1 ml-auto hover:text-foreground">
+                  Score <ArrowUpDown className="h-3 w-3" />
+                </button>
+              </th>
               <th className="text-left px-3 py-2 font-medium">Method</th>
               <th className="text-left px-3 py-2 font-medium">Outcome</th>
-              <th className="text-right px-3 py-2 font-medium">Loan Amount</th>
+              <th className="text-right px-3 py-2 font-medium">
+                <button onClick={() => toggleSort("loan_amount")} className="flex items-center gap-1 ml-auto hover:text-foreground">
+                  Loan Amount <ArrowUpDown className="h-3 w-3" />
+                </button>
+              </th>
               <th className="text-center px-3 py-2 font-medium">Auto-Strike</th>
               <th className="text-center px-3 py-2 font-medium">Correct?</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.slice(0, 50).map((p, i) => (
-              <tr key={i} className="border-t hover:bg-muted/30">
+            {pageData.map((p) => (
+              <tr key={`${p.agent_id}-${p.loan_id}`} className="border-t hover:bg-muted/30">
                 <td className="px-3 py-2 font-mono text-xs">{p.agent_id}</td>
                 <td className="px-3 py-2">
                   <RiskLevelBadge riskLevel={p.predicted_risk} />
@@ -128,10 +199,44 @@ export function PredictionOutcomeTable({ data }: Props) {
         </p>
       )}
 
-      {filtered.length > 50 && (
-        <p className="text-center text-xs text-muted-foreground mt-2">
-          Showing 50 of {filtered.length} records
-        </p>
+      {filtered.length > 0 && (
+        <div className="flex items-center justify-between mt-3">
+          <p className="text-xs text-muted-foreground">
+            Showing {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} of {filtered.length} records
+          </p>
+          {totalPages > 1 && (
+            <Pagination className="mx-0 w-auto">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    onClick={() => setPage(Math.max(1, currentPage - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                  const pageNum = i + 1;
+                  return (
+                    <PaginationItem key={pageNum}>
+                      <PaginationLink
+                        isActive={currentPage === pageNum}
+                        onClick={() => setPage(pageNum)}
+                        className="cursor-pointer"
+                      >
+                        {pageNum}
+                      </PaginationLink>
+                    </PaginationItem>
+                  );
+                })}
+                <PaginationItem>
+                  <PaginationNext
+                    onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+                    className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
+        </div>
       )}
     </Card>
   );

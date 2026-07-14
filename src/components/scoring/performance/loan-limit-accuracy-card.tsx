@@ -62,7 +62,7 @@ export function LoanLimitAccuracyCard({ data }: Props) {
               <div className="flex-1 h-4 rounded-md bg-muted overflow-hidden">
                 <div
                   className="h-full bg-red-500"
-                  style={{ width: `${Math.max(t.default_rate * 100, 2)}%` }}
+                  style={{ width: `${Math.min(t.default_rate * 100, 100)}%` }}
                 />
               </div>
               <span className="text-xs tabular-nums w-12 text-right">
@@ -70,6 +70,9 @@ export function LoanLimitAccuracyCard({ data }: Props) {
               </span>
             </div>
           ))}
+          <p className="text-[10px] text-muted-foreground mt-1">
+            Note: Sample sizes per tier are not available in current data.
+          </p>
         </div>
       )}
     </Card>

@@ -11,13 +11,32 @@ interface Props {
 }
 
 export function PerformanceSummaryCards({ summary }: Props) {
+  const autostrikeSuccessRate =
+    summary.total_autostrike_attempts > 0
+      ? summary.total_autostrike_successful / summary.total_autostrike_attempts
+      : 0;
+
   const stats = [
     {
       label: "Overall Accuracy",
-      value: `${(summary.overall_accuracy * 100).toFixed(0)}%`,
+      value: `${(summary.overall_accuracy * 100).toFixed(1)}%`,
       sub: `${summary.total_loans_evaluated} loans evaluated`,
       help: "Percentage of predictions that matched the actual outcome. A prediction is 'correct' when low/medium-risk agents repay or high-risk agents default/overdue.",
       color: summary.overall_accuracy >= 0.75 ? "text-green-600" : "text-amber-600",
+    },
+    {
+      label: "Precision",
+      value: `${(summary.precision * 100).toFixed(1)}%`,
+      sub: `of ${summary.total_defaults + summary.total_overdue} bad loans predicted`,
+      help: "Of all loans predicted as high-risk, what percentage actually defaulted or went overdue. High precision means few false alarms.",
+      color: summary.precision >= 0.60 ? "text-green-600" : "text-amber-600",
+    },
+    {
+      label: "Recall",
+      value: `${(summary.recall * 100).toFixed(1)}%`,
+      sub: `of bad loans caught`,
+      help: "Of all loans that actually defaulted or went overdue, what percentage the model predicted as high-risk. High recall means few missed risks.",
+      color: summary.recall >= 0.60 ? "text-green-600" : "text-amber-600",
     },
     {
       label: "Default Rate",
@@ -30,20 +49,20 @@ export function PerformanceSummaryCards({ summary }: Props) {
       label: "Overdue Rate",
       value: `${(summary.overall_overdue_rate * 100).toFixed(1)}%`,
       sub: `${summary.total_overdue} overdue · avg ${summary.avg_days_overdue.toFixed(0)} days`,
-      help: "The percentage of evaluated loans currently overdue. Avg days overdue shows how long overdue loans have been outstanding. 'With auto-strike' indicates how many had forced recovery attempts.",
+      help: "The percentage of evaluated loans currently overdue. Avg days overdue shows how long overdue loans have been outstanding.",
       color: summary.overall_overdue_rate > 0.25 ? "text-amber-600" : "text-green-600",
     },
     {
-      label: "Auto-Strike Recovery",
-      value: `${summary.total_autostrike_successful}`,
-      sub: `of ${summary.total_autostrike_attempts} attempts · ${summary.total_recovered_via_autostrike} loans recovered`,
-      help: "Shows how many auto-strike attempts succeeded in recovering funds. A low success rate means agents don't have sufficient wallet balances when strikes are attempted.",
-      color: "text-purple-600",
+      label: "Auto-Strike Success",
+      value: `${(autostrikeSuccessRate * 100).toFixed(1)}%`,
+      sub: `${summary.total_autostrike_successful} of ${summary.total_autostrike_attempts} attempts`,
+      help: "Shows what percentage of auto-strike attempts succeeded in recovering funds. A low success rate means agents don't have sufficient wallet balances when strikes are attempted.",
+      color: autostrikeSuccessRate < 0.30 ? "text-red-600" : autostrikeSuccessRate >= 0.60 ? "text-green-600" : "text-amber-600",
     },
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       {stats.map((s) => (
         <Card key={s.label} className="p-3">
           <div className="flex items-center gap-1">

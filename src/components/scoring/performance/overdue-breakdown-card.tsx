@@ -141,7 +141,7 @@ export function OverdueBreakdownCard({ data }: Props) {
           <div className="flex flex-wrap gap-2">
             {data.overdue_by_risk_tier.map((t) => (
               <Badge key={t.risk_level} variant="secondary" className="capitalize">
-                {t.risk_level}: {t.total} ({(t.default_rate * 100).toFixed(0)}%)
+                {t.risk_level}: {t.total} ({(t.default_rate * 100).toFixed(0)}% of overdue)
               </Badge>
             ))}
           </div>

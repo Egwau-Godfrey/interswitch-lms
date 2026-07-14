@@ -30,7 +30,12 @@ interface ChartPoint {
   gap: number;
 }
 
-function CustomTooltip({ active, payload }: any) {
+interface TooltipProps {
+  active?: boolean;
+  payload?: Array<{ payload: ChartPoint }>;
+}
+
+function CustomTooltip({ active, payload }: TooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
   const p = payload[0].payload as ChartPoint;
   return (

@@ -49,6 +49,8 @@ export function FactorPredictivePowerChart({ data }: Props) {
         {sorted.map((f) => {
           const label = FACTOR_LABELS[f.factor] ?? f.factor;
           const isWeak = f.discriminative_power < 0.10;
+          const repaidPct = Math.min(f.avg_score_repaid * 100, 100);
+          const defaultedPct = Math.min(f.avg_score_defaulted * 100, 100);
           return (
             <div key={f.factor} className="space-y-1">
               <div className="flex items-center justify-between text-xs">
@@ -63,14 +65,14 @@ export function FactorPredictivePowerChart({ data }: Props) {
                 <div className="flex-1 h-4 rounded-l-md bg-muted overflow-hidden flex justify-end">
                   <div
                     className="h-full bg-green-500"
-                    style={{ width: `${(f.avg_score_repaid / 1) * 100}%` }}
+                    style={{ width: `${repaidPct}%` }}
                   />
                 </div>
                 {/* Defaulted bar (red, right) */}
                 <div className="flex-1 h-4 rounded-r-md bg-muted overflow-hidden">
                   <div
                     className="h-full bg-red-500"
-                    style={{ width: `${(f.avg_score_defaulted / 1) * 100}%` }}
+                    style={{ width: `${defaultedPct}%` }}
                   />
                 </div>
               </div>

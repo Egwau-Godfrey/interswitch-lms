@@ -16,6 +16,12 @@ const METHOD_LABELS: Record<string, string> = {
   hybrid: "Hybrid",
 };
 
+const METHOD_COLORS: Record<string, string> = {
+  rules: "bg-blue-500",
+  ml: "bg-purple-500",
+  hybrid: "bg-emerald-500",
+};
+
 export function MethodComparisonChart({ data }: Props) {
   if (!data || data.length === 0) {
     return (
@@ -47,30 +53,37 @@ export function MethodComparisonChart({ data }: Props) {
       </div>
 
       <div className="space-y-3">
-        {data.map((m) => (
-          <div key={m.scoring_method} className="space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium">{METHOD_LABELS[m.scoring_method] ?? m.scoring_method}</span>
-              <span className="tabular-nums">
-                {(m.accuracy * 100).toFixed(0)}% accuracy · {(m.default_rate * 100).toFixed(1)}% default
-              </span>
-            </div>
-            <div className="flex-1 h-5 rounded-md bg-muted overflow-hidden">
-              <div
-                className="h-full bg-primary flex items-center justify-end pr-2"
-                style={{ width: `${Math.max(m.accuracy * 100, 5)}%` }}
-              >
-                <span className="text-[10px] font-bold text-primary-foreground">
-                  {(m.accuracy * 100).toFixed(0)}%
+        {data.map((m) => {
+          const color = METHOD_COLORS[m.scoring_method] ?? "bg-primary";
+          const isSmallSample = m.total < 10;
+          return (
+            <div key={m.scoring_method} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium">{METHOD_LABELS[m.scoring_method] ?? m.scoring_method}</span>
+                <span className="tabular-nums">
+                  {(m.accuracy * 100).toFixed(0)}% accuracy · {(m.default_rate * 100).toFixed(1)}% default
                 </span>
               </div>
+              <div className="flex-1 h-5 rounded-md bg-muted overflow-hidden">
+                <div
+                  className={`h-full ${color} flex items-center justify-end pr-2`}
+                  style={{ width: `${Math.max(m.accuracy * 100, 5)}%` }}
+                >
+                  <span className="text-[10px] font-bold text-white">
+                    {(m.accuracy * 100).toFixed(0)}%
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                <span>
+                  {m.total} loans · {m.defaults} defaults
+                  {isSmallSample && <span className="text-amber-600 ml-1">⚠️ small sample</span>}
+                </span>
+                <span>Avg confidence: {(m.avg_confidence * 100).toFixed(0)}%</span>
+              </div>
             </div>
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground">
-              <span>{m.total} loans · {m.defaults} defaults</span>
-              <span>Avg confidence: {(m.avg_confidence * 100).toFixed(0)}%</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );

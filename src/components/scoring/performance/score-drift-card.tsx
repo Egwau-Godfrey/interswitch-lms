@@ -37,18 +37,18 @@ export function ScoreDriftCard({ data }: Props) {
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-lg border p-2.5">
-          <p className="text-xs text-muted-foreground">Avg 30-Day Change</p>
+          <p className="text-xs text-muted-foreground">Avg Score Change</p>
           <p className={`text-lg font-bold tabular-nums ${data.avg_score_change_30d >= 0 ? "text-green-600" : "text-red-600"}`}>
             {data.avg_score_change_30d >= 0 ? "+" : ""}{data.avg_score_change_30d.toFixed(3)}
           </p>
           <p className="text-[10px] text-muted-foreground">
-            Average score change over 30 days
+            Avg change between consecutive scores
           </p>
         </div>
 
         <div className="rounded-lg border p-2.5">
           <p className="text-xs text-muted-foreground">Volatility</p>
-          <p className="text-lg font-bold tabular-nums">
+          <p className={`text-lg font-bold tabular-nums ${data.score_volatility > 0.1 ? "text-amber-600" : "text-green-600"}`}>
             {data.score_volatility.toFixed(3)}
           </p>
           <p className="text-[10px] text-muted-foreground">

@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { Card } from "@/components/ui/card";
-import { AlertTriangle, CheckCircle2, Info, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { AlertTriangle, CheckCircle2, Info, AlertCircle, Settings } from "lucide-react";
 import type { RecommendationItem } from "@/lib/types/scoring";
 
 interface Props {
@@ -20,10 +22,32 @@ export function RecommendationsCard({ recommendations }: Props) {
     return null;
   }
 
+  const handleActionClick = () => {
+    // Find the Configuration tab trigger and click it
+    const configTab = document.querySelector('[data-value="config"]') as HTMLElement | null;
+    if (configTab) {
+      configTab.click();
+    }
+  };
+
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 mb-3">
         <h4 className="text-sm font-medium">Recommendations</h4>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent className="max-w-sm">
+              <p className="text-xs">
+                Auto-generated actionable insights based on the model&apos;s
+                performance. Click an action to navigate to the relevant
+                configuration section.
+              </p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       <div className="space-y-2">
@@ -40,9 +64,15 @@ export function RecommendationsCard({ recommendations }: Props) {
                 <div className="flex-1">
                   <p className={`text-sm font-medium ${config.color}`}>{r.title}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{r.message}</p>
-                  <p className="text-xs font-medium mt-1">
-                    → {r.action}
-                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 h-7 text-xs"
+                    onClick={handleActionClick}
+                  >
+                    <Settings className="h-3 w-3" />
+                    {r.action}
+                  </Button>
                 </div>
               </div>
             </div>

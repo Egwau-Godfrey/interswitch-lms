@@ -14,18 +14,18 @@ const RISK_COLORS: Record<string, string> = {
   low: "bg-green-500",
   medium: "bg-amber-500",
   high: "bg-red-500",
-  rejected: "bg-gray-500",
 };
 
 const EXPECTED: Record<string, string> = {
   low: "< 5%",
   medium: "10–20%",
   high: "> 30%",
-  rejected: "N/A",
 };
 
 export function DefaultRateByTierChart({ data }: Props) {
-  if (!data || data.length === 0) {
+  const filtered = (data || []).filter((d) => d.risk_level !== "rejected");
+
+  if (filtered.length === 0) {
     return (
       <Card className="p-4">
         <p className="text-sm text-muted-foreground">No default rate data available.</p>
@@ -33,7 +33,8 @@ export function DefaultRateByTierChart({ data }: Props) {
     );
   }
 
-  const maxRate = Math.max(...data.map((d) => d.default_rate), 0.5);
+  // Scale to a fixed 50% ceiling for consistent visual comparison
+  const SCALE_MAX = 0.5;
 
   return (
     <Card className="p-4">
@@ -57,31 +58,37 @@ export function DefaultRateByTierChart({ data }: Props) {
       </div>
 
       <div className="space-y-3">
-        {data.map((tier) => (
-          <div key={tier.risk_level} className="space-y-1">
-            <div className="flex items-center justify-between text-xs">
-              <span className="font-medium capitalize">{tier.risk_level} Risk</span>
-              <span className="tabular-nums">
-                {tier.defaults}/{tier.total} ({(tier.default_rate * 100).toFixed(1)}%)
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1 h-6 rounded-md bg-muted overflow-hidden">
-                <div
-                  className={`h-full ${RISK_COLORS[tier.risk_level] ?? "bg-gray-500"} flex items-center justify-end pr-2`}
-                  style={{ width: `${Math.max((tier.default_rate / maxRate) * 100, 5)}%` }}
-                >
-                  <span className="text-[10px] font-bold text-white">
-                    {(tier.default_rate * 100).toFixed(1)}%
-                  </span>
-                </div>
+        {filtered.map((tier) => {
+          const isSmallSample = tier.total < 10;
+          return (
+            <div key={tier.risk_level} className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-medium capitalize">{tier.risk_level} Risk</span>
+                <span className="tabular-nums">
+                  {tier.defaults}/{tier.total} ({(tier.default_rate * 100).toFixed(1)}%)
+                </span>
               </div>
-              <span className="text-[10px] text-muted-foreground w-20">
-                Expected: {EXPECTED[tier.risk_level] ?? "—"}
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 h-6 rounded-md bg-muted overflow-hidden">
+                  <div
+                    className={`h-full ${RISK_COLORS[tier.risk_level] ?? "bg-gray-500"} flex items-center justify-end pr-2`}
+                    style={{ width: `${Math.min((tier.default_rate / SCALE_MAX) * 100, 100)}%` }}
+                  >
+                    <span className="text-[10px] font-bold text-white">
+                      {(tier.default_rate * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] text-muted-foreground w-20">
+                  Expected: {EXPECTED[tier.risk_level] ?? "—"}
+                </span>
+              </div>
+              {isSmallSample && (
+                <p className="text-[10px] text-amber-600">⚠️ Small sample ({tier.total} loans)</p>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </Card>
   );

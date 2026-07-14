@@ -5,6 +5,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { X } from "lucide-react";
 import { useApi } from "@/hooks/use-api";
 import { scoringDashboardApi } from "@/lib/api/scoring-dashboard";
 import { PerformanceSummaryCards as PerformanceSummaryCard } from "./performance/performance-summary-cards";
@@ -26,13 +35,25 @@ export function ModelPerformanceTab() {
   const [dateTo, setDateTo] = React.useState("");
   const [methodFilter, setMethodFilter] = React.useState("");
 
+  // Debounce date inputs to avoid firing multiple API calls while typing
+  const [debouncedFrom, setDebouncedFrom] = React.useState("");
+  const [debouncedTo, setDebouncedTo] = React.useState("");
+
+  React.useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedFrom(dateFrom);
+      setDebouncedTo(dateTo);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [dateFrom, dateTo]);
+
   const params = React.useMemo(() => {
     const p: Record<string, string> = {};
-    if (dateFrom) p.date_from = dateFrom;
-    if (dateTo) p.date_to = dateTo;
+    if (debouncedFrom) p.date_from = debouncedFrom;
+    if (debouncedTo) p.date_to = debouncedTo;
     if (methodFilter) p.scoring_method = methodFilter;
     return p;
-  }, [dateFrom, dateTo, methodFilter]);
+  }, [debouncedFrom, debouncedTo, methodFilter]);
 
   // Cache key includes params so each filter combo has its own cache entry
   const cacheKey = React.useMemo(() => {
@@ -49,11 +70,20 @@ export function ModelPerformanceTab() {
     { cacheKey }
   );
 
+  const today = new Date().toISOString().split("T")[0];
+  const hasFilters = !!(dateFrom || dateTo || methodFilter);
+
+  const clearFilters = () => {
+    setDateFrom("");
+    setDateTo("");
+    setMethodFilter("");
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
             <Skeleton key={i} className="h-20 w-full rounded-lg" />
           ))}
         </div>
@@ -77,12 +107,11 @@ export function ModelPerformanceTab() {
   }
 
   if (!data || data.summary.total_loans_evaluated === 0) {
-    const isFiltered = !!(dateFrom || dateTo || methodFilter);
     return (
       <div className="space-y-4">
         <Alert>
           <AlertDescription>
-            {isFiltered ? (
+            {hasFilters ? (
               <>
                 No loans match the selected filters
                 {methodFilter && ` (method: ${methodFilter})`}
@@ -101,13 +130,12 @@ export function ModelPerformanceTab() {
             )}
           </AlertDescription>
         </Alert>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          {["Date From", "Date To", "Method", ""].map((label, i) => (
-            <div key={i} className="space-y-1.5">
-              {label && <Label className="text-xs">{label}</Label>}
-            </div>
-          ))}
-        </div>
+        {hasFilters && (
+          <Button variant="outline" size="sm" onClick={clearFilters}>
+            <X className="h-3 w-3" />
+            Clear Filters
+          </Button>
+        )}
       </div>
     );
   }
@@ -121,6 +149,7 @@ export function ModelPerformanceTab() {
           <Input
             type="date"
             value={dateFrom}
+            max={dateTo || today}
             onChange={(e) => setDateFrom(e.target.value)}
             className="h-8 w-36 text-xs"
           />
@@ -130,23 +159,31 @@ export function ModelPerformanceTab() {
           <Input
             type="date"
             value={dateTo}
+            min={dateFrom || undefined}
+            max={today}
             onChange={(e) => setDateTo(e.target.value)}
             className="h-8 w-36 text-xs"
           />
         </div>
         <div className="space-y-1.5">
           <Label className="text-xs">Scoring Method</Label>
-          <select
-            value={methodFilter}
-            onChange={(e) => setMethodFilter(e.target.value)}
-            className="h-8 rounded-md border bg-background px-2 text-xs"
-          >
-            <option value="">All Methods</option>
-            <option value="rules">Rules Only</option>
-            <option value="ml">ML Only</option>
-            <option value="hybrid">Hybrid</option>
-          </select>
+          <Select value={methodFilter} onValueChange={setMethodFilter}>
+            <SelectTrigger className="h-8 w-36 text-xs">
+              <SelectValue placeholder="All Methods" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="rules">Rules Only</SelectItem>
+              <SelectItem value="ml">ML Only</SelectItem>
+              <SelectItem value="hybrid">Hybrid</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
+        {hasFilters && (
+          <Button variant="outline" size="sm" onClick={clearFilters} className="h-8">
+            <X className="h-3 w-3" />
+            Clear
+          </Button>
+        )}
       </div>
 
       {/* Summary cards */}

@@ -45,16 +45,24 @@ export function ConfidenceCalibrationCard({ data }: Props) {
         {data.map((b) => {
           const isCalibrated = b.actual_default_rate < 0.20;
           const isOverConfident = b.actual_default_rate > 0.30;
+          // Parse bucket midpoint for display (e.g. "0.3-0.4" → 0.35)
+          const match = b.confidence_bucket.match(/([\d.]+)-([\d.]+)/);
+          const midConf = match ? ((parseFloat(match[1]) + parseFloat(match[2])) / 2) : null;
           return (
             <div key={b.confidence_bucket} className="flex items-center gap-3">
-              <span className="text-xs w-20 font-medium">{b.confidence_bucket}</span>
+              <span className="text-xs w-16 font-medium">{b.confidence_bucket}</span>
+              {midConf !== null && (
+                <span className="text-[10px] text-muted-foreground w-16">
+                  pred: {(midConf * 100).toFixed(0)}%
+                </span>
+              )}
               <div className="flex-1 h-5 rounded-md bg-muted overflow-hidden">
                 <div
                   className={`h-full ${isOverConfident ? "bg-red-500" : isCalibrated ? "bg-green-500" : "bg-amber-500"}`}
-                  style={{ width: `${Math.max(b.actual_default_rate * 100, 2)}%` }}
+                  style={{ width: `${Math.min(b.actual_default_rate * 100, 100)}%` }}
                 />
               </div>
-              <span className="text-xs tabular-nums w-12 text-right">
+              <span className="text-xs tabular-nums w-10 text-right">
                 {(b.actual_default_rate * 100).toFixed(0)}%
               </span>
               <span className="text-[10px] text-muted-foreground w-12 text-right">
