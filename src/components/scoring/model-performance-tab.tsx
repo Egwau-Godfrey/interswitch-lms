@@ -201,7 +201,7 @@ export function ModelPerformanceTab() {
       {/* Method comparison + Factor predictive power */}
       <div className="grid gap-4 md:grid-cols-2">
         <MethodComparisonChart data={data.method_comparison} />
-        <FactorPredictivePowerChart data={data.factor_predictive_power} />
+        <FactorPredictivePowerChart data={data.factor_predictive_power} hasFactorData={data.has_factor_data} />
       </div>
 
       {/* Score drift + Loan limit accuracy */}

@@ -30,14 +30,31 @@ interface ChartPoint {
   gap: number;
 }
 
+interface TooltipPayloadEntry {
+  payload: ChartPoint | Record<string, unknown>;
+  name?: string;
+  dataKey?: string | number;
+  value?: number;
+}
+
 interface TooltipProps {
   active?: boolean;
-  payload?: Array<{ payload: ChartPoint }>;
+  payload?: TooltipPayloadEntry[];
 }
 
 function CustomTooltip({ active, payload }: TooltipProps) {
   if (!active || !payload || payload.length === 0) return null;
-  const p = payload[0].payload as ChartPoint;
+
+  // The ComposedChart has 3 series (perfect line, predicted line, actual scatter).
+  // payload[0] may come from the perfect-calibration line which only has
+  // { score_midpoint, perfect }. Search for the entry that has the full
+  // ChartPoint data (identified by the presence of `score_bucket`).
+  const fullEntry = payload.find(
+    (entry) => entry.payload && typeof (entry.payload as ChartPoint).score_bucket === "string"
+  );
+  const p = fullEntry?.payload as ChartPoint | undefined;
+  if (!p) return null;
+
   return (
     <div className="rounded-lg border bg-background p-3 shadow-md text-xs space-y-1">
       <p className="font-medium">{p.score_bucket}</p>

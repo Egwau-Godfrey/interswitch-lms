@@ -365,6 +365,7 @@ export interface ModelPerformanceResponse {
   method_comparison: MethodComparisonRow[];
   calibration: CalibrationBucket[];
   factor_predictive_power: FactorPredictivePower[];
+  has_factor_data: boolean;
   score_drift: ScoreDriftMetrics;
   loan_limit_accuracy: LoanLimitAccuracy;
   confidence_calibration: ConfidenceCalibrationBucket[];

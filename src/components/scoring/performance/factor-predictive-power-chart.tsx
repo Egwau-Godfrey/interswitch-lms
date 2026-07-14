@@ -9,13 +9,47 @@ import type { FactorPredictivePower } from "@/lib/types/scoring";
 
 interface Props {
   data: FactorPredictivePower[];
+  hasFactorData?: boolean;
 }
 
-export function FactorPredictivePowerChart({ data }: Props) {
+export function FactorPredictivePowerChart({ data, hasFactorData = true }: Props) {
   if (!data || data.length === 0) {
     return (
       <Card className="p-4">
         <p className="text-sm text-muted-foreground">No factor predictive power data available.</p>
+      </Card>
+    );
+  }
+
+  // If no pairs had factor data (e.g. older seed data without component_scores.factors),
+  // show an explanatory message instead of empty bars
+  if (!hasFactorData) {
+    return (
+      <Card className="p-4">
+        <div className="flex items-center gap-2 mb-2">
+          <h4 className="text-sm font-medium">Factor Predictive Power</h4>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                <p className="text-xs">
+                  For each rule-based factor, compares the average score between
+                  agents who repaid vs those who defaulted. A large gap
+                  (high discriminative power) means the factor is good at
+                  distinguishing good from bad borrowers. Factors with small gaps
+                  may need reweighting.
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <p className="text-sm text-muted-foreground py-4">
+          Factor-level data is not available for these loans. This occurs when
+          credit scores were recorded before the factor breakdown feature was
+          added. Rescoring agents will populate this data.
+        </p>
       </Card>
     );
   }
