@@ -38,6 +38,7 @@ import { RevenueTab } from "@/components/reports/revenue-tab";
 import { RiskTab } from "@/components/reports/risk-tab";
 import { AutostrikeTab } from "@/components/reports/autostrike-tab";
 import { AgentsTab } from "@/components/reports/agents-tab";
+import { RevenueBalanceCard } from "@/components/dashboard/revenue-balance-card";
 
 const quickRanges = [
   { label: "Today", value: "today" },
@@ -262,6 +263,9 @@ export function ReportSummaryPage({ basePath }: ReportSummaryPageProps) {
           )}
         </div>
       </div>
+
+      {/* Revenue Split Account Balance */}
+      <RevenueBalanceCard />
 
       <Card>
         <CardContent className="space-y-4 pt-6">

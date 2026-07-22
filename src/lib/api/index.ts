@@ -11,6 +11,7 @@ export { paymentsApi } from './payments';
 export { apiClientsApi } from './api-clients';
 export { reportsApi } from './reports';
 export { dashboardApi } from './dashboard';
+export { revenueApi } from './revenue';
 export { scoringDashboardApi } from './scoring-dashboard';
 export { permissionsApi } from './permissions';
 export { whitelistApi } from './whitelist';

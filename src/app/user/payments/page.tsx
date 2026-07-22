@@ -67,6 +67,7 @@ import { ErrorState, EmptyState } from "@/components/shared/loading-states";
 import { WriteAccessAlert } from "@/components/shared/write-access-alert";
 import { useApiAuth } from "@/hooks/use-api-auth";
 import { useWritePermission } from "@/hooks/use-write-permission";
+import { RevenueBalanceCard } from "@/components/dashboard/revenue-balance-card";
 
 const channelLabels: Record<PaymentChannel, string> = {
   mobile_money: "Mobile Money",
@@ -614,6 +615,9 @@ export default function PaymentsPage() {
           </Card>
         </div>
       )}
+
+      {/* Revenue Split Account Balance */}
+      <RevenueBalanceCard />
 
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">

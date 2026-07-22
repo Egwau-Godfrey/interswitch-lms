@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DashboardHeader, type QuickRange } from "@/components/dashboard/dashboard-header";
 import { KpiCardsRow } from "@/components/dashboard/kpi-cards-row";
+import { RevenueBalanceCard } from "@/components/dashboard/revenue-balance-card";
 import { CollectionsBreakdownCard } from "@/components/dashboard/collections-breakdown-card";
 import { RevenueSplitCard } from "@/components/dashboard/revenue-split-card";
 import { DisbursementVsCollectionsChart } from "@/components/dashboard/disbursement-vs-collections-chart";
@@ -181,6 +182,9 @@ export function DashboardOverview({ basePath }: DashboardOverviewProps) {
 
       {/* KPI Cards (wallet loads independently) */}
       <KpiCardsRow kpis={data?.kpis} isLoading={isLoading} walletEnabled={true} />
+
+      {/* Revenue Split Account Balance (loads independently) */}
+      <RevenueBalanceCard />
 
       {/* Model Performance Widget */}
       <ModelPerformanceWidget basePath={basePath} />

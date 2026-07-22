@@ -64,6 +64,7 @@ import type { LoanPayment, PaymentChannel, PaymentStatus, PaymentCreate } from "
 import { formatCurrency } from "@/components/shared/stat-card";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { RecordPaymentDialog } from "@/components/shared/record-payment-dialog";
+import { RevenueBalanceCard } from "@/components/dashboard/revenue-balance-card";
 
 // Channel labels map
 const channelLabels: Record<string, string> = {
@@ -550,6 +551,9 @@ export default function PaymentsPage() {
           </Card>
         </div>
       ) : null}
+
+      {/* Revenue Split Account Balance */}
+      <RevenueBalanceCard />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">

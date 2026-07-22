@@ -667,6 +667,20 @@ export interface WalletInfo {
   error: string | null;
 }
 
+export interface RevenueAccountBalance {
+  balance: number;
+  commission: number;
+  lien: number;
+  name: string | null;
+  terminal_id: string | null;
+  our_share: number;
+  interswitch_share: number;
+  split_ratio: number;
+  last_fetched_at: string | null;
+  is_cached: boolean;
+  error: string | null;
+}
+
 export interface DashboardOverviewResponse {
   period: DashboardPeriodInfo;
   kpis: DashboardKPIs;
