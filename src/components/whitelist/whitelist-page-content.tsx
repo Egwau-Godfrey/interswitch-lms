@@ -15,6 +15,9 @@ import {
   MoreVertical,
   Eye,
   ListChecks,
+  Upload,
+  Download,
+  FileSpreadsheet,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,6 +64,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { whitelistApi } from "@/lib/api";
+import { prequalificationApi } from "@/lib/api/whitelist";
 import { settingsApi } from "@/lib/api/settings";
 import type {
   WhitelistEntry,
@@ -307,6 +311,8 @@ export function WhitelistPageContent({
       )}
 
       {isUser && !canWrite && <WriteAccessAlert tabLabel="whitelist" />}
+
+      <PrequalificationPanel writeDisabled={writeDisabled} />
 
       {/* Tabs */}
       <div className="flex items-center gap-2 border-b">
@@ -614,6 +620,155 @@ export function WhitelistPageContent({
       </AlertDialog>
     </div>
   );
+}
+
+function PrequalificationPanel({ writeDisabled }: { writeDisabled: boolean }) {
+  const [uploadOpen, setUploadOpen] = React.useState(false);
+  const [platformStatus, setPlatformStatus] = React.useState<"not_joined" | "joined">("not_joined");
+  const [refreshKey, setRefreshKey] = React.useState(0);
+  const [selectedBatchId, setSelectedBatchId] = React.useState("all");
+  const [prequalifiedSearch, setPrequalifiedSearch] = React.useState("");
+  const [prequalifiedPage, setPrequalifiedPage] = React.useState(1);
+  const [prequalifiedPageSize, setPrequalifiedPageSize] = React.useState(10);
+  const { data: agents, isLoading } = useApi(
+    () => prequalificationApi.listAgents({
+      batch_id: selectedBatchId || undefined,
+      platform_status: platformStatus,
+      search: prequalifiedSearch || undefined,
+      page: prequalifiedPage,
+      page_size: prequalifiedPageSize,
+    }),
+    [platformStatus, selectedBatchId, prequalifiedSearch, prequalifiedPage, prequalifiedPageSize, refreshKey],
+    {
+      enabled: Boolean(selectedBatchId),
+      cacheKey: `prequalified-${selectedBatchId}-${platformStatus}-${prequalifiedSearch}-${prequalifiedPage}-${prequalifiedPageSize}-${refreshKey}`,
+    }
+  );
+  const { data: imports } = useApi(
+    () => prequalificationApi.listImports(),
+    [refreshKey],
+    { cacheKey: `prequalification-imports-${refreshKey}` }
+  );
+  const latestBatch = imports?.data?.[0];
+  React.useEffect(() => {
+    if (!selectedBatchId && latestBatch?.id) setSelectedBatchId(latestBatch.id);
+  }, [latestBatch?.id, selectedBatchId]);
+  const selectedBatch = imports?.data?.find((batch) => batch.id === selectedBatchId) || latestBatch;
+  const { data: batchStats } = useApi(
+    () => prequalificationApi.stats(selectedBatch!.id),
+    [selectedBatch?.id, refreshKey],
+    { enabled: Boolean(selectedBatch?.id) && selectedBatchId !== "all", cacheKey: `prequalification-stats-${selectedBatch?.id}-${refreshKey}` }
+  );
+  const { data: allStats } = useApi(
+    () => prequalificationApi.allStats(),
+    [refreshKey],
+    { enabled: selectedBatchId === "all", cacheKey: `prequalification-all-stats-${refreshKey}` }
+  );
+  const stats = selectedBatchId === "all" ? allStats : batchStats;
+
+  const exportCsv = async () => {
+    if (!selectedBatch) return;
+    try {
+      const blob = selectedBatchId === "all"
+        ? await prequalificationApi.exportAll(platformStatus)
+        : await prequalificationApi.exportCsv(selectedBatch.id, platformStatus);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `prequalified-${platformStatus}-${selectedBatchId === "all" ? "all-releases" : selectedBatch.id}.csv`;
+      anchor.click(); URL.revokeObjectURL(url);
+      toast.success("Interswitch CSV exported");
+    } catch (error: any) { toast.error("Export failed", { description: error.message }); }
+  };
+
+  return (
+    <div className="space-y-4 rounded-lg border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h2 className="font-semibold">Externally pre-qualified agents</h2>
+          <p className="text-sm text-muted-foreground">Upload scored agents before or after they join. External eligibility takes priority.</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportCsv} disabled={!selectedBatch && selectedBatchId !== "all"}>
+            <Download className="mr-2 h-4 w-4" />Export for Interswitch
+          </Button>
+          <Button onClick={() => setUploadOpen(true)} disabled={writeDisabled}>
+            <Upload className="mr-2 h-4 w-4" />Upload scored agents
+          </Button>
+        </div>
+      </div>
+      {stats && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {[
+            ["Selected", stats.total_selected], ["Awaiting signup", stats.awaiting_signup],
+            ["Joined", stats.joined], ["Activated", stats.activated],
+            ["Registration rate", `${stats.registration_conversion_rate}%`],
+          ].map(([label, value]) => <div key={String(label)} className="rounded-md bg-muted p-3"><p className="text-xs text-muted-foreground">{label}</p><p className="text-xl font-semibold">{value}</p></div>)}
+        </div>
+      )}
+      {imports?.data?.length ? <div className="flex items-center gap-3"><Label htmlFor="prequalification-batch">View</Label><select id="prequalification-batch" className="h-9 rounded-md border bg-background px-3 text-sm" value={selectedBatchId} onChange={(event) => { setSelectedBatchId(event.target.value); setPrequalifiedPage(1); }}><option value="all">All releases</option>{imports.data.map((batch) => <option key={batch.id} value={batch.id}>{batch.filename} · {batch.selected_rows} agents · {batch.created_at ? formatDate(batch.created_at, "short") : ""}</option>)}</select></div> : null}
+      <div className="flex gap-2 border-b">
+        <button className={`px-3 py-2 text-sm ${platformStatus === "not_joined" ? "border-b-2 border-[#E31C2D] text-[#E31C2D]" : "text-muted-foreground"}`} onClick={() => { setPlatformStatus("not_joined"); setPrequalifiedPage(1); }}>Awaiting signup</button>
+        <button className={`px-3 py-2 text-sm ${platformStatus === "joined" ? "border-b-2 border-[#E31C2D] text-[#E31C2D]" : "text-muted-foreground"}`} onClick={() => { setPlatformStatus("joined"); setPrequalifiedPage(1); }}>Joined from uploads</button>
+      </div>
+      <div className="relative max-w-sm">
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          className="pl-9"
+          placeholder="Search by agent ID..."
+          value={prequalifiedSearch}
+          onChange={(event) => { setPrequalifiedSearch(event.target.value); setPrequalifiedPage(1); }}
+        />
+      </div>
+      <div className="rounded-md border">
+        <Table><TableHeader><TableRow><TableHead>Rank</TableHead><TableHead>Agent ID</TableHead><TableHead>External score</TableHead><TableHead>Band</TableHead><TableHead>Status</TableHead><TableHead>Starter limit</TableHead></TableRow></TableHeader>
+          <TableBody>{isLoading ? <TableRow><TableCell colSpan={6}>Loading agents...</TableCell></TableRow> : agents?.data?.length ? agents.data.map((agent) => <TableRow key={agent.id}><TableCell>{agent.rank}</TableCell><TableCell className="font-mono">{agent.agent_id}</TableCell><TableCell>{agent.external_score}</TableCell><TableCell>{agent.external_band || "—"}</TableCell><TableCell><Badge variant="outline">{agent.status.replaceAll("_", " ")}</Badge></TableCell><TableCell>UGX {Number(agent.starter_limit).toLocaleString()}</TableCell></TableRow>) : <TableRow><TableCell colSpan={6} className="py-6 text-center text-muted-foreground">No agents in this group.</TableCell></TableRow>}</TableBody>
+        </Table>
+      </div>
+      <DataTablePagination
+        page={prequalifiedPage}
+        pageSize={prequalifiedPageSize}
+        totalItems={agents?.total || 0}
+        totalPages={Math.ceil((agents?.total || 0) / prequalifiedPageSize)}
+        onPageChange={setPrequalifiedPage}
+        onPageSizeChange={(size) => { setPrequalifiedPageSize(size); setPrequalifiedPage(1); }}
+      />
+      <PrequalificationUploadDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        onImported={(batchId) => {
+          setSelectedBatchId("all");
+          setPrequalifiedPage(1);
+          setPrequalifiedSearch("");
+          setRefreshKey((key) => key + 1);
+        }}
+      />
+    </div>
+  );
+}
+
+function PrequalificationUploadDialog({ open, onOpenChange, onImported }: { open: boolean; onOpenChange: (open: boolean) => void; onImported: (batchId: string) => void }) {
+  const [file, setFile] = React.useState<File | null>(null);
+  const [count, setCount] = React.useState(100);
+  const [importAll, setImportAll] = React.useState(false);
+  const [preview, setPreview] = React.useState<any>(null);
+  const [busy, setBusy] = React.useState(false);
+  const previewFile = async () => {
+    if (!file) return toast.error("Choose a CSV or Excel file");
+    setBusy(true); try { setPreview(await prequalificationApi.preview(file, count, importAll)); } catch (error: any) { toast.error("Validation failed", { description: error.message }); } finally { setBusy(false); }
+  };
+  const importFile = async () => {
+    if (!file) return;
+    setBusy(true); try {
+      const result = await prequalificationApi.commit(file, count, importAll);
+      toast.success(`Imported ${result.selected_rows} agents`, { description: `Ranks ${result.first_selected_rank}–${result.last_selected_rank}; ${result.remaining_after_import} remain` });
+      setPreview(null); setFile(null); onOpenChange(false); onImported(result.id);
+    } catch (error: any) { toast.error("Import failed", { description: error.message }); } finally { setBusy(false); }
+  };
+  return <Dialog open={open} onOpenChange={onOpenChange}><DialogContent className="sm:max-w-xl"><DialogHeader><DialogTitle>Upload externally scored agents</DialogTitle><DialogDescription>Select the first valid agents in the file. Every activated agent starts with UGX 5,000.</DialogDescription></DialogHeader>
+    <div className="space-y-4 py-3"><div className="space-y-2"><Label htmlFor="score-file">CSV or Excel file</Label><Input id="score-file" type="file" accept=".csv,.xlsx" onChange={(event) => { setFile(event.target.files?.[0] || null); setPreview(null); }} /></div><div className="space-y-2"><Label htmlFor="selection-count">Number of new agents to release</Label><Input id="selection-count" type="number" min={1} value={count} disabled={importAll} onChange={(event) => { setCount(Number(event.target.value)); setPreview(null); }} /></div><div className="flex items-center gap-2"><Checkbox id="import-all" checked={importAll} onCheckedChange={(checked) => { setImportAll(checked === true); setPreview(null); }} /><Label htmlFor="import-all">Import all remaining eligible agents</Label></div>
+      {preview && <Alert><FileSpreadsheet className="h-4 w-4" /><AlertTitle>{preview.selected_rows} new agents ready</AlertTitle><AlertDescription>{preview.already_imported} previously imported agents will be skipped. Selected ranks: {preview.first_selected_rank ?? "—"}–{preview.last_selected_rank ?? "—"}. Cutoff score: {preview.cutoff_score || "—"}. {preview.remaining_after_import} will remain in the pool. Initial exposure: UGX {Number(preview.initial_exposure).toLocaleString()}.</AlertDescription></Alert>}
+    </div><DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>{preview ? <Button onClick={importFile} disabled={busy}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm import</Button> : <Button onClick={previewFile} disabled={busy || !file}>{busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Validate and preview</Button>}</DialogFooter></DialogContent></Dialog>;
 }
 
 // ---------------------------------------------------------------------------

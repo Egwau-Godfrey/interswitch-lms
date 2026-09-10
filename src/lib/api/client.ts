@@ -119,6 +119,24 @@ class ApiClient {
     });
   }
 
+  async postForm<T>(endpoint: string, data: FormData): Promise<T> {
+    const headers: HeadersInit = {};
+    if (this.accessToken) headers['Authorization'] = `Bearer ${this.accessToken}`;
+    const response = await fetch(this.buildUrl(endpoint), { method: 'POST', body: data, headers });
+    if (!response.ok) {
+      let message = `HTTP error! status: ${response.status}`;
+      try { const error = await response.json(); message = error.detail || message; } catch {}
+      throw new Error(message);
+    }
+    return response.json();
+  }
+
+  async getBlob(endpoint: string, params?: Record<string, string | number | boolean | undefined>): Promise<Blob> {
+    const response = await fetch(this.buildUrl(endpoint, params), { headers: this.getHeaders() });
+    if (!response.ok) throw new Error(`Export failed with status ${response.status}`);
+    return response.blob();
+  }
+
   async put<T>(endpoint: string, data?: unknown, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
