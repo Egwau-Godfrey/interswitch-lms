@@ -307,6 +307,9 @@ export function ScoreDetailDrawer({
 
   if (!agent) return null;
 
+  const externalProfile = agent.credit_profile?.score_source === "external_import"
+    ? agent.credit_profile
+    : null;
   const riskColor = riskTextClass(agent.credit_score_risk_level);
   const accentBar = riskAccentClass(agent.credit_score_risk_level);
   const initials =
@@ -346,7 +349,13 @@ export function ScoreDetailDrawer({
                     {agent.agent_id}
                   </code>
                 </div>
-                <RiskLevelBadge riskLevel={agent.credit_score_risk_level} />
+                {externalProfile ? (
+                  <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">
+                    External · Band {externalProfile.external_band || "—"}
+                  </span>
+                ) : (
+                  <RiskLevelBadge riskLevel={agent.credit_score_risk_level} />
+                )}
               </div>
             </SheetTitle>
           </SheetHeader>
@@ -379,34 +388,43 @@ export function ScoreDetailDrawer({
                 {/* ════════ Overview Tab ════════ */}
                 <TabsContent value="overview" className="space-y-6 mt-0">
                   {/* Current Score Card */}
-                  <div className={`rounded-lg border p-4 space-y-3 ${riskBgClass(agent.credit_score_risk_level)}`}>
+                  <div className={`rounded-lg border p-4 space-y-3 ${externalProfile ? "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800" : riskBgClass(agent.credit_score_risk_level)}`}>
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-muted-foreground">Credit Score</p>
-                        <p className={`text-4xl font-bold ${riskColor}`}>
-                          {agent.score_percent.toFixed(1)}%
+                        <p className="text-xs text-muted-foreground">{externalProfile ? "External Score" : "Credit Score"}</p>
+                        <p className={`text-4xl font-bold ${externalProfile ? "text-blue-600" : riskColor}`}>
+                          {externalProfile ? externalProfile.external_score ?? "—" : `${agent.score_percent.toFixed(1)}%`}
                         </p>
                       </div>
-                      <RiskLevelBadge riskLevel={agent.credit_score_risk_level} />
+                      {externalProfile ? (
+                        <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-700">Band {externalProfile.external_band || "—"}</span>
+                      ) : (
+                        <RiskLevelBadge riskLevel={agent.credit_score_risk_level} />
+                      )}
                     </div>
                     <div className="grid grid-cols-2 gap-3 pt-2 border-t border-border/50">
                       <div>
-                        <p className="text-xs text-muted-foreground">Loan Limit</p>
+                        <p className="text-xs text-muted-foreground">Current Limit</p>
                         <p className="font-semibold">
                           {formatCurrency(agent.loan_limit, "UGX")}
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs text-muted-foreground">Last Scored</p>
+                        <p className="text-xs text-muted-foreground">{externalProfile ? "External Maximum" : "Last Scored"}</p>
                         <p className="font-semibold">
-                          {formatDate(agent.last_scored_at, "relative")}
+                          {externalProfile
+                            ? formatCurrency(externalProfile.external_ceiling || 0, "UGX")
+                            : agent.last_scored_at
+                              ? formatDate(agent.last_scored_at, "relative")
+                              : "Never"}
                         </p>
                       </div>
                     </div>
+                    {externalProfile && <p className="text-xs text-muted-foreground">Internal re-scoring is retained as shadow history and cannot override this qualification.</p>}
                   </div>
 
                   {/* Score Composition */}
-                  {breakdown && !breakdownLoading && (
+                  {!externalProfile && breakdown && !breakdownLoading && (
                     <DrawerSection title="Score Composition">
                       <ScoreCompositionFlow
                         ruleScore={breakdown.rule_score ?? 0}
@@ -425,16 +443,16 @@ export function ScoreDetailDrawer({
                   </DrawerSection>
 
                   {/* Source Breakdown */}
-                  <DrawerSection title="Score Source Breakdown">
+                  {!externalProfile && <DrawerSection title="Score Source Breakdown">
                     {breakdownLoading ? (
                       <Skeleton className="h-32 w-full rounded" />
                     ) : (
                       <SourceBreakdownPie data={breakdown?.source_breakdown} />
                     )}
-                  </DrawerSection>
+                  </DrawerSection>}
 
                   {/* Penalties */}
-                  <DrawerSection title="Penalties Applied">
+                  {!externalProfile && <DrawerSection title="Penalties Applied">
                     {breakdownLoading ? (
                       <Skeleton className="h-24 w-full rounded" />
                     ) : (
@@ -443,7 +461,7 @@ export function ScoreDetailDrawer({
                         penaltyTotal={breakdown?.penalty_total}
                       />
                     )}
-                  </DrawerSection>
+                  </DrawerSection>}
 
                   {/* Loan Behavior */}
                   <DrawerSection title="Loan Repayment Behavior">
@@ -457,7 +475,11 @@ export function ScoreDetailDrawer({
 
                 {/* ════════ Factors Tab ════════ */}
                 <TabsContent value="factors" className="space-y-6 mt-0">
-                  {breakdown && !breakdownLoading && (
+                  {externalProfile ? (
+                    <p className="rounded-lg border bg-muted/40 p-4 text-sm text-muted-foreground">
+                      Factor analysis belongs to the internal shadow score. The imported external score and band remain authoritative.
+                    </p>
+                  ) : breakdown && !breakdownLoading && (
                     <DrawerSection title="Score Composition">
                       <ScoreCompositionFlow
                         ruleScore={breakdown.rule_score ?? 0}
@@ -470,13 +492,13 @@ export function ScoreDetailDrawer({
                     </DrawerSection>
                   )}
 
-                  <DrawerSection title="Factor Breakdown">
+                  {!externalProfile && <DrawerSection title="Factor Breakdown">
                     {breakdownLoading ? (
                       <Skeleton className="h-48 w-full rounded" />
                     ) : (
                       <FactorBreakdownChart factors={breakdown?.factors} />
                     )}
-                  </DrawerSection>
+                  </DrawerSection>}
                 </TabsContent>
 
                 {/* ════════ History Tab ════════ */}

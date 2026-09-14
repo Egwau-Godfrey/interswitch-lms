@@ -18,6 +18,8 @@ interface ScoringFiltersToolbarProps {
   onSearchChange: (v: string) => void;
   riskLevel: "high" | "medium" | "low" | "rejected" | "all";
   onRiskLevelChange: (v: "high" | "medium" | "low" | "rejected" | "all") => void;
+  scoreSource: "internal" | "external_import" | "all";
+  onScoreSourceChange: (v: "internal" | "external_import" | "all") => void;
   scoreMin: number | undefined;
   scoreMax: number | undefined;
   onScoreRangeChange: (min: number | undefined, max: number | undefined) => void;
@@ -34,6 +36,8 @@ export function ScoringFiltersToolbar({
   onSearchChange,
   riskLevel,
   onRiskLevelChange,
+  scoreSource,
+  onScoreSourceChange,
   scoreMin,
   scoreMax,
   onScoreRangeChange,
@@ -68,6 +72,17 @@ export function ScoringFiltersToolbar({
           <SelectItem value="medium">Medium Risk</SelectItem>
           <SelectItem value="high">High Risk</SelectItem>
           <SelectItem value="rejected">Rejected</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select value={scoreSource} onValueChange={(v) => onScoreSourceChange(v as "internal" | "external_import" | "all")}>
+        <SelectTrigger className="w-[170px]">
+          <SelectValue placeholder="All score sources" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All score sources</SelectItem>
+          <SelectItem value="external_import">External</SelectItem>
+          <SelectItem value="internal">Internal</SelectItem>
         </SelectContent>
       </Select>
 

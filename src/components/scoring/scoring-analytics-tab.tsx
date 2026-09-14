@@ -26,6 +26,7 @@ const RISK_COLORS: Record<string, string> = {
   medium: "#f59e0b",
   high: "#ef4444",
   rejected: "#6b7280",
+  external: "#3b82f6",
 };
 
 export function ScoringAnalyticsTab() {
@@ -42,12 +43,13 @@ export function ScoringAnalyticsTab() {
       { name: "Medium Risk", value: stats.medium_risk_count, color: RISK_COLORS.medium },
       { name: "High Risk", value: stats.high_risk_count, color: RISK_COLORS.high },
       { name: "Rejected", value: stats.rejected_count, color: RISK_COLORS.rejected },
+      { name: "External qualification", value: stats.external_authoritative_count ?? 0, color: RISK_COLORS.external },
     ].filter((d) => d.value > 0);
   }, [stats]);
 
   const distributionData = React.useMemo(() => {
     if (!stats) return [];
-    const total = stats.total_scored || 1;
+    const total = stats.internal_authoritative_count || 1;
     return [
       { range: "0–30%", count: stats.rejected_count, pct: (stats.rejected_count / total) * 100, color: RISK_COLORS.rejected, label: "Rejected" },
       { range: "30–60%", count: stats.high_risk_count, pct: (stats.high_risk_count / total) * 100, color: RISK_COLORS.high, label: "High Risk" },

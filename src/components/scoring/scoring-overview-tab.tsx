@@ -40,6 +40,7 @@ export function ScoringOverviewTab({
 }: ScoringOverviewTabProps) {
   const [search, setSearch] = React.useState("");
   const [riskLevel, setRiskLevel] = React.useState<RiskLevel | "all">("all");
+  const [scoreSource, setScoreSource] = React.useState<"internal" | "external_import" | "all">("all");
   const [scoreMin, setScoreMin] = React.useState<number | undefined>(undefined);
   const [scoreMax, setScoreMax] = React.useState<number | undefined>(undefined);
   const [scoredFrom, setScoredFrom] = React.useState<string | undefined>(undefined);
@@ -57,16 +58,17 @@ export function ScoringOverviewTab({
     page,
     page_size: pageSize,
     search: search || undefined,
-    risk_level: riskLevel !== "all" ? riskLevel : undefined,
-    score_min: scoreMin !== undefined ? scoreMin / 100 : undefined,
-    score_max: scoreMax !== undefined ? scoreMax / 100 : undefined,
+    risk_level: scoreSource !== "external_import" && riskLevel !== "all" ? riskLevel : undefined,
+    score_min: scoreSource !== "external_import" && scoreMin !== undefined ? scoreMin / 100 : undefined,
+    score_max: scoreSource !== "external_import" && scoreMax !== undefined ? scoreMax / 100 : undefined,
+    score_source: scoreSource !== "all" ? scoreSource : undefined,
     scored_from: scoredFrom,
     scored_to: scoredTo,
     sort_by: sortBy,
     sort_order: sortOrder,
-  }), [page, pageSize, search, riskLevel, scoreMin, scoreMax, scoredFrom, scoredTo, sortBy, sortOrder]);
+  }), [page, pageSize, search, riskLevel, scoreSource, scoreMin, scoreMax, scoredFrom, scoredTo, sortBy, sortOrder]);
 
-  const cacheKey = `scored-agents-${page}-${pageSize}-${search}-${riskLevel}-${scoreMin}-${scoreMax}-${scoredFrom}-${scoredTo}-${sortBy}-${sortOrder}`;
+  const cacheKey = `scored-agents-${page}-${pageSize}-${search}-${riskLevel}-${scoreSource}-${scoreMin}-${scoreMax}-${scoredFrom}-${scoredTo}-${sortBy}-${sortOrder}`;
 
   const { data: agentsData, isLoading: listLoading, error: listError, refetch } = useApi(
     () => scoringDashboardApi.listScoredAgents(apiParams as any),
@@ -105,7 +107,11 @@ export function ScoringOverviewTab({
     try {
       const result = await scoringDashboardApi.triggerScore(agentId);
       if (result.success) {
-        toast.success(`Agent re-scored. New score: ${((result.score ?? 0) * 100).toFixed(1)}%`);
+        toast.success(
+          result.score_source === "external_import"
+            ? "Internal shadow score refreshed; external qualification remains authoritative."
+            : `Agent re-scored. New score: ${((result.score ?? 0) * 100).toFixed(1)}%`
+        );
       } else {
         toast.error(result.message || "Re-scoring failed");
       }
@@ -120,6 +126,7 @@ export function ScoringOverviewTab({
   const handleResetFilters = () => {
     setSearch("");
     setRiskLevel("all");
+    setScoreSource("all");
     setScoreMin(undefined);
     setScoreMax(undefined);
     setScoredFrom(undefined);
@@ -149,14 +156,15 @@ export function ScoringOverviewTab({
 
   const exportParams = React.useMemo(() => ({
     search: search || undefined,
-    risk_level: riskLevel !== "all" ? riskLevel : undefined,
-    score_min: scoreMin !== undefined ? scoreMin / 100 : undefined,
-    score_max: scoreMax !== undefined ? scoreMax / 100 : undefined,
+    risk_level: scoreSource !== "external_import" && riskLevel !== "all" ? riskLevel : undefined,
+    score_min: scoreSource !== "external_import" && scoreMin !== undefined ? scoreMin / 100 : undefined,
+    score_max: scoreSource !== "external_import" && scoreMax !== undefined ? scoreMax / 100 : undefined,
+    score_source: scoreSource !== "all" ? scoreSource : undefined,
     scored_from: scoredFrom,
     scored_to: scoredTo,
     sort_by: sortBy,
     sort_order: sortOrder,
-  } as any), [search, riskLevel, scoreMin, scoreMax, scoredFrom, scoredTo, sortBy, sortOrder]);
+  } as any), [search, riskLevel, scoreSource, scoreMin, scoreMax, scoredFrom, scoredTo, sortBy, sortOrder]);
 
   return (
     <div className="space-y-6">
@@ -207,6 +215,8 @@ export function ScoringOverviewTab({
         onSearchChange={(v) => { setSearch(v); setPage(1); }}
         riskLevel={riskLevel}
         onRiskLevelChange={(v) => { setRiskLevel(v); setPage(1); }}
+        scoreSource={scoreSource}
+        onScoreSourceChange={(v) => { setScoreSource(v); setPage(1); }}
         scoreMin={scoreMin}
         scoreMax={scoreMax}
         onScoreRangeChange={(min, max) => { setScoreMin(min); setScoreMax(max); setPage(1); }}

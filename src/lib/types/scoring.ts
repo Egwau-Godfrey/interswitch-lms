@@ -2,6 +2,8 @@
 // Scoring Configuration & Breakdown Types
 // ============================================
 
+import type { CreditProfile } from "./index";
+
 /** A single scoring config entry stored in the DB. */
 export interface ScoringConfigEntry {
   id: string;
@@ -76,6 +78,10 @@ export interface ScoreBreakdown {
   penalty_total: number;
   source_breakdown: SourceBreakdown;
   behavior: AgentBehavior;
+  score_source?: "internal" | "external_import";
+  effective_loan_limit?: number;
+  score_scale?: "normalized_0_1" | "external_raw";
+  credit_profile?: CreditProfile;
 }
 
 /** Response from resetting config. */

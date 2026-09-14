@@ -52,6 +52,28 @@ export type EmploymentStatus = 'full_time' | 'part_time' | 'contract' | 'self_em
 export type AgentStatus = 'pending' | 'active' | 'inactive' | 'suspended' | 'blacklisted';
 export type RiskLevel = 'high' | 'medium' | 'low' | 'rejected';
 
+export interface CreditProfile {
+  score_source: 'internal' | 'external_import';
+  qualification_status: string | null;
+  effective_loan_limit: number;
+  operational_loan_limit: number;
+  available_loan_limit: number;
+  limit_used: number;
+  external_ceiling: number | null;
+  external_score: number | null;
+  external_band: string | null;
+  external_decision: string | null;
+  starter_limit: number | null;
+  external_pd: number | null;
+  internal_shadow_score: number | null;
+  internal_shadow_risk_level: RiskLevel | null;
+  platform_joined_at: string | null;
+  activated_at: string | null;
+  qualification_expires_at: string | null;
+  batch_id: string | null;
+  prequalification_id: string | null;
+}
+
 export interface Agent {
   id: string;
   agent_id: string;
@@ -71,6 +93,7 @@ export interface Agent {
   last_credit_score?: number | null;
   credit_score_risk_level?: RiskLevel | null;
   last_scored_at?: string | null;
+  credit_profile?: CreditProfile | null;
 }
 
 export interface AgentCreate {
@@ -120,6 +143,7 @@ export interface AgentLoanSummary {
   last_scored_at: string | null;
   created_at: string;
   updated_at: string;
+  credit_profile?: CreditProfile | null;
 
   // Loan summary
   has_active_loan: boolean;
@@ -256,6 +280,15 @@ export interface Loan {
   auto_strike_triggered_at: string | null;
   created_at: string;
   updated_at: string;
+  eligibility_source?: 'internal' | 'external_import' | null;
+  prequalification_id?: string | null;
+  loan_limit_at_application?: number | null;
+  available_limit_at_application?: number | null;
+  external_ceiling_at_application?: number | null;
+  external_score_at_application?: number | null;
+  external_band_at_application?: string | null;
+  internal_score_at_application?: number | null;
+  internal_risk_at_application?: RiskLevel | null;
 }
 
 export interface LoanCreate {
@@ -356,6 +389,10 @@ export interface LoanBalanceResponse {
   is_cleared: boolean;
   product_id: string | null;
   product_name: string | null;
+  loan_limit?: number;
+  available_loan_limit?: number;
+  external_ceiling?: number | null;
+  credit_profile?: CreditProfile | null;
 }
 
 export interface LoanDetailResponse {
@@ -964,7 +1001,8 @@ export interface ScoredAgent {
   last_credit_score: number;      // 0.0–1.0
   score_percent: number;          // 0.0–100.0 (derived by backend)
   credit_score_risk_level: RiskLevel;
-  last_scored_at: string;         // ISO datetime
+  last_scored_at: string | null;  // ISO datetime for the internal shadow score
+  credit_profile?: CreditProfile | null;
 }
 
 export interface CreditScoreHistoryEntry {
@@ -978,6 +1016,7 @@ export interface CreditScoreHistoryEntry {
   trigger_type: 'manual' | 'webhook' | 'scheduled';
   transaction_count: number;
   created_at: string;
+  is_shadow?: boolean;
   component_scores?: {
     rule_score?: number;
     ml_score?: number;
@@ -993,6 +1032,8 @@ export interface ScoringStats {
   avg_score: number;
   avg_loan_limit: number;
   total_loan_exposure: number;
+  external_authoritative_count: number;
+  internal_authoritative_count: number;
 }
 
 export interface ScoredAgentListParams extends ListParams {
@@ -1001,6 +1042,7 @@ export interface ScoredAgentListParams extends ListParams {
   score_max?: number;
   scored_from?: string;
   scored_to?: string;
+  score_source?: 'internal' | 'external_import';
 }
 
 export interface BulkScoreRequest {
@@ -1014,6 +1056,9 @@ export interface BulkScoreResult {
   loan_limit?: number;
   risk_level?: RiskLevel;
   error?: string;
+  score_source?: 'internal' | 'external_import';
+  effective_loan_limit?: number;
+  credit_profile?: CreditProfile | null;
 }
 
 export interface BulkScoreResponse {
@@ -1441,6 +1486,8 @@ export interface WhitelistEntry {
   loan_limit: string | null;
   last_credit_score: string | null;
   credit_score_risk_level: RiskLevel | null;
+  score_source?: 'internal' | 'external_import';
+  credit_profile?: CreditProfile | null;
 }
 
 export interface WhitelistListResponse {
@@ -1460,6 +1507,8 @@ export interface NonWhitelistedAgent {
   loan_limit: string;
   last_credit_score: string | null;
   credit_score_risk_level: RiskLevel | null;
+  score_source?: 'internal' | 'external_import';
+  credit_profile?: CreditProfile | null;
 }
 
 export interface NonWhitelistedListResponse {

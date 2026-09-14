@@ -161,6 +161,9 @@ export default function AgentDetailPage() {
 
   const displayAgent = agent;
   const displayBalance = loanBalance;
+  const externalProfile = displayAgent?.credit_profile?.score_source === "external_import"
+    ? displayAgent.credit_profile
+    : null;
   const loans = loansData?.data ?? [];
   const loansTotalPages = loansData?.total_pages ?? 1;
   const loansTotalItems = loansData?.total ?? 0;
@@ -311,7 +314,26 @@ export default function AgentDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {displayAgent?.last_credit_score != null ? (
+            {externalProfile ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-4xl font-bold text-blue-600">{externalProfile.external_score ?? "—"}</p>
+                    <p className="text-xs text-muted-foreground">External score</p>
+                  </div>
+                  <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                    Band {externalProfile.external_band || "—"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 border-t pt-3">
+                  <div><p className="text-xs text-muted-foreground">Current limit</p><p className="font-semibold">{formatCurrency(externalProfile.effective_loan_limit, "UGX")}</p></div>
+                  <div><p className="text-xs text-muted-foreground">External maximum</p><p className="font-semibold">{formatCurrency(externalProfile.external_ceiling || 0, "UGX")}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Available</p><p className="font-semibold">{formatCurrency(externalProfile.available_loan_limit, "UGX")}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Source</p><p className="font-semibold text-sm">External import</p></div>
+                </div>
+                <p className="text-xs text-muted-foreground">Internal scoring continues as shadow data and cannot replace this qualification.</p>
+              </div>
+            ) : displayAgent?.last_credit_score != null ? (
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
@@ -328,7 +350,7 @@ export default function AgentDetailPage() {
                 </div>
                 <ScoreValueMeter
                   score={displayAgent.last_credit_score}
-                  riskLevel={displayAgent.credit_score_risk_level}
+                  riskLevel={displayAgent.credit_score_risk_level ?? "high"}
                   showPercent={false}
                 />
                 <div className="grid grid-cols-2 gap-3 pt-2 border-t">
@@ -659,7 +681,23 @@ export default function AgentDetailPage() {
         </TabsContent>
 
         <TabsContent value="credit-score">
-          {displayAgent?.last_credit_score != null ? (
+          {externalProfile ? (
+            <div className="space-y-6">
+              <Card>
+                <CardHeader><CardTitle>Authoritative External Qualification</CardTitle><CardDescription>The external score controls eligibility and the maximum limit.</CardDescription></CardHeader>
+                <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <div><p className="text-xs text-muted-foreground">External score</p><p className="text-xl font-bold">{externalProfile.external_score ?? "—"}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Band</p><p className="text-xl font-bold">{externalProfile.external_band || "—"}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Current limit</p><p className="font-bold">{formatCurrency(externalProfile.effective_loan_limit, "UGX")}</p></div>
+                  <div><p className="text-xs text-muted-foreground">External maximum</p><p className="font-bold">{formatCurrency(externalProfile.external_ceiling || 0, "UGX")}</p></div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader><CardTitle>Internal Shadow History</CardTitle><CardDescription>Monitoring only; it cannot override the external qualification.</CardDescription></CardHeader>
+                <CardContent>{scoreHistory?.length ? <ScoreTrendChart history={scoreHistory} /> : <p className="text-sm text-muted-foreground">No internal shadow scores yet.</p>}</CardContent>
+              </Card>
+            </div>
+          ) : displayAgent?.last_credit_score != null ? (
             <div className="space-y-6">
               {/* Score Composition */}
               {scoreBreakdown && !scoreBreakdownLoading && (

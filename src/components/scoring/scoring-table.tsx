@@ -29,6 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScoreValueMeter } from "./score-value-meter";
 import { RiskLevelBadge } from "@/components/shared/status-badges";
@@ -216,21 +217,32 @@ export function ScoringTable({
                         <p className="font-mono text-xs text-muted-foreground mt-0.5">
                           {agent.agent_id}
                         </p>
+                        {agent.credit_profile?.score_source === "external_import" && (
+                          <Badge variant="outline" className="mt-1 text-[10px]">External</Badge>
+                        )}
                       </div>
                     </div>
                   </TableCell>
 
                   {/* Credit Score */}
                   <TableCell>
-                    <ScoreValueMeter
-                      score={agent.last_credit_score}
-                      riskLevel={agent.credit_score_risk_level}
-                    />
+                    {agent.credit_profile?.score_source === "external_import" ? (
+                      <div className="text-sm font-semibold">
+                        {agent.credit_profile.external_score ?? "—"}
+                        <p className="text-[10px] font-normal text-muted-foreground">external score</p>
+                      </div>
+                    ) : (
+                      <ScoreValueMeter score={agent.last_credit_score} riskLevel={agent.credit_score_risk_level} />
+                    )}
                   </TableCell>
 
                   {/* Risk Level */}
                   <TableCell>
-                    <RiskLevelBadge riskLevel={agent.credit_score_risk_level} />
+                    {agent.credit_profile?.score_source === "external_import" ? (
+                      <Badge variant="secondary">Band {agent.credit_profile.external_band || "—"}</Badge>
+                    ) : (
+                      <RiskLevelBadge riskLevel={agent.credit_score_risk_level} />
+                    )}
                   </TableCell>
 
                   {/* Loan Limit */}
@@ -240,7 +252,9 @@ export function ScoringTable({
 
                   {/* Last Scored */}
                   <TableCell className="text-muted-foreground text-sm">
-                    {formatDate(agent.last_scored_at, "relative")}
+                    {agent.credit_profile?.activated_at
+                      ? formatDate(agent.credit_profile.activated_at, "relative")
+                      : agent.last_scored_at ? formatDate(agent.last_scored_at, "relative") : "—"}
                   </TableCell>
 
                   {/* Actions — stop propagation so row click doesn't fire */}

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { TrendingUp, ShieldCheck, AlertTriangle, ShieldX, Ban } from "lucide-react";
+import { TrendingUp, ShieldCheck, AlertTriangle, ShieldX, Ban, Database } from "lucide-react";
 import { StatCard } from "@/components/shared/stat-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { ScoringStats } from "@/lib/types";
@@ -14,8 +14,8 @@ interface ScoringStatsCardsProps {
 export function ScoringStatsCards({ stats, isLoading }: ScoringStatsCardsProps) {
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {Array.from({ length: 5 }).map((_, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => (
           <Skeleton key={i} className="h-28 w-full rounded-lg" />
         ))}
       </div>
@@ -23,12 +23,19 @@ export function ScoringStatsCards({ stats, isLoading }: ScoringStatsCardsProps) 
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
       <StatCard
         title="Total Scored"
         value={stats?.total_scored ?? "--"}
         icon={<TrendingUp className="h-6 w-6 text-blue-600 dark:text-blue-400" />}
         iconClassName="bg-blue-100 dark:bg-blue-900/30"
+      />
+      <StatCard
+        title="External"
+        value={stats?.external_authoritative_count ?? "--"}
+        description="Externally authoritative"
+        icon={<Database className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />}
+        iconClassName="bg-indigo-100 dark:bg-indigo-900/30"
       />
       <StatCard
         title="Low Risk"

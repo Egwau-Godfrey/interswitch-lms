@@ -22,7 +22,12 @@ function AgentCell({ agent }: { agent: AgentLoanSummary }) {
           {agent.full_name?.split(" ").map((n) => n[0]).join("") || "?"}
         </AvatarFallback>
       </Avatar>
-      <span className="font-medium">{agent.full_name}</span>
+      <div>
+        <span className="font-medium">{agent.full_name}</span>
+        {agent.credit_profile?.score_source === "external_import" && (
+          <p className="text-[10px] text-blue-600">External · Band {agent.credit_profile.external_band || "—"}</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -190,7 +195,7 @@ export const activeLoansColumns: ColumnDef[] = [
     header: "Available",
     hidden: "lg",
     cell: (agent) => {
-      const available = (agent.loan_limit || 0) - agent.total_principal;
+      const available = agent.credit_profile?.available_loan_limit ?? ((agent.loan_limit || 0) - agent.total_principal);
       return <span className={`text-xs ${available < 0 ? "text-red-600" : "text-emerald-600"}`}>{formatCurrency(available)}</span>;
     },
   },
@@ -256,7 +261,9 @@ export const noLoansColumns: ColumnDef[] = [
     hidden: "md",
     cell: (agent) => (
       <span className="text-xs">
-        {agent.last_credit_score !== null ? `${(agent.last_credit_score * 100).toFixed(1)}%` : "—"}
+        {agent.credit_profile?.score_source === "external_import"
+          ? `${agent.credit_profile.external_score ?? "—"} (external)`
+          : agent.last_credit_score !== null ? `${(agent.last_credit_score * 100).toFixed(1)}%` : "—"}
       </span>
     ),
   },
@@ -264,7 +271,9 @@ export const noLoansColumns: ColumnDef[] = [
     key: "risk_level",
     header: "Risk",
     hidden: "md",
-    cell: (agent) => <RiskLevelBadge riskLevel={agent.credit_score_risk_level} />,
+    cell: (agent) => agent.credit_profile?.score_source === "external_import"
+      ? <span className="text-xs">Band {agent.credit_profile.external_band || "—"}</span>
+      : <RiskLevelBadge riskLevel={agent.credit_score_risk_level} />,
   },
   {
     key: "income",

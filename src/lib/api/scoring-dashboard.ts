@@ -49,7 +49,7 @@ export const scoringDashboardApi = {
   /**
    * Trigger a credit score calculation for a single agent
    */
-  triggerScore: (agentId: string): Promise<{ success: boolean; score?: number; loan_limit?: number; risk_level?: string; message: string }> =>
+  triggerScore: (agentId: string): Promise<{ success: boolean; score?: number; loan_limit?: number; effective_loan_limit?: number; score_source?: 'internal' | 'external_import'; risk_level?: string; message: string }> =>
     apiClient.post(`/scoring/agents/${agentId}/score`),
 
   /**
