@@ -10,6 +10,8 @@ Write access to agents is required for uploads. Existing whitelist permissions c
 
 The table lists every imported agent with search by agent ID, first/previous/next/last pagination, and configurable page sizes (10/20/30/50/100). Filtering is scoped to the selected import batch and the awaiting-signup/joined status; changing the search text, batch, status, or page size returns to page 1. Rows show rank, external score and band, status, starter limit, effective and available limits, and joined/activated dates. Individual agent lookups use `prequalificationApi.getAgent(agentId)`.
 
+The effective limit for an external agent comes from a dedicated external progression limit. It begins at the starter limit and cannot inherit an older internal or manually assigned limit.
+
 ## External-authoritative display
 
 Wherever an agent's `credit_profile.score_source` is `external_import`, the interface presents the external qualification as authoritative instead of the internal 0–1 score:
@@ -30,3 +32,4 @@ Triggering a re-score on an externally authoritative agent reports: "Internal sh
 - **2026-09-10 — Whitelist page integration.** Upload dialog with "first N agents" selection, latest-batch statistics, awaiting-signup/joined tabs, Interswitch CSV export, and prequalification API client.
 - **2026-09-10 (later) — Table usability.** Search by agent ID, full pagination controls, and configurable page sizes for the pre-qualified agents table.
 - **2026-09-14 — External-authoritative UI.** `CreditProfile` type threaded through agent, whitelist, loan, and scoring types; external score/band cards on agent detail pages; scoring table badges, drawer changes, score-source filter, and External stat card; fixed the seven pre-existing TypeScript errors in the touched agent files.
+- **2026-09-15 — Starter-limit isolation.** Added `current_external_limit` so externally qualified agents cannot inherit a higher internal/manual limit.

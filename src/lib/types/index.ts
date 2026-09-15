@@ -64,6 +64,7 @@ export interface CreditProfile {
   external_band: string | null;
   external_decision: string | null;
   starter_limit: number | null;
+  current_external_limit: number | null;
   external_pd: number | null;
   internal_shadow_score: number | null;
   internal_shadow_risk_level: RiskLevel | null;
@@ -306,7 +307,45 @@ export interface LoanApplication {
 // ============================================
 // Loan Payment Model
 // ============================================
-export type PaymentStatus = 'posted' | 'pending' | 'failed' | 'reversed';
+export type PaymentStatus = 'posted' | 'pending' | 'failed' | 'reversed' | 'void';
+
+export interface PaymentReversalImpact {
+  loan_status_after: string;
+  total_paid_after: number;
+  outstanding_balance_after: number;
+  would_unclear_loan: boolean;
+}
+
+export interface PaymentReversalPreview {
+  payment: Pick<LoanPayment, 'id' | 'payment_reference' | 'amount' | 'status' | 'channel'>;
+  impact: PaymentReversalImpact;
+}
+
+export interface PaymentActionResult {
+  payment: { id: string; reference: string; amount: number; status: string; channel: string | null };
+  loan: {
+    id: string;
+    agent_id: string;
+    status: string;
+    total_paid: number;
+    outstanding_balance: number;
+    cleared_at: string | null;
+    auto_strike_triggered: boolean;
+  };
+  audit_id: string | null;
+}
+
+export interface PaymentReversalAuditEntry {
+  id: string;
+  action: 'reverse' | 'restore' | 'correct' | 'void';
+  previous_status: string;
+  new_status: string;
+  reason: string;
+  performed_by: string;
+  amount: number;
+  payment_reference: string;
+  created_at: string | null;
+}
 export type PaymentChannel = 'bank_transfer' | 'mobile_money' | 'card' | 'wallet' | 'cash' | 'auto_debit';
 
 export interface LoanPayment {

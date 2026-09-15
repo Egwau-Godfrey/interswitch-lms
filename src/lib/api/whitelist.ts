@@ -78,7 +78,7 @@ export interface PrequalificationPreview {
 export interface PrequalifiedAgentEntry {
   id: string; batch_id: string; agent_id: string; rank: number; status: string;
   external_score: string; external_band: string | null; external_recommended_limit: string | null;
-  starter_limit: string; active_score_source: string; platform_joined_at: string | null; activated_at: string | null;
+  starter_limit: string; current_external_limit: string; active_score_source: string; platform_joined_at: string | null; activated_at: string | null;
   external_decision: string; effective_loan_limit: string; available_loan_limit: string;
   qualification_expires_at: string | null; credit_profile: CreditProfile | null;
 }

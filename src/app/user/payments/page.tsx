@@ -2,10 +2,10 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { 
-  Search, 
-  Filter, 
-  Download, 
+import {
+  Search,
+  Filter,
+  Download,
   CreditCard,
   MoreVertical,
   CheckCircle2,
@@ -18,7 +18,9 @@ import {
   FileText,
   Building2,
   Printer,
-  Trash2
+  Trash2,
+  Undo2,
+  Scale
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,6 +49,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Select, 
   SelectContent, 
@@ -60,7 +64,7 @@ import { toast } from "sonner";
 import { Card, CardContent } from "@/components/ui/card";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { paymentsApi } from "@/lib/api";
-import type { LoanPayment, PaymentChannel, PaymentStatus, PaymentCreate } from "@/lib/types";
+import type { LoanPayment, PaymentChannel, PaymentStatus, PaymentCreate, PaymentReversalPreview } from "@/lib/types";
 import { formatCurrency } from "@/components/shared/stat-card";
 import { DataTablePagination } from "@/components/shared/data-table-pagination";
 import { ErrorState, EmptyState } from "@/components/shared/loading-states";
@@ -127,9 +131,197 @@ function PaymentStatusBadge({ status }: { status: PaymentStatus }) {
           <AlertCircle className="w-3 h-3 mr-1" /> Reversed
         </Badge>
       );
+    case "void":
+      return (
+        <Badge className="bg-gray-100 text-gray-500 hover:bg-gray-100 border-none">
+          <XCircle className="w-3 h-3 mr-1" /> Void
+        </Badge>
+      );
     default:
       return <Badge variant="outline">{status}</Badge>;
   }
+}
+
+type ReversalMode = "reverse" | "restore" | "correct";
+
+const reversalCopy: Record<ReversalMode, { title: string; description: string; action: string }> = {
+  reverse: {
+    title: "Reverse Transaction",
+    description:
+      "Marks this payment as reversed, compensates the revenue split entries, and rebuilds the loan totals. The loan's auto-strike stays frozen afterwards. Every action is written to the audit trail.",
+    action: "Reverse Payment",
+  },
+  restore: {
+    title: "Restore Transaction",
+    description:
+      "Flips this reversed payment back to posted and re-books the negated revenue split entries. Use this to undo an incorrect reversal. The loan totals are rebuilt automatically.",
+    action: "Restore Payment",
+  },
+  correct: {
+    title: "Correct Transaction Amount",
+    description:
+      "Reverses the overstated booking and re-books the true debited amount atomically (a -CORR row keeps the original reference). Use when only part of the booked amount was actually collected.",
+    action: "Apply Correction",
+  },
+};
+
+function ReversalDialog({
+  payment,
+  mode,
+  open,
+  onClose,
+  onDone,
+}: {
+  payment: LoanPayment | null;
+  mode: ReversalMode;
+  open: boolean;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const copy = reversalCopy[mode];
+  const [reason, setReason] = React.useState("");
+  const [trueAmount, setTrueAmount] = React.useState<string>("");
+  const [rearm, setRearm] = React.useState(false);
+  const [preview, setPreview] = React.useState<PaymentReversalPreview | null>(null);
+  const [previewLoading, setPreviewLoading] = React.useState(false);
+  const [submitting, setSubmitting] = React.useState(false);
+
+  React.useEffect(() => {
+    setReason("");
+    setTrueAmount("");
+    setRearm(false);
+    setPreview(null);
+    if (open && mode === "reverse" && payment) {
+      setPreviewLoading(true);
+      paymentsApi
+        .reversalPreview(payment.id)
+        .then(setPreview)
+        .catch(() => setPreview(null))
+        .finally(() => setPreviewLoading(false));
+    }
+  }, [open, mode, payment]);
+
+  const submit = async () => {
+    if (!payment || reason.trim().length < 3) return;
+    setSubmitting(true);
+    try {
+      if (mode === "reverse") {
+        const result = await paymentsApi.reverse(payment.id, reason.trim(), rearm);
+        toast.success("Payment reversed", {
+          description: `Loan ${result.loan.status} — outstanding UGX ${result.loan.outstanding_balance.toLocaleString()}. Refunds must be claimed separately.`,
+        });
+      } else if (mode === "restore") {
+        const result = await paymentsApi.restore(payment.id, reason.trim(), rearm);
+        toast.success("Payment restored", {
+          description: `Loan ${result.loan.status} — outstanding UGX ${result.loan.outstanding_balance.toLocaleString()}.`,
+        });
+      } else {
+        const amount = Number(trueAmount);
+        if (!amount || amount <= 0) {
+          toast.error("Enter the true debited amount");
+          setSubmitting(false);
+          return;
+        }
+        const result = await paymentsApi.correct(payment.id, amount, reason.trim());
+        toast.success("Correction applied", {
+          description: `Rebooked as ${result.payment.reference} (UGX ${Number(result.payment.amount).toLocaleString()}).`,
+        });
+      }
+      setSubmitting(false);
+      onClose();
+      onDone();
+    } catch (err: any) {
+      setSubmitting(false);
+      toast.error(err?.message || `Failed to ${mode} payment`);
+    }
+  };
+
+  if (!payment) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>{copy.title}</DialogTitle>
+          <DialogDescription>{copy.description}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-2">
+          <div className="rounded-md border bg-muted/40 p-3 text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Reference</span>
+              <span className="font-mono text-xs">{payment.payment_reference || payment.id}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Amount</span>
+              <span className="font-semibold">UGX {Number(payment.amount).toLocaleString()}</span>
+            </div>
+            {mode === "reverse" && (
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Impact preview</span>
+                <span className="text-xs text-right">
+                  {previewLoading
+                    ? "Calculating…"
+                    : preview
+                      ? `Loan becomes ${preview.impact.loan_status_after} · outstanding UGX ${preview.impact.outstanding_balance_after.toLocaleString()}`
+                      : "Unavailable — you can still proceed"}
+                </span>
+              </div>
+            )}
+          </div>
+
+          {mode === "correct" && (
+            <div className="space-y-2">
+              <Label htmlFor="true-amount">True debited amount (UGX)</Label>
+              <Input
+                id="true-amount"
+                type="number"
+                min={1}
+                max={Number(payment.amount)}
+                placeholder={`Less than ${Number(payment.amount).toLocaleString()}`}
+                value={trueAmount}
+                onChange={(e) => setTrueAmount(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div className="space-y-2">
+            <Label htmlFor="reversal-reason">Reason (required, audited)</Label>
+            <Textarea
+              id="reversal-reason"
+              placeholder="e.g. Interswitch confirmed the original strike was collected; this re-strike is a duplicate collection."
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              rows={3}
+            />
+          </div>
+
+          {mode !== "correct" && (
+            <div className="flex items-start gap-2">
+              <Checkbox id="rearm" checked={rearm} onCheckedChange={(v) => setRearm(v === true)} />
+              <Label htmlFor="rearm" className="text-xs font-normal text-muted-foreground leading-snug">
+                Re-arm auto-strike on this loan. Leave unchecked for double-collection fixes — the
+                loan stays frozen so the 5-minute task cannot debit the agent again.
+              </Label>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button
+            variant={mode === "restore" ? "default" : "destructive"}
+            onClick={submit}
+            disabled={submitting || reason.trim().length < 3}
+          >
+            {submitting ? "Working…" : copy.action}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 function PaymentChannelBadge({ channel }: { channel: PaymentChannel }) {
@@ -302,6 +494,14 @@ export default function PaymentsPage() {
   const [pageSize, setPageSize] = React.useState(10);
   const [isPostOpen, setIsPostOpen] = React.useState(false);
   const [receiptPayment, setReceiptPayment] = React.useState<LoanPayment | null>(null);
+  const [actionPayment, setActionPayment] = React.useState<LoanPayment | null>(null);
+  const [actionMode, setActionMode] = React.useState<ReversalMode>("reverse");
+
+  const openReversal = (payment: LoanPayment, mode: ReversalMode) => {
+    if (!requireWrite()) return;
+    setActionPayment(payment);
+    setActionMode(mode);
+  };
 
   const { data: paymentsData, isLoading, error, refetch, isRefetching } = useApi(
     () => {
@@ -353,26 +553,6 @@ export default function PaymentsPage() {
       },
     }
   );
-
-  const handleReverse = async (paymentId: string) => {
-    if (!requireWrite()) return;
-    try {
-      toast.loading("Reversing payment...", { id: "reverse-loading" });
-      await paymentsApi.delete(paymentId);
-      toast.dismiss("reverse-loading");
-      toast.success("Payment reversed successfully");
-      refetch();
-    } catch (err: any) {
-      toast.dismiss("reverse-loading");
-      if (err?.status === 403) {
-        toast.error("Write access required", {
-          description: "Reversing payments requires write access granted by a super admin.",
-        });
-      } else {
-        toast.error(err?.message || "Failed to reverse payment");
-      }
-    }
-  };
 
   const filteredPayments = React.useMemo(() => {
     let result = payments;
@@ -641,6 +821,7 @@ export default function PaymentsPage() {
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
               <SelectItem value="reversed">Reversed</SelectItem>
+              <SelectItem value="void">Void</SelectItem>
             </SelectContent>
           </Select>
           <Select value={channelFilter} onValueChange={setChannelFilter}>
@@ -732,11 +913,35 @@ export default function PaymentsPage() {
                             <DropdownMenuItem
                               className="text-destructive"
                               disabled={writeDisabled}
-                              onClick={() => handleReverse(payment.id)}
+                              onClick={() => openReversal(payment, "reverse")}
                               title={writeTooltip}
                             >
                               <Trash2 className="w-4 h-4 mr-2" />
                               Reverse Transaction
+                              {!canWrite && (
+                                <span className="ml-auto text-[10px] text-muted-foreground">Write required</span>
+                              )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={writeDisabled}
+                              onClick={() => openReversal(payment, "correct")}
+                              title={writeTooltip}
+                            >
+                              <Scale className="w-4 h-4 mr-2" />
+                              Correct Amount…
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                        {(payment.status === "reversed" || payment.status === "void") && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              disabled={writeDisabled}
+                              onClick={() => openReversal(payment, "restore")}
+                              title={writeTooltip}
+                            >
+                              <Undo2 className="w-4 h-4 mr-2" />
+                              Restore Transaction
                               {!canWrite && (
                                 <span className="ml-auto text-[10px] text-muted-foreground">Write required</span>
                               )}
@@ -779,6 +984,14 @@ export default function PaymentsPage() {
         payment={receiptPayment}
         open={!!receiptPayment}
         onClose={() => setReceiptPayment(null)}
+      />
+
+      <ReversalDialog
+        payment={actionPayment}
+        mode={actionMode}
+        open={!!actionPayment}
+        onClose={() => setActionPayment(null)}
+        onDone={refetch}
       />
     </div>
   );
