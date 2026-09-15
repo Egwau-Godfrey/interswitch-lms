@@ -90,7 +90,10 @@ React.useEffect(() => {
       { href: `${basePath}/settings`, label: "Settings", icon: Settings },
     ];
 
-    return links;
+    // Permission management is super-admin only; hide the link for other roles.
+    return isSuperAdmin
+      ? links
+      : links.filter((link) => !link.href.endsWith("/permissions"));
   }, [basePath, isSuperAdmin]);
 
 
