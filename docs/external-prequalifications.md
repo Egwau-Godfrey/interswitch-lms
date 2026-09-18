@@ -8,7 +8,7 @@ Write access to agents is required for uploads. Existing whitelist permissions c
 
 ## Releasing awaiting agents
 
-The panel's "Onboard awaiting (N)" button releases the agents still `awaiting_signup` in the batch currently in view (or across all releases when "All releases" is selected). It calls `POST /prequalifications/onboard-awaiting` with the selected batch and runs the same activation as a normal opt-in — account creation, whitelist entry, active status, starter limit, and transaction-statement request — then shows the per-run result (onboarded, already registered, failed) and the count still awaiting. Runs are bounded at 200 agents and can be repeated ("Onboard next N") until the backlog is empty; entries whose account already exists are skipped case-insensitively, so retries are safe.
+The panel's "Onboard awaiting (N)" button releases the agents still `awaiting_signup` in the batch currently in view (or across all releases when "All releases" is selected). It calls `POST /prequalifications/onboard-awaiting` with the selected batch and runs the same activation as a normal opt-in — account creation, whitelist entry, active status, and starter limit; no transaction statement is requested because these agents are already scored by Interswitch, so a release does not trigger webhook traffic. It then shows the per-run result (onboarded, already registered, failed) and the count still awaiting. Runs are bounded at 200 agents and can be repeated ("Onboard next N") until the backlog is empty; entries whose account already exists are skipped case-insensitively, so retries are safe.
 
 ## Pre-qualified agents table
 
