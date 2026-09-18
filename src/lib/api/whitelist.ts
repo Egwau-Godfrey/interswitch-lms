@@ -83,6 +83,11 @@ export interface PrequalifiedAgentEntry {
   qualification_expires_at: string | null; credit_profile: CreditProfile | null;
 }
 
+export interface PrequalificationOnboardResult {
+  created: number; already_registered: number; selected: number;
+  failed: Array<{ agent_id: string; error: string }>; remaining: number; requested_by: string;
+}
+
 export const prequalificationApi = {
   preview: (file: File, requestedCount: number, importAll = false, starterLimit = 5000) => {
     const form = new FormData(); form.append('file', file); form.append('requested_count', String(requestedCount)); form.append('import_all', String(importAll)); form.append('starter_limit', String(starterLimit));
@@ -99,4 +104,10 @@ export const prequalificationApi = {
   allStats: () => apiClient.get<{ total_selected: number; awaiting_signup: number; joined: number; activated: number; review_required: number; registration_conversion_rate: number }>('/prequalifications/stats'),
   exportCsv: (batchId: string, platformStatus?: string) => apiClient.getBlob(`/prequalifications/imports/${batchId}/export`, { platform_status: platformStatus }),
   exportAll: (platformStatus?: string) => apiClient.getBlob('/prequalifications/export', { platform_status: platformStatus }),
+  onboardAwaiting: (limit = 50, batchId?: string) =>
+    apiClient.post<PrequalificationOnboardResult>(
+      '/prequalifications/onboard-awaiting',
+      undefined,
+      { limit, batch_id: batchId }
+    ),
 };

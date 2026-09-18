@@ -9,6 +9,7 @@ import {
   Plus,
   Trash2,
   Users,
+  UserPlus,
   CheckCircle2,
   XCircle,
   Loader2,
@@ -64,7 +65,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { useApi, useMutation } from "@/hooks/use-api";
 import { whitelistApi } from "@/lib/api";
-import { prequalificationApi } from "@/lib/api/whitelist";
+import { prequalificationApi, type PrequalificationOnboardResult } from "@/lib/api/whitelist";
 import { settingsApi } from "@/lib/api/settings";
 import type {
   WhitelistEntry,
@@ -624,6 +625,7 @@ export function WhitelistPageContent({
 
 function PrequalificationPanel({ writeDisabled }: { writeDisabled: boolean }) {
   const [uploadOpen, setUploadOpen] = React.useState(false);
+  const [onboardOpen, setOnboardOpen] = React.useState(false);
   const [platformStatus, setPlatformStatus] = React.useState<"not_joined" | "joined">("not_joined");
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [selectedBatchId, setSelectedBatchId] = React.useState("all");
@@ -692,6 +694,9 @@ function PrequalificationPanel({ writeDisabled }: { writeDisabled: boolean }) {
           <Button variant="outline" onClick={exportCsv} disabled={!selectedBatch && selectedBatchId !== "all"}>
             <Download className="mr-2 h-4 w-4" />Export for Interswitch
           </Button>
+          <Button variant="outline" onClick={() => setOnboardOpen(true)} disabled={writeDisabled || !stats?.awaiting_signup}>
+            <UserPlus className="mr-2 h-4 w-4" />Onboard awaiting{stats?.awaiting_signup ? ` (${stats.awaiting_signup})` : ""}
+          </Button>
           <Button onClick={() => setUploadOpen(true)} disabled={writeDisabled}>
             <Upload className="mr-2 h-4 w-4" />Upload scored agents
           </Button>
@@ -743,7 +748,122 @@ function PrequalificationPanel({ writeDisabled }: { writeDisabled: boolean }) {
           setRefreshKey((key) => key + 1);
         }}
       />
+      <OnboardAwaitingDialog
+        open={onboardOpen}
+        onOpenChange={setOnboardOpen}
+        batchId={selectedBatchId !== "all" ? selectedBatchId : undefined}
+        batchLabel={selectedBatchId === "all" ? "all releases" : selectedBatch?.filename}
+        awaiting={stats?.awaiting_signup ?? 0}
+        onCompleted={() => setRefreshKey((key) => key + 1)}
+      />
     </div>
+  );
+}
+
+function OnboardAwaitingDialog({
+  open,
+  onOpenChange,
+  batchId,
+  batchLabel,
+  awaiting,
+  onCompleted,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  batchId?: string;
+  batchLabel?: string;
+  awaiting: number;
+  onCompleted: () => void;
+}) {
+  const [limit, setLimit] = React.useState(50);
+  const [busy, setBusy] = React.useState(false);
+  const [result, setResult] = React.useState<PrequalificationOnboardResult | null>(null);
+
+  React.useEffect(() => {
+    if (open) setResult(null);
+  }, [open]);
+
+  const run = async () => {
+    setBusy(true);
+    try {
+      const response = await prequalificationApi.onboardAwaiting(Math.min(200, Math.max(1, limit)), batchId);
+      setResult(response);
+      if (response.selected === 0) {
+        toast.info("Nothing to onboard", { description: "Every agent in scope already has an account." });
+      } else {
+        toast.success(`Onboarded ${response.created} of ${response.selected} agent(s)`, {
+          description: response.remaining > 0 ? `${response.remaining} still awaiting signup` : "No agents remain awaiting signup",
+        });
+      }
+    } catch (error: any) {
+      toast.error("Onboarding run failed", {
+        description: `${error.message}. Agents already onboarded are skipped, so it is safe to retry.`,
+      });
+    } finally {
+      setBusy(false);
+      onCompleted();
+    }
+  };
+
+  const nextCount = result ? Math.min(limit, result.remaining) : Math.min(limit, awaiting);
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => { if (!busy) onOpenChange(next); }}>
+      <DialogContent className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Onboard awaiting agents</DialogTitle>
+          <DialogDescription>
+            Creates each account, activates the external qualification, adds the whitelist entry,
+            and requests the transaction statement — the same flow as a normal opt-in.
+            Scope: {batchLabel || "all releases"}.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          {!result && (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="onboard-limit">Agents per run</Label>
+                <Input id="onboard-limit" type="number" min={1} max={200} value={limit} onChange={(event) => setLimit(Number(event.target.value) || 50)} />
+              </div>
+              <Alert>
+                <AlertDescription>
+                  {awaiting} agent(s) awaiting signup. Highest external scores are released first.
+                  Statements are requested one agent at a time, so a large run can take a minute or more.
+                  Safe to run repeatedly — existing agents are skipped.
+                </AlertDescription>
+              </Alert>
+            </>
+          )}
+          {result && (
+            <Alert>
+              <CheckCircle2 className="h-4 w-4" />
+              <AlertTitle>{result.created} of {result.selected} onboarded</AlertTitle>
+              <AlertDescription>
+                {result.already_registered} already had an account and {result.failed.length} failed. {result.remaining} still awaiting signup.
+                {result.failed.length > 0 && (
+                  <ul className="mt-2 list-disc space-y-1 pl-4">
+                    {result.failed.slice(0, 5).map((failure) => (
+                      <li key={failure.agent_id} className="font-mono text-xs">{failure.agent_id}: {failure.error}</li>
+                    ))}
+                  </ul>
+                )}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
+            {result && result.remaining === 0 ? "Done" : "Close"}
+          </Button>
+          {(!result || result.remaining > 0) && (
+            <Button onClick={run} disabled={busy || (!result && awaiting === 0)}>
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <UserPlus className="mr-2 h-4 w-4" />}
+              {result ? `Onboard next ${nextCount}` : `Onboard ${nextCount || limit} agent(s)`}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

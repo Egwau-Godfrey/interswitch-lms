@@ -6,6 +6,10 @@ The page shows the latest batch's selected, awaiting-signup, joined, activated, 
 
 Write access to agents is required for uploads. Existing whitelist permissions continue to control ordinary whitelist actions.
 
+## Releasing awaiting agents
+
+The panel's "Onboard awaiting (N)" button releases the agents still `awaiting_signup` in the batch currently in view (or across all releases when "All releases" is selected). It calls `POST /prequalifications/onboard-awaiting` with the selected batch and runs the same activation as a normal opt-in — account creation, whitelist entry, active status, starter limit, and transaction-statement request — then shows the per-run result (onboarded, already registered, failed) and the count still awaiting. Runs are bounded at 200 agents and can be repeated ("Onboard next N") until the backlog is empty; entries whose account already exists are skipped case-insensitively, so retries are safe.
+
 ## Pre-qualified agents table
 
 The table lists every imported agent with search by agent ID, first/previous/next/last pagination, and configurable page sizes (10/20/30/50/100). Filtering is scoped to the selected import batch and the awaiting-signup/joined status; changing the search text, batch, status, or page size returns to page 1. Rows show rank, external score and band, status, starter limit, effective and available limits, and joined/activated dates. Individual agent lookups use `prequalificationApi.getAgent(agentId)`.
@@ -33,3 +37,4 @@ Triggering a re-score on an externally authoritative agent reports: "Internal sh
 - **2026-09-10 (later) — Table usability.** Search by agent ID, full pagination controls, and configurable page sizes for the pre-qualified agents table.
 - **2026-09-14 — External-authoritative UI.** `CreditProfile` type threaded through agent, whitelist, loan, and scoring types; external score/band cards on agent detail pages; scoring table badges, drawer changes, score-source filter, and External stat card; fixed the seven pre-existing TypeScript errors in the touched agent files.
 - **2026-09-15 — Starter-limit isolation.** Added `current_external_limit` so externally qualified agents cannot inherit a higher internal/manual limit.
+- **2026-09-18 — Batch release button.** "Onboard awaiting" action on the prequalifications panel releases the selected batch's awaiting agents through `POST /prequalifications/onboard-awaiting`, with per-run results and continue-until-empty runs; accounts that already exist are skipped so retries cannot duplicate.
