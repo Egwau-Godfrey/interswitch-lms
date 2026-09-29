@@ -1,5 +1,6 @@
 "use client";
 
+import { NotificationBell } from "@/components/notifications/notification-bell";
 import * as React from "react";
 import { Banknote, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ export default function AgentLayout({ children }: { children: React.ReactNode })
           </span>
         </div>
         <div className="flex items-center gap-4">
+          <NotificationBell />
           <span className="text-sm font-medium hidden md:block">{agentName}</span>
           <Button
             variant="ghost"
