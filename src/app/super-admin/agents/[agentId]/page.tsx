@@ -682,13 +682,13 @@ export default function AgentDetailPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Authoritative External Qualification</CardTitle>
-                  <CardDescription>The external score controls eligibility and the maximum limit.</CardDescription>
+                  <CardDescription>The external score informs eligibility. Borrowing stays at UGX 5,000 unless an approved limit exception is set.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <div><p className="text-xs text-muted-foreground">External score</p><p className="text-xl font-bold">{externalProfile.external_score ?? "—"}</p></div>
                   <div><p className="text-xs text-muted-foreground">Band</p><p className="text-xl font-bold">{externalProfile.external_band || "—"}</p></div>
                   <div><p className="text-xs text-muted-foreground">Current limit</p><p className="font-bold">{formatCurrency(externalProfile.effective_loan_limit, "UGX")}</p></div>
-                  <div><p className="text-xs text-muted-foreground">External maximum</p><p className="font-bold">{formatCurrency(externalProfile.external_ceiling || 0, "UGX")}</p></div>
+                  <div><p className="text-xs text-muted-foreground">External recommendation</p><p className="font-bold">{formatCurrency(externalProfile.external_ceiling || 0, "UGX")}</p></div>
                 </CardContent>
               </Card>
               <Card>

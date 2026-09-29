@@ -191,7 +191,7 @@ export function ScoringOverviewTab({
               <AlertDialogTitle>Rescore all agents?</AlertDialogTitle>
               <AlertDialogDescription>
                 This will re-run the credit scoring engine for every agent in the system
-                and update their loan limits and risk levels. This may take a while depending
+                and update their assessed limits and risk levels. The borrowing limit remains UGX 5,000 unless an approved exception is set. This may take a while depending
                 on the number of agents. Continue?
               </AlertDialogDescription>
             </AlertDialogHeader>

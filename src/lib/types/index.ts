@@ -56,6 +56,8 @@ export interface CreditProfile {
   score_source: 'internal' | 'external_import';
   qualification_status: string | null;
   effective_loan_limit: number;
+  assessed_loan_limit: number;
+  loan_limit_override: number | null;
   operational_loan_limit: number;
   available_loan_limit: number;
   limit_used: number;
