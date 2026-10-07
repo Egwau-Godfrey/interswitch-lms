@@ -14,7 +14,7 @@ The panel's "Onboard awaiting (N)" button releases the agents still `awaiting_si
 
 The table lists every imported agent with search by agent ID, first/previous/next/last pagination, and configurable page sizes (10/20/30/50/100). Filtering is scoped to the selected import batch and the awaiting-signup/joined status; changing the search text, batch, status, or page size returns to page 1. Rows show rank, external score and band, status, starter limit, effective and available limits, and joined/activated dates. Individual agent lookups use `prequalificationApi.getAgent(agentId)`.
 
-The effective limit for an external agent comes from a dedicated external progression limit. It begins at the starter limit and cannot inherit an older internal or manually assigned limit.
+The effective limit shown for an external agent comes from the API's `credit_profile`. Since the 2026-09-29 freeze it is the UGX 5,000 default or the agent's audited override — and since the 2026-10-06 tier directive (amended 2026-10-07), whitelisted agents are raised to tier overrides: UGX 10,000 at 3 qualifying repaid loans, UGX 20,000 at 4+, where loans recovered through auto-strike do not count (see the loans API's `docs/limit-tiers-2026-10-06.md`). The dedicated external progression limit is assessment data and cannot raise borrowing by itself.
 
 ## External-authoritative display
 
@@ -38,3 +38,5 @@ Triggering a re-score on an externally authoritative agent reports: "Internal sh
 - **2026-09-14 — External-authoritative UI.** `CreditProfile` type threaded through agent, whitelist, loan, and scoring types; external score/band cards on agent detail pages; scoring table badges, drawer changes, score-source filter, and External stat card; fixed the seven pre-existing TypeScript errors in the touched agent files.
 - **2026-09-15 — Starter-limit isolation.** Added `current_external_limit` so externally qualified agents cannot inherit a higher internal/manual limit.
 - **2026-09-18 — Batch release button.** "Onboard awaiting" action on the prequalifications panel releases the selected batch's awaiting agents through `POST /prequalifications/onboard-awaiting`, with per-run results and continue-until-empty runs; accounts that already exist are skipped so retries cannot duplicate.
+- **2026-10-06 — Tiered limits (no LMS change).** The loans API now raises whitelisted agents to audited tier overrides (3 fully repaid loans → UGX 10,000; 4+ → UGX 20,000) and maintains them automatically on loan clearance. The LMS already renders the effective limit and override from `credit_profile`, so no component changes; the effective-limit description above was updated for accuracy.
+- **2026-10-07 — Tier amendment (no LMS change).** Loans recovered through auto-strike no longer count toward the tiers; the API recounted and reset the two overrides that no longer qualified. Effective limits and overrides still render from `credit_profile`, so no component changes.
